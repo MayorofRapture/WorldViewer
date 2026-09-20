@@ -95,10 +95,10 @@ Governing authority: ADR-003; ADR-008; TDS §§17–18; Interface & Contract Spe
 Authoritative test / procedure: `tests/unit/projectionReferenceOracle.test.ts`
 Supporting fixtures / evidence: `tests/fixtures/projectionReferenceCases.ts`; `tests/helpers/projectionApertureOracle.ts`; `evidence/milestone-0/m0b-7-projection-reference-pack.json`
 Review status: approved
-Review owner / result: Supplied GPT-5.6 Sol High stronger-reasoning Class C review, 2026-09-20; formulas, conventions, clip baseline, oracle method, tolerances, and 12 cases were supplied as frozen task input.
-Freeze status: draft
-Frozen baseline: not-yet-frozen; materialization commit `d3e49c8`
+Review owner / result: Supplied GPT-5.6 Sol High stronger-reasoning Class C review, 2026-09-20; the post-materialization audit passed, and cleanup commit `41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9` was independently verified.
+Freeze status: frozen
+Frozen baseline: `41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9`
 Change authority: Stronger-reasoning Class C review is required for semantic changes to formulas, coordinate interpretation, Three mapping, golden values, near/far baseline, oracle method, tolerances, or invariant interpretation.
 Milestone applicability: M0B
 Handoff references: `docs/handoff/projection.md`
-Notes / limitations: This record materializes reviewed authority; a separate post-materialization audit must freeze it before production projection implementation.
+Notes / limitations: The completed stronger-reasoning post-materialization audit froze this record after independently verifying cleanup commit `41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9`.

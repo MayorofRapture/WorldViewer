@@ -4,7 +4,7 @@
 
 This pack materializes an already-reviewed Class C design. Authority order is: accepted ADR-003/ADR-008 and the canonical Interface & Contract Specification; this reviewed pack and its literal fixtures; the independent test oracle; and Three.js r186 convention checks. Production implementation must consume this pack and may not redefine it.
 
-Class C design review: approved. Repository oracle status: `ORC-PROJECTION-001` is draft pending a separate post-materialization audit and freeze. Production projection remains blocked.
+Class C design review: approved. The completed stronger-reasoning post-materialization audit passed, and `ORC-PROJECTION-001` is frozen at reviewed baseline `41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9`. Production projection remains unimplemented; separately authorized implementation may consume this frozen pack without redefining it.
 
 ## Pinned references
 
@@ -70,4 +70,4 @@ Tolerances are explicit absolute comparisons: `FRUSTUM_ABS_EPS_MM=1e-9`, `MATRIX
 
 ## Deferred concerns and stop boundary
 
-Arbitrary rotated screens, final production clipping policy for future worlds, perspective-strength behavior, invalid-input production error handling, camera integration, inverse-matrix synchronization, and GPU/framebuffer tolerances remain deferred or evidence-gated. No production projection adapter, camera wiring, matrix construction, or diagnostic viewer reaction is implemented by this pack. Production projection remains blocked until `ORC-PROJECTION-001` receives a separate stronger-review audit and is frozen.
+Arbitrary rotated screens, final production clipping policy for future worlds, perspective-strength behavior, invalid-input production error handling, camera integration, inverse-matrix synchronization, and GPU/framebuffer tolerances remain deferred or evidence-gated. This pack does not itself implement production projection, camera wiring, matrix construction, or diagnostic viewer reaction. `ORC-PROJECTION-001` is frozen and may be consumed only by separately authorized production work.

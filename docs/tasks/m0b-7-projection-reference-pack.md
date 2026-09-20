@@ -8,7 +8,7 @@
 - Implementation model: Luna
 - Implementation reasoning: Medium
 - Baseline: `feat/m0a1-foundation` / `53850232b2111f90d91215ae4c5599d37bc94d86`
-- Status: complete; ready for post-materialization audit
+- Status: complete; post-materialization audit passed and oracle freeze recorded
 
 ## Objective
 
@@ -25,7 +25,7 @@ Materialize the completed stronger-reasoning Class C projection review as a lite
 - Oracle ID: `ORC-PROJECTION-001`
 - Classification: Class C
 - Review: approved by the supplied stronger-reasoning review
-- Repository freeze: draft; not frozen until a separate post-materialization audit
+- Repository freeze: frozen at `41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9` after the completed stronger-reasoning post-materialization audit and independent cleanup verification
 
 ## Allowed Scope
 
@@ -42,4 +42,4 @@ Materialize the completed stronger-reasoning Class C projection review as a lite
 
 ## Definition of Done
 
-The 12 literal cases, independent aperture oracle, Three r186 convention checks, cross-case invariants, TDS clarification, reuse/oracle records, handoff, and evidence exist and pass available verification. `ORC-PROJECTION-001` remains Class C review-approved but repository freeze `draft`; production projection remains blocked.
+The 12 literal cases, independent aperture oracle, Three r186 convention checks, cross-case invariants, TDS clarification, reuse/oracle records, handoff, and evidence exist and pass available verification. `ORC-PROJECTION-001` is Class C review-approved and frozen at `41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9`; production projection remains unimplemented.

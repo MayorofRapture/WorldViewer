@@ -39,11 +39,21 @@
     "cargoCheckLocked": "unavailable: cargo is not on PATH in this environment",
     "diffCheck": "pass"
   },
-  "oracle": { "id": "ORC-PROJECTION-001", "review": "approved", "freeze": "draft" },
+  "oracle": {
+    "id": "ORC-PROJECTION-001",
+    "review": "approved",
+    "freeze": "frozen",
+    "frozenBaseline": "41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9"
+  },
+  "postMaterializationAudit": {
+    "strongerReasoningReview": "pass",
+    "cleanupCommit": "41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9",
+    "cleanupIndependentlyVerified": true
+  },
   "productionProjectionImplemented": false,
-  "productionProjectionAuthorized": false,
+  "productionProjectionAuthorized": true,
   "limitations": [
     "Cargo result is not fabricated; the user-supplied prior successful Cargo check is not independent evidence from this run.",
-    "A separate stronger-review post-materialization audit must freeze the Class C oracle before production projection work."
+    "The completed stronger-review post-materialization audit froze the Class C oracle at the recorded baseline."
   ]
 }
