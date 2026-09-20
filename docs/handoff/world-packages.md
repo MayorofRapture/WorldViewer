@@ -1,6 +1,6 @@
 # M0B Public World SDK and Package Scaffold Handoff
 
-- Subsystem status and supported scope: M0B-4 public SDK/source boundary is verified; package-shaped diagnostic source and production loading remain later M0 work.
+- Subsystem status and supported scope: M0B-4 public SDK/source boundary and M0B-5 package-shaped diagnostic source/headless bootstrap are verified; production loading remains later M0 work.
 - Stable public contract/interface paths: `src/world-sdk/index.ts`; `src/world-sdk/contracts/world.ts`; `src/shared/contracts/`.
 - Oracle IDs: `ORC-WORLD-BOUNDARY-001`.
 - Authoritative tests/oracles: `scripts/check-world-sdk-surface.mjs`; `scripts/check-world-boundaries.mjs`; `tests/unit/worldBoundaryChecks.test.ts`.
@@ -14,8 +14,11 @@
 - Remaining project-specific custom-code boundary: explicit SDK re-exports and dependency-boundary checks only.
 - Prohibited Reinvention: no custom scene graph, renderer, logging framework, schema validator, package loader, or host capability bypass.
 - Deterministic tests and fixture paths: `tests/unit/worldBoundaryChecks.test.ts`; `tests/fixtures/world-boundary/`.
+- Diagnostic source path: `worlds-dev/diagnostic-room/src/`; manifest/settings/assets are package-shaped under `worlds-dev/diagnostic-room/`.
+- Headless bootstrap proof: `src/world-host/development/diagnosticBootstrap.ts`; `tests/unit/diagnosticWorld.test.ts`.
 - Governing ADR references: ADR-002; ADR-011; ADR-012; ADR-013; ADR-016; ADR-019.
 - Evidence references: `evidence/milestone-0/m0b-4-world-sdk.json`.
-- Known limitations / unsupported behavior: `worlds-dev/` diagnostic package, production package build/discovery/manifest validation/dynamic loading, package-local asset runtime, and projection integration are not implemented here.
+- Applicable WPC rules: WPC-API-001–010; WPC-ISO-001–008; WPC-LIFE-001–010; WPC-FRAME-001–006; WPC-SET-001–012; WPC-REF-001–010.
+- Known limitations / unsupported behavior: generated `dist/world.js`, production package build/discovery/manifest validation/API compatibility/dynamic local ESM loading, production package-local asset resolver, reusable full M0F conformance fixtures, packaged Tauri conformance, and projection-integrated behavior remain outstanding.
 - Exact verification commands: `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
 - Escalation conditions: any request to widen the 19-export SDK, expose host-private capabilities, freeze the external module specifier, or author Class C projection correctness.

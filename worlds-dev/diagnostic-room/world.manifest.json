@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "local.worldviewer.diagnostic-room",
+  "name": "Diagnostic Room",
+  "version": "0.1.0",
+  "engineApi": "^1.0.0",
+  "entry": "dist/world.js",
+  "description": "Deterministic diagnostic reference world for WorldViewer",
+  "settings": {
+    "schema": "settings.schema.json",
+    "ui": "settings.ui.json"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "ui:order": ["showGrid", "gridSpacingMm", "accent"],
+  "gridSpacingMm": { "ui:widget": "range", "ui:help": "Spacing in millimeters" },
+  "accent": { "ui:widget": "select" }
+}

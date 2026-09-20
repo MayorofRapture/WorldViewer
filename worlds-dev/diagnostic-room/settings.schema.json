@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "showGrid": { "type": "boolean", "default": true },
+    "gridSpacingMm": { "type": "number", "minimum": 1, "default": 50 },
+    "accent": { "type": "string", "enum": ["cyan", "amber", "magenta"], "default": "cyan" }
+  },
+  "required": ["showGrid", "gridSpacingMm", "accent"]
+}
