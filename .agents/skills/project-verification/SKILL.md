@@ -5,11 +5,11 @@ description: Use before claiming a WorldViewer task is complete, correct, passin
 
 # Project Verification
 
-This skill is procedural only. It does not define correctness. Correctness comes from the current task specification, authoritative requirements/contracts, Testing Strategy, Oracle Registry entries and the procedures/tests they reference.
+This skill is procedural only. It does not define correctness. The current task instruction or task specification identifies the claims and required outcome; applicable authoritative requirements, contracts, acceptance criteria, Testing Strategy, Oracle Registry entries and procedures, and repository acceptance gates determine what those claims mean and what evidence is sufficient. Prompt wording or conversation summaries do not redefine those thresholds, tolerances, contracts, or oracle semantics. If the task explicitly authorizes a valid change to an owning specification, verify against the updated source.
 
-## 1. Enumerate the claims to prove
+## 1. Enumerate the authorized claims to prove
 
-List the material completion claims implied by the task, such as:
+List the material completion claims authorized by the task, identify the source that owns each claim's meaning, and then choose evidence. Examples include:
 
 - required files/contracts exist;
 - typecheck/build/test expectations pass;
@@ -18,7 +18,7 @@ List the material completion claims implied by the task, such as:
 - public/private boundaries or conformance requirements hold;
 - a milestone/task Definition of Done item is satisfied.
 
-Do not add requirements that the authoritative sources do not require.
+Do not add requirements that the authoritative sources do not require, and do not let a prompt silently redefine an existing acceptance criterion or contract.
 
 ## 2. Resolve each claim to authoritative evidence
 

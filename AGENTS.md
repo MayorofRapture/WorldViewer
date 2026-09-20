@@ -4,9 +4,11 @@ These instructions govern agent execution in this repository. They are procedura
 
 ## Authority rule
 
-Use the project's authoritative sources for substance. In particular, do not override or silently reinterpret an applicable task specification, accepted ADR, Technical Design Specification (TDS), Interface & Contract Specification, World Package Conformance Specification, Testing Strategy, Oracle Registry, Reuse Register, or subsystem handoff.
+The current explicit task instruction or task specification authorizes the work: its objective, Allowed Scope, prohibited changes, explicit permissions, and completion assignment. It does not redefine the project's substantive product, architecture, contracts, acceptance criteria, verification thresholds, oracle semantics, or reuse decisions.
 
-If applicable authority conflicts, is missing, or does not authorize a needed architectural/reuse decision, stop that part of the task and surface the gap. Do not invent a replacement decision.
+Use the applicable authoritative repository sources for substance. In particular, do not override or silently reinterpret an accepted ADR, Technical Design Specification (TDS), Interface & Contract Specification, World Package Conformance Specification, Testing Strategy, Oracle Registry, Reuse Register, or subsystem handoff. Prompts, conversation summaries, and repeated context are navigation or authorization context only; they are not a replacement for an owning specification unless the task explicitly authorizes a deliberate specification change.
+
+If applicable authority conflicts, is missing, or does not authorize a needed architectural/reuse decision, identify the owning source, stop the affected part of the task, and surface the gap. Do not silently choose, invent a replacement decision, or broaden the task to reconcile it. If a task explicitly authorizes changing the owning specification, make that change deliberately within the stated scope before relying on the updated authority.
 
 ## Required workflow
 

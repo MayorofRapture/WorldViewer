@@ -39,21 +39,21 @@ The template is designed to make Luna-Medium the default for routine implementat
 
 # 2\. Authority and Source-of-Truth Rule
 
-A task specification is a derived execution artifact, not a new source of architectural truth.
+A task specification is a derived execution artifact. It authorizes a bounded piece of work, but it is not a new source of substantive product, architectural, contractual, acceptance, verification, oracle, or reuse truth.
 
-Authority order for task execution:
+## Task authorization
 
-1\. latest explicit task instruction  
-2\. accepted/frozen ADRs and authoritative interface/contract specifications relevant to the task  
-3\. subsystem-specific normative specifications such as the World Package Conformance Specification  
-4\. authoritative source code/interfaces/configuration and approved schemas  
-5\. executable tests/oracles/fixtures that implement the accepted contract  
-6\. relevant docs/handoff/ subsystem note  
-7\. this task specification
+The current explicit task instruction and this task specification establish what work is authorized: the objective, Allowed Scope, prohibited changes, explicit permissions, applicable milestone or gate, and completion assignment. They also identify the context needed to execute that work. A prompt, conversation summary, or repeated context is not a substitute for an owning repository specification unless the task explicitly authorizes a deliberate specification change.
 
-The handoff note and task specification should point to authoritative material rather than copying it.
+## Substantive source of truth
 
-If two authoritative sources materially conflict, the implementation task stops. The agent must not choose one silently, broaden context until it can invent a reconciliation, or change tests/contracts to make the task convenient.
+Once the work is authorized, applicable repository authorities own the meaning of the work and the implementation decisions: accepted/frozen ADRs; product, architecture, interface, contract, and conformance specifications; Testing Strategy and approved Oracle Registry entries; approved schemas and authoritative source interfaces; and approved reuse or subsystem handoff decisions. The task should point to those sources rather than silently restating or replacing them.
+
+If the task explicitly authorizes changing an owning specification, that specification change must be made deliberately within the stated scope and then becomes the basis for implementation and verification. Explicit task wording alone does not make an architectural, contractual, acceptance, oracle, or reuse decision authoritative.
+
+## Conflicts
+
+If a task, prompt, handoff, source, test, or other context materially conflicts with the applicable owning authority, the affected work stops. Identify the owner and the conflict, do not silently choose a source, broaden context to invent a reconciliation, or change tests/contracts for convenience, and report the decision or specification update required to proceed.
 
 # 3\. Task Granularity Standard
 
@@ -621,4 +621,3 @@ D-TASK-01 — Standard bounded implementation-task wrapper: ordinary implementat
 D-TASK-02 — Explicit execution, oracle, and reuse authority: every implementation task must identify the implementation model/reasoning level, the governing test/oracle source and Class A/B/C classification when applicable, Oracle ID when registered, Review status, Freeze status, oracle change authority, REUSE ID when registered, reuse-entry status, approved component/reference, and permitted custom-code boundary/Prohibited Reinvention. Ordinary tasks default to no authority to alter accepted oracle expectations or substitute/reimplement approved mature components. Missing or contradictory authority blocks execution or raises the required review/model level rather than being resolved opportunistically by the implementation agent.  
 D-TASK-03 — Direct registry consumption: bounded implementation tasks cite the relevant ORC-\* and REUSE-\* IDs when registered records apply. Oracle fields use the Oracle Registry vocabulary for governing authority, authoritative test/procedure, Review status (not-required | pending | approved | rejected), Freeze status (draft | frozen | superseded | retired), frozen baseline, and change authority. Reuse fields identify the REUSE ID, reuse-entry status, approved component/reference, permitted custom-code boundary, and Prohibited Reinvention. A task consuming a handoff-ready subsystem must match the handoff and repo-local registries; missing, stale, contradictory, superseded, retired, pending, or otherwise non-consumable records block ordinary implementation rather than being repaired opportunistically inside the task.  
 D-TASK-04 — Reuse approval-source rule: “Reuse Mode” is the canonical A/B/C/D field and “Prohibited Reinvention” is the canonical restriction field. A reuse Approval Source may be an Accepted ADR, authoritative TDS/interface/conformance decision, accepted experiment result, or explicitly authorized non-architectural task decision. A handoff note may reference that approval for execution context but must never be used as the Approval Source itself.
-
