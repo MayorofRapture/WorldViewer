@@ -1,6 +1,7 @@
 import { PerspectiveCamera, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { SYNTHETIC_MOTION_SCRIPTS, type SyntheticMotionScript } from "../../src/engine/pose/syntheticMotionScripts";
+import type { Vec3Mm } from "../../src/shared/contracts/primitives";
 import type { AnimationFrameScheduler, SyntheticProjectionRenderHost } from "../../src/world-host/development/syntheticProjectionRuntime";
 import { clampWorldFrameDeltaSeconds, MAX_WORLD_DELTA_SECONDS, SyntheticProjectionRuntime } from "../../src/world-host/development/syntheticProjectionRuntime";
 import { createDiagnosticWorldHost } from "../../src/world-host/development/diagnosticBootstrap";
@@ -31,6 +32,58 @@ function renderHost(): { host: SyntheticProjectionRenderHost; render: ReturnType
 }
 
 describe("M0B synthetic projection runtime", () => {
+  it("uses the ViewerStateController from acquiring through the final asymmetric pose", async () => {
+    const { host } = renderHost();
+    const scheduled = scheduler();
+    const observations: Array<{ frame: number; status: string; effective: Vec3Mm }> = [];
+    const runtime = new SyntheticProjectionRuntime(
+      host,
+      {
+        id: "centered-hold",
+        samples: [
+          { timestampMs: 100, positionMm: { x: -35, y: 20, z: 600 }, confidence: 0.75, estimatorId: "test" },
+          { timestampMs: 200, positionMm: { x: 35, y: -20, z: 600 }, confidence: 0.9, estimatorId: "test" },
+        ],
+      },
+      scheduled.scheduler,
+      1,
+      {
+        observer: ({ frame }) => observations.push({
+          frame: frame.frameNumber,
+          status: frame.viewer.tracking.status,
+          effective: frame.viewer.effectivePositionMm,
+        }),
+      },
+    );
+
+    await runtime.start();
+    runtime.step(0);
+    expect(observations[0]).toMatchObject({ frame: 1, status: "acquiring", effective: { x: 0, y: 0, z: 600 } });
+    runtime.step(250);
+    expect(observations[1]).toMatchObject({ frame: 2, status: "tracked", effective: { x: 35, y: -20, z: 600 } });
+    expect(host.camera.position.toArray()).toEqual([35, -20, 600]);
+    await runtime.dispose();
+  });
+
+  it("observes only after a successful world update and render", async () => {
+    const { host, render } = renderHost();
+    const scheduled = scheduler();
+    const events: string[] = [];
+    render.mockImplementation(() => events.push("render"));
+    const runtime = new SyntheticProjectionRuntime(
+      host,
+      script("asymmetric-x-y"),
+      scheduled.scheduler,
+      1,
+      { observer: () => events.push("observer") },
+    );
+
+    await runtime.start();
+    runtime.step(250);
+    expect(events).toEqual(["render", "observer"]);
+    await runtime.dispose();
+  });
+
   it("bounds world-frame deltas after long pauses without changing normal cadence", () => {
     expect(clampWorldFrameDeltaSeconds(0)).toBe(0);
     expect(clampWorldFrameDeltaSeconds(1 / 60)).toBe(1 / 60);

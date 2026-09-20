@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "oracleId": "ORC-PACKAGED-SYNTHETIC-001",
+  "task": "M0C2",
+  "implementationBaseline": "b0a48fef2c1921af8de8a572118201ca47828938",
+  "finalImplementationCommit": "recorded by the final M0C2 commit",
+  "verifiedAt": "2026-09-20",
+  "procedure": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run-packaged-smoke.ps1 -Mode synthetic",
+  "requiredChecks": [
+    "renderer-ready",
+    "diagnostic-world-ready",
+    "viewer-state-controller-ready",
+    "projection-ready",
+    "synthetic-sequence-complete"
+  ],
+  "deterministicVerification": {
+    "sdk": "pass: exactly 19 approved named exports (fresh)",
+    "worldBoundaries": "pass (fresh)",
+    "typecheck": "pass (fresh)",
+    "tests": "13 files, 72 tests passed (fresh)",
+    "frontendBuild": "pass (fresh)",
+    "cargoCheckLocked": "pass (fresh)",
+    "diffCheck": "pass (fresh)",
+    "viewerStateOracle": "ORC-VIEWER-STATE-001 unchanged and passing (fresh suite)"
+  },
+  "packageBuild": {
+    "requested": "npx.cmd tauri build",
+    "status": "pass: MSI and NSIS bundles produced by the default build",
+    "executable": "src-tauri/target/release/worldviewer.exe",
+    "msiArtifact": "src-tauri/target/release/bundle/msi/WorldViewer_0.1.0_x64_en-US.msi",
+    "nsisArtifact": "src-tauri/target/release/bundle/nsis/WorldViewer_0.1.0_x64-setup.exe"
+  },
+  "packagedResults": {
+    "launch": {
+      "procedure": "scripts/run-packaged-smoke.ps1 -Mode launch",
+      "status": "pass",
+      "checks": ["application-shell-ready"],
+      "exitCode": 0,
+      "stdoutLines": 1,
+      "requiresViteOrLocalhost": false
+    },
+    "synthetic": {
+      "procedure": "scripts/run-packaged-smoke.ps1 -Mode synthetic",
+      "status": "pass",
+      "checks": [
+        { "id": "renderer-ready", "status": "pass" },
+        { "id": "diagnostic-world-ready", "status": "pass" },
+        { "id": "viewer-state-controller-ready", "status": "pass" },
+        { "id": "projection-ready", "status": "pass" },
+        { "id": "synthetic-sequence-complete", "status": "pass" }
+      ],
+      "finalPoseMm": { "x": 35, "y": -20, "z": 600 },
+      "perspectiveStrength": 1.0,
+      "exitCode": 0,
+      "stdoutLines": 1,
+      "requiresViteOrLocalhost": false
+    }
+  },
+  "launchOracle": "ORC-PACKAGED-SMOKE-001 semantics unchanged",
+  "runtimeBoundary": "No MediaPipe, webcam, calibration, production filter, live tracking, production loader, or native behavioral change",
+  "limitations": [
+    "Full offline/network-blocked verification remains M0G scope.",
+    "A restricted execution sandbox prevented WiX ICE validation from accessing the Windows Installer service; the required normal-environment default build passed without repository configuration changes."
+  ]
+}

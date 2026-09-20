@@ -4,8 +4,10 @@ import { applyOffAxisProjectionToCamera } from "../../engine/projection/cameraPr
 import { applyPerspectiveStrength } from "../../engine/projection/perspectiveStrength";
 import { SyntheticViewerPoseSource, type RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource";
 import { SYNTHETIC_MOTION_SCRIPTS, type SyntheticMotionScript } from "../../engine/pose/syntheticMotionScripts";
-import type { MonotonicMs, Seconds, Vec3Mm, Vec3MmPerSec } from "../../shared/contracts/primitives";
-import type { ViewerState, WorldFrame } from "../../world-sdk/index";
+import type { MonotonicMs, Seconds, Vec3Mm } from "../../shared/contracts/primitives";
+import type { TrackingHealth } from "../../shared/contracts/viewer";
+import { ViewerStateController, type FilteredViewerPose } from "../../engine/viewer/ViewerStateController";
+import type { WorldFrame } from "../../world-sdk/index";
 import { createDiagnosticWorldHost, type DiagnosticWorldHost } from "./diagnosticBootstrap";
 
 export const M0B_SYNTHETIC_SCREEN_WIDTH_MM = 345.4;
@@ -23,6 +25,19 @@ export interface SyntheticProjectionRenderHost {
 export interface AnimationFrameScheduler {
   request(callback: (timestampMs: MonotonicMs) => void): number;
   cancel(handle: number): void;
+}
+
+export interface SyntheticProjectionRuntimeObservation {
+  readonly frame: Readonly<WorldFrame>;
+  readonly cameraPositionMm: Readonly<Vec3Mm>;
+  readonly cameraQuaternion: readonly number[];
+  readonly projectionMatrix: readonly number[];
+  readonly syntheticPose: RawViewerPose | null;
+}
+
+export interface SyntheticProjectionRuntimeOptions {
+  readonly observer?: (observation: SyntheticProjectionRuntimeObservation) => void;
+  readonly onError?: (error: unknown) => void;
 }
 
 const browserAnimationFrameScheduler: AnimationFrameScheduler = {
@@ -46,33 +61,16 @@ function defaultMotionScript(): SyntheticMotionScript {
   return script;
 }
 
-function createViewerState(timestampMs: MonotonicMs, positionMm: Vec3Mm): ViewerState {
-  const neutralPositionMm = createVec3Mm(0, 0, 600);
-  const velocityMmPerSec: Vec3MmPerSec = Object.freeze({ x: 0, y: 0, z: 0 });
+class RuntimeMonotonicClock {
+  private timestampMs: MonotonicMs = 0;
 
-  return Object.freeze({
-    timestampMs,
-    tracking: Object.freeze({ status: "tracked", confidence: 1, sinceMonotonicMs: 0 }),
-    trackedPositionMm: positionMm,
-    effectivePositionMm: positionMm,
-    neutralPositionMm,
-    velocityMmPerSec,
-    confidence: 1,
-  });
-}
+  set(timestampMs: MonotonicMs): void {
+    this.timestampMs = timestampMs;
+  }
 
-function frameFor(
-  frameNumber: number,
-  timestampMs: MonotonicMs,
-  deltaSeconds: Seconds,
-  pose: RawViewerPose,
-): WorldFrame {
-  return Object.freeze({
-    frameNumber,
-    timestampMs,
-    deltaSeconds,
-    viewer: createViewerState(timestampMs, pose.positionMm),
-  });
+  nowMs(): MonotonicMs {
+    return this.timestampMs;
+  }
 }
 
 export class SyntheticProjectionRuntime {
@@ -83,6 +81,10 @@ export class SyntheticProjectionRuntime {
   private readonly scheduler: AnimationFrameScheduler;
   private readonly host: SyntheticProjectionRenderHost;
   private readonly perspectiveStrength: number;
+  private readonly clock = new RuntimeMonotonicClock();
+  private readonly controller = new ViewerStateController(this.clock);
+  private readonly observer: ((observation: SyntheticProjectionRuntimeObservation) => void) | undefined;
+  private readonly onError: ((error: unknown) => void) | undefined;
   private scheduledFrame: number | null = null;
   private started = false;
   private disposed = false;
@@ -96,6 +98,7 @@ export class SyntheticProjectionRuntime {
     motionScript: SyntheticMotionScript = defaultMotionScript(),
     scheduler: AnimationFrameScheduler = browserAnimationFrameScheduler,
     perspectiveStrength = 1,
+    options: SyntheticProjectionRuntimeOptions = {},
   ) {
     this.host = host;
     this.scheduler = scheduler;
@@ -103,6 +106,8 @@ export class SyntheticProjectionRuntime {
     this.worldHost = createDiagnosticWorldHost(host.scene);
     this.screenGeometry = createScreenGeometry(M0B_SYNTHETIC_SCREEN_WIDTH_MM, M0B_SYNTHETIC_SCREEN_HEIGHT_MM);
     this.perspectiveStrength = perspectiveStrength;
+    this.observer = options.observer;
+    this.onError = options.onError;
   }
 
   async start(): Promise<void> {
@@ -113,6 +118,7 @@ export class SyntheticProjectionRuntime {
       return;
     }
     await this.source.start();
+    this.controller.reset(createVec3Mm(0, 0, 600));
     this.started = true;
     this.scheduleNextFrame();
   }
@@ -121,33 +127,65 @@ export class SyntheticProjectionRuntime {
     if (!this.started || this.disposed) return;
 
     if (this.scriptOriginTimestampMs === null) this.scriptOriginTimestampMs = timestampMs;
+    this.clock.set(timestampMs);
     const sample = this.source.sample(timestampMs - this.scriptOriginTimestampMs);
     if (sample) this.latestPose = sample;
 
-    if (this.latestPose) {
-      const previousTimestampMs = this.lastTimestampMs;
-      const deltaSeconds = clampWorldFrameDeltaSeconds(
-        previousTimestampMs === null ? 0 : (timestampMs - previousTimestampMs) / 1000,
-      );
-      const frame = frameFor(this.frameNumber + 1, timestampMs, deltaSeconds, this.latestPose);
-      const projectionEyeMm = applyPerspectiveStrength(
-        frame.viewer.neutralPositionMm,
-        frame.viewer.effectivePositionMm,
-        this.perspectiveStrength,
-      );
-      applyOffAxisProjectionToCamera(
-        this.host.camera,
-        this.screenGeometry,
-        projectionEyeMm,
-        M0B_SYNTHETIC_NEAR_MM,
-        M0B_SYNTHETIC_FAR_MM,
-      );
-      this.frameNumber += 1;
-      this.worldHost.update(frame);
-    }
+    const previousTimestampMs = this.lastTimestampMs;
+    const deltaSeconds = clampWorldFrameDeltaSeconds(
+      previousTimestampMs === null ? 0 : (timestampMs - previousTimestampMs) / 1000,
+    );
+    const filteredPose: FilteredViewerPose | null = this.latestPose === null
+      ? null
+      : Object.freeze({
+        timestampMs: this.scriptOriginTimestampMs + this.latestPose.timestampMs,
+        positionMm: this.latestPose.positionMm,
+        velocityMmPerSec: Object.freeze({ x: 0, y: 0, z: 0 }),
+        confidence: this.latestPose.confidence,
+      });
+    const tracking: TrackingHealth = this.latestPose === null
+      ? { status: "acquiring", confidence: null, sinceMonotonicMs: timestampMs }
+      : { status: "tracked", confidence: this.latestPose.confidence, sinceMonotonicMs: filteredPose!.timestampMs };
+    const viewer = this.controller.update({
+      tracking,
+      filteredPose,
+      neutralPositionMm: createVec3Mm(0, 0, 600),
+    });
+    const frame: WorldFrame = Object.freeze({
+      frameNumber: this.frameNumber + 1,
+      timestampMs,
+      deltaSeconds,
+      viewer,
+    });
+    const projectionEyeMm = applyPerspectiveStrength(
+      frame.viewer.neutralPositionMm,
+      frame.viewer.effectivePositionMm,
+      this.perspectiveStrength,
+    );
+    applyOffAxisProjectionToCamera(
+      this.host.camera,
+      this.screenGeometry,
+      projectionEyeMm,
+      M0B_SYNTHETIC_NEAR_MM,
+      M0B_SYNTHETIC_FAR_MM,
+    );
+    this.worldHost.update(frame);
+    this.host.renderer.render(this.host.scene, this.host.camera);
+    this.frameNumber += 1;
+    this.observer?.({
+      frame,
+      cameraPositionMm: Object.freeze({ x: this.host.camera.position.x, y: this.host.camera.position.y, z: this.host.camera.position.z }),
+      cameraQuaternion: Object.freeze([
+        this.host.camera.quaternion.x,
+        this.host.camera.quaternion.y,
+        this.host.camera.quaternion.z,
+        this.host.camera.quaternion.w,
+      ]),
+      projectionMatrix: Object.freeze(Array.from(this.host.camera.projectionMatrix.elements)),
+      syntheticPose: this.latestPose,
+    });
 
     this.lastTimestampMs = timestampMs;
-    this.host.renderer.render(this.host.scene, this.host.camera);
   }
 
   async dispose(): Promise<void> {
@@ -164,8 +202,12 @@ export class SyntheticProjectionRuntime {
   private scheduleNextFrame(): void {
     this.scheduledFrame = this.scheduler.request((timestampMs) => {
       this.scheduledFrame = null;
-      this.step(timestampMs);
-      if (!this.disposed) this.scheduleNextFrame();
+      try {
+        this.step(timestampMs);
+        if (!this.disposed) this.scheduleNextFrame();
+      } catch (error) {
+        this.onError?.(error);
+      }
     });
   }
 }
