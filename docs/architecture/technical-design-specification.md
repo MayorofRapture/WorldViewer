@@ -719,15 +719,15 @@ The implementation should be cross-checked against a licensed generalized-perspe
 
 The first version does not need arbitrary tilted/rotated screens or cameras.
 
+M0B projection reference clarification: the reviewed authority for the initial fixed-screen specialization is Kooima generalized-perspective theory, the pinned DisplayXR display-centric reference, and Three.js `0.186.0` `Matrix4.makePerspective`. WorldViewer initially uses the fixed axis-aligned formulas above with the effective cyclopean eye and canonical screen geometry. The physical screen remains an aperture rather than the near plane. The M0B reference baseline is `near=50 mm` and `far=5000 mm`; these values are reference defaults, not permanent final clipping policy. Invalid eye positions are not silently replaced with a nominal fallback. Arbitrary rotated screens remain deferred, and future-world clipping needs remain evidence-driven. The current `RendererFoundation` constructor values `0.1`/`10000` are pre-projection foundation placeholders, not projection authority. The literal cases, independent aperture oracle, Three mapping, and tolerances are recorded in `docs/testing/projection-reference-pack.md`.
+
 # 18\. Near/Far Plane Policy
 
 Near/far distances are engine-level projection settings expressed in millimeters.
 
 The near plane must remain between the viewer and screen in the camera projection model and must never become zero/negative.
 
-Because the physical screen plane is an aperture rather than a conventional scene object, clipping distances should be selected for numerical stability and the expected depth range of worlds rather than tied directly to the physical panel thickness.
-
-Initial fixed defaults should be chosen during the diagnostic-room implementation and validated against depth precision. They should not become user-facing settings unless real worlds demonstrate a need.
+Because the physical screen plane is an aperture rather than a conventional scene object, clipping distances should be selected for numerical stability and the expected depth range of worlds rather than tied directly to the physical panel thickness. For M0B reference/oracle work, the baseline is `near=50 mm` and `far=5000 mm`, validated against the current deterministic viewer and diagnostic depth range. These values must not become permanent user-facing settings without evidence; future-world depth requirements may justify a reviewed change.
 
 # 19\. Render Loop and Timing
 

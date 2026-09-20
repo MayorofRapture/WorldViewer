@@ -43,3 +43,16 @@ This register is a compact repository-local index of material reuse and dependen
 ## Global Do Not Build / Prohibited Reinvention
 
 Ordinary implementation must not replace approved mature capabilities with bespoke alternatives: rendering engine/scene graph/general asset pipeline, face detection/landmark tracking, JSON Schema validation, semantic-version parsing/range evaluation, or motion-filter mathematics. Thin project-specific adapters remain permitted only inside an approved entry boundary. If an approved path cannot satisfy a frozen requirement, stop and report the evidence.
+
+## REUSE-PROJECTION-001
+
+- Capability: Established off-axis/display-centric perspective authority used by WorldViewer’s thin projection adapter and Class C oracle.
+- Reuse Mode: B — Adapt approved reference.
+- Approved component/reference: Kooima generalized-perspective theory; DisplayXR display-centric projection reference at reviewed commit `5a04922b01c3b9bf88c0b38a35b33e4a231f8c23`; Three.js `0.186.0` `Matrix4.makePerspective` as the matrix primitive through `REUSE-RENDER-001`.
+- Status: approved.
+- Approval Source: ADR-008 plus the TDS projection clarification materialized by this task.
+- Version/source/provenance constraint: DisplayXR implementation code is reference-only; do not vendor or copy upstream source.
+- Permitted custom-code boundary: thin fixed-screen adapter from validated ScreenGeometry/effective eye/clip settings to the reviewed asymmetric frustum and later camera/inverse integration when separately authorized.
+- Prohibited Reinvention: no novel projection derivation, alternate matrix builder, conventional symmetric `PerspectiveCamera`/`lookAt` substitution, or wholesale upstream copy.
+- Verification: `ORC-PROJECTION-001` / projection reference suite once frozen.
+- Milestone / handoff applicability: M0B and future projection handoff.
