@@ -6,6 +6,7 @@ import { PROJECTION_REFERENCE_CASES, type ProjectionReferenceCase } from "../fix
 const FRUSTUM_ABS_EPS_MM = 1e-9;
 const MATRIX_ABS_EPS = 1e-9;
 const NDC_ABS_EPS = 1e-10;
+const DIRECTION_MARGIN = 1e-6;
 
 function expectClose(actual: number, expected: number, epsilon: number): void {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(epsilon);
@@ -133,11 +134,11 @@ describe("M0B Class C projection reference oracle", () => {
     expect(c01.projectionElements[9]).toBe(0);
     expect(physicalApertureNdcXY(c01.screenMm, c01.eyeMm, [0, 0, -600])).toEqual([0, 0]);
 
-    expect(c02.probeExpectedNdcXY[0]).toBeLessThan(0);
-    expect(c03.probeExpectedNdcXY[0]).toBeGreaterThan(0);
+    expect(c02.probeExpectedNdcXY[0]).toBeLessThan(-DIRECTION_MARGIN);
+    expect(c03.probeExpectedNdcXY[0]).toBeGreaterThan(DIRECTION_MARGIN);
     expectClose(Math.abs(c02.probeExpectedNdcXY[0]), Math.abs(c03.probeExpectedNdcXY[0]), NDC_ABS_EPS);
-    expect(c04.probeExpectedNdcXY[1]).toBeLessThan(0);
-    expect(c05.probeExpectedNdcXY[1]).toBeGreaterThan(0);
+    expect(c04.probeExpectedNdcXY[1]).toBeLessThan(-DIRECTION_MARGIN);
+    expect(c05.probeExpectedNdcXY[1]).toBeGreaterThan(DIRECTION_MARGIN);
     expect(c06.probeExpectedNdcXY[0]).toBeLessThan(c01.probeExpectedNdcXY[0]);
     expect(c01.probeExpectedNdcXY[0]).toBeLessThan(c07.probeExpectedNdcXY[0]);
 
