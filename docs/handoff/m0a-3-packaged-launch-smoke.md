@@ -1,0 +1,21 @@
+# M0A-3 Packaged Launch Smoke Handoff
+
+- Subsystem status and supported scope: Verified generic application-native `launch` smoke mode for the packaged Tauri executable. Synthetic, renderer, camera, tracking, and world behavior are unsupported and intentionally out of scope.
+- Stable public contract/interface paths: `src-tauri/src/lib.rs`; packaged smoke contract in `docs/architecture/interface-contract-specification.md`.
+- Oracle IDs: `ORC-PACKAGED-SMOKE-001` in `docs/testing/oracle-registry.md`.
+- Authoritative tests/oracles: `scripts/run-packaged-smoke.ps1`.
+- M1 oracle freeze status and Class A/B/C classification: Class B frozen; no M1 architecture-critical oracle is introduced.
+- Known-good reference implementation, when applicable: Production executable from `npx.cmd tauri build`.
+- REUSE IDs: `REUSE-TAURI-001`, `REUSE-HOST-001`.
+- Approved dependency/reference implementation: Tauri 2 native shell with React/Vite host.
+- Authoritative Approval Source: ADR-001; TDS §29, §37, §40, §41; ADR-020.
+- Reuse Mode: A.
+- Version/source/provenance constraints: Registry and package manifests/lockfiles are authoritative.
+- Remaining project-specific custom-code boundary: Thin startup-mode state, validated smoke-result command, and launcher procedure only.
+- Prohibited Reinvention: No GUI automation, broad native host API, alternate shell, or synthetic/renderer smoke implementation.
+- Deterministic tests and fixture paths: `tests/unit/app.test.tsx`; `scripts/run-packaged-smoke.ps1`.
+- Governing ADR references: `docs/architecture/adr/ADR-001 — Windows Desktop Application Using Tauri 2.md`; `docs/architecture/adr/ADR-020 — Prove Core Geometry and Packaged Infrastructure Before Content.md`.
+- Evidence references: `evidence/milestone-0/packaged-launch-smoke.json`.
+- Known limitations / unsupported behavior: The launcher validates the launch result only; M0C synthetic smoke remains for M0A-4/M0C scope.
+- Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `npx.cmd tauri build`; `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-packaged-smoke.ps1`; `git diff --check`.
+- Escalation conditions: Any contract/oracle change, Tauri/WebView2 packaging conflict, or request to add synthetic/renderer/world behavior.

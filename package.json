@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build --no-bundle"
+    "tauri:build": "tauri build --no-bundle",
+    "tauri:build:package": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

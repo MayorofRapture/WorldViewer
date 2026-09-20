@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "oracleId": "ORC-PACKAGED-SMOKE-001",
+  "task": "M0A-3",
+  "verifiedAt": "2026-09-20",
+  "executable": "src-tauri/target/release/worldviewer.exe",
+  "procedure": "scripts/run-packaged-smoke.ps1",
+  "commands": [
+    "npm.cmd run typecheck",
+    "npm.cmd test",
+    "npm.cmd run build",
+    "cargo check --manifest-path src-tauri/Cargo.toml --locked",
+    "npx.cmd tauri build",
+    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run-packaged-smoke.ps1",
+    "git diff --check"
+  ],
+  "result": {
+    "mode": "launch",
+    "status": "pass",
+    "checks": [
+      { "id": "application-shell-ready", "status": "pass" }
+    ],
+      "durationMs": 10.9,
+    "exitCode": 0,
+    "stdoutLines": 1,
+    "requiresViteOrLocalhost": false
+  },
+  "artifacts": [
+    "src-tauri/target/release/bundle/msi/WorldViewer_0.1.0_x64_en-US.msi",
+    "src-tauri/target/release/bundle/nsis/WorldViewer_0.1.0_x64-setup.exe"
+  ],
+  "limitations": [
+    "M0C synthetic smoke and renderer readiness are not covered by this M0A-3 evidence."
+  ]
+}

@@ -2,8 +2,8 @@
 
 ## Task Metadata
 
-- Status: Proposed — future task; not executed by M0A-2
-- Baseline commit: to be populated and validated when promoted to ready
+- Status: Complete — verified at packaged-launch smoke checkpoint
+- Baseline commit: `df0aa0db40a3ce366c02487cdfecbefbf7df30d5`
 - Preferred execution model: Luna — Medium
 - Escalation: Terra — Medium only for a genuine Tauri/Windows packaged-runtime integration problem inside the defined boundary
 
