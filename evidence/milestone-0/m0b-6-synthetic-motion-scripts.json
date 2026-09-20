@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-6",
+  "verifiedAt": "2026-09-20",
+  "implementation": "src/engine/pose/syntheticMotionScripts.ts",
+  "test": "tests/unit/syntheticMotionScripts.test.ts",
+  "scriptIds": ["centered-hold", "lateral-left-to-right", "vertical-down-to-up", "approach-retreat", "asymmetric-x-y"],
+  "results": {
+    "typecheck": "pass",
+    "tests": "7 files, 24 tests passed",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo executable is not present in the verification environment",
+    "diffCheck": "pass"
+  },
+  "limitations": [
+    "Scripts are input data only.",
+    "No projection outputs, matrices, clipping values, tolerances, or visual judgments are encoded."
+  ]
+}

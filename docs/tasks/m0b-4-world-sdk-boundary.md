@@ -7,7 +7,7 @@
 - Task type: implementation
 - Implementation model: Luna — Medium after authority resolution
 - Baseline branch/commit: `feat/m0a1-foundation` / `eb631a34e7ef36c8f6f19310b304a638c04cf90c`
-- Status: ready
+- Status: complete
 
 ## Objective
 

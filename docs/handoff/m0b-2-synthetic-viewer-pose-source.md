@@ -21,3 +21,5 @@
 - Escalation conditions: Any request to add tracking/loss timing, state control, projection, calibration/filtering, or packaged synthetic smoke.
 
 Canonical type ownership note: `MonotonicMs` and `Vec3Mm` are consumed from `src/shared/contracts/primitives.ts`; `SyntheticViewerPoseSource.ts` remains host-private.
+
+Motion-script support note: `src/engine/pose/syntheticMotionScripts.ts` provides immutable timed input sequences consumed by the same source; it contains no projection expectations.
