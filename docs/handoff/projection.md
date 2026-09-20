@@ -11,11 +11,11 @@
 - Authoritative Approval Source: ADR-003; ADR-008; TDS §§17–18 and §41; supplied stronger-reasoning Class C review.
 - Reuse Mode: adapt approved reference; Three.js matrix construction remains adopted through `REUSE-RENDER-001`.
 - Version/source/provenance constraints: Three.js and `@types/three` `0.186.0`; DisplayXR commits pinned above; no upstream source copied or vendored.
-- Remaining project-specific custom-code boundary: the fixed-screen adapter and camera application consume the frozen oracle; render-loop integration remains separately authorized work.
+- Remaining project-specific custom-code boundary: the fixed-screen adapter and camera application consume the frozen oracle; the M0B synthetic runtime now invokes that camera path, while general render-loop integration remains separately authorized work.
 - Prohibited Reinvention: no novel derivation, symmetric `PerspectiveCamera`/`lookAt` substitution, alternate matrix builder, or wholesale upstream copy.
 - Deterministic tests and fixture paths: `tests/unit/projectionReferenceOracle.test.ts`; `tests/unit/offAxisProjection.test.ts`; `tests/unit/cameraProjection.test.ts`; `tests/fixtures/projectionReferenceCases.ts`; `tests/helpers/projectionApertureOracle.ts`.
 - Governing ADR references: ADR-003; ADR-008; ADR-002 for Three.js rendering ownership.
-- Evidence references: `evidence/milestone-0/m0b-7-projection-reference-pack.json`; `evidence/milestone-0/m0b-8-projection-adapter.json`; `evidence/milestone-0/m0b-9-projection-camera-integration.json`.
-- Known limitations / unsupported behavior: perspective strength, final future-world clipping policy, rotated screens, GPU tolerances, startup/render-loop wiring, and diagnostic viewer reaction remain deferred.
+- Evidence references: `evidence/milestone-0/m0b-7-projection-reference-pack.json`; `evidence/milestone-0/m0b-8-projection-adapter.json`; `evidence/milestone-0/m0b-9-projection-camera-integration.json`; `evidence/milestone-0/m0b-10-synthetic-projection-runtime.json`.
+- Known limitations / unsupported behavior: perspective strength, final future-world clipping policy, rotated screens, GPU tolerances, general startup/render-loop wiring, production world loading, and diagnostic viewer reaction remain deferred.
 - Exact verification commands: `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
 - Escalation conditions: any supplied-value discrepancy, oracle semantic change, tolerance/sign/matrix reinterpretation, or production work outside the frozen adapter boundary.

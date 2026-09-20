@@ -19,6 +19,6 @@
 - Governing ADR references: ADR-002; ADR-011; ADR-012; ADR-013; ADR-016; ADR-019.
 - Evidence references: `evidence/milestone-0/m0b-4-world-sdk.json`; `evidence/milestone-0/m0b-5-diagnostic-world.json`.
 - Applicable WPC rules: WPC-API-001–010; WPC-ISO-001–008; WPC-LIFE-001–010; WPC-FRAME-001–006; WPC-SET-001–012; WPC-REF-001–010.
-- Known limitations / unsupported behavior: generated `dist/world.js`, production package build/discovery/manifest validation/API compatibility/dynamic local ESM loading, production package-local asset resolver, reusable full M0F conformance fixtures, packaged Tauri conformance, and projection-integrated behavior remain outstanding.
+- Known limitations / unsupported behavior: generated `dist/world.js`, production package build/discovery/manifest validation/API compatibility/dynamic local ESM loading, production package-local asset resolver, reusable full M0F conformance fixtures, and packaged Tauri conformance remain outstanding. The temporary M0B synthetic runtime now drives this source through the public `WorldFrame` boundary only.
 - Exact verification commands: `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
 - Escalation conditions: any request to widen the 19-export SDK, expose host-private capabilities, freeze the external module specifier, or author Class C projection correctness.

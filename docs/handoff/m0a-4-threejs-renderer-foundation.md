@@ -16,6 +16,6 @@
 - Deterministic tests and fixture paths: `tests/unit/app.test.tsx`; `src/engine/rendering/RendererFoundation.ts`.
 - Governing ADR references: `docs/architecture/adr/ADR-002 — Imperative Three.js Engine; React for Application UI.md`.
 - Evidence references: `evidence/milestone-0/renderer-foundation.json`; `evidence/milestone-0/packaged-launch-smoke.json`.
-- Known limitations / unsupported behavior: No render loop, world content, tracking, or M0C synthetic mode is implemented; custom projection application remains owned by `src/engine/projection/`.
+- Known limitations / unsupported behavior: The foundation owns renderer lifecycle and canvas sizing only. The bounded M0B synthetic development runtime separately owns frame scheduling and diagnostic-world rendering; tracking and M0C packaged synthetic smoke remain unimplemented.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `npx.cmd tauri build`; `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-packaged-smoke.ps1`; `git diff --check`.
 - Escalation conditions: Any request for projection, viewer state, tracking, world loading, or a renderer architecture change.

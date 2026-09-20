@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { RendererFoundation } from "../engine/rendering/RendererFoundation";
+import { SyntheticProjectionRuntime } from "../world-host/development/syntheticProjectionRuntime";
 
 type SmokeMode = "launch" | "synthetic";
 type SmokeStatus = "pass" | "fail";
@@ -19,6 +20,7 @@ export default function App() {
 
   useEffect(() => {
     let foundation: RendererFoundation | undefined;
+    let syntheticRuntime: SyntheticProjectionRuntime | undefined;
     let cancelled = false;
 
     void invoke<SmokeMode | null>("get_startup_mode")
@@ -26,11 +28,21 @@ export default function App() {
       .then((mode) => {
         if (cancelled || mode === "launch" || !rendererHost.current) return;
         foundation = new RendererFoundation(rendererHost.current);
+        if (mode === "synthetic" || mode === null) {
+          syntheticRuntime = new SyntheticProjectionRuntime(foundation);
+          void syntheticRuntime.start().then(() => {
+            if (cancelled) void syntheticRuntime?.dispose();
+          });
+        }
       });
 
     return () => {
       cancelled = true;
-      foundation?.dispose();
+      if (syntheticRuntime) {
+        void syntheticRuntime.dispose().finally(() => foundation?.dispose());
+      } else {
+        foundation?.dispose();
+      }
     };
   }, []);
 

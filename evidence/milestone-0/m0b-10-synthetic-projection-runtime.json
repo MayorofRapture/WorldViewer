@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-10",
+  "implementationBaseline": "f6e8db53377bac3379facd01db9dc3f6aaf1e15e",
+  "frozenOracle": {
+    "id": "ORC-PROJECTION-001",
+    "baseline": "41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9"
+  },
+  "runtime": "src/world-host/development/syntheticProjectionRuntime.ts",
+  "test": "tests/unit/syntheticProjectionRuntime.test.ts",
+  "screenGeometryMm": { "width": 345.4, "height": 194.3 },
+  "clipMm": { "near": 50, "far": 5000 },
+  "reused": ["SyntheticViewerPoseSource", "SYNTHETIC_MOTION_SCRIPTS", "createDiagnosticWorldHost", "applyOffAxisProjectionToCamera"],
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "focusedTests": "pass: 5 files, 24 tests",
+    "tests": "pass: 11 files, 47 tests",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo is not on PATH in this environment",
+    "packagedSyntheticSmoke": "not run: the existing packaged procedure covers only frozen launch mode; M0C synthetic smoke is not implemented",
+    "diffCheck": "pass"
+  },
+  "deferred": ["MediaPipe", "calibration", "filtering", "ViewerStateController", "tracking loss", "perspective strength", "production world loading", "packaged synthetic smoke"]
+}
