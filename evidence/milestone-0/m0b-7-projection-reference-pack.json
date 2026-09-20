@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-7",
+  "verifiedAt": "2026-09-20",
+  "startingBranch": "feat/m0a1-foundation",
+  "startingCommit": "53850232b2111f90d91215ae4c5599d37bc94d86",
+  "authorityCommits": ["d3e49c8"],
+  "reviewedReferences": {
+    "kooima": "Generalized Perspective Projection, August 2008 / revised June 2009",
+    "displayxrCommonCommit": "5a04922b01c3b9bf88c0b38a35b33e4a231f8c23",
+    "displayxrRuntimeCommit": "69270cd399037d0facaee260d12a71a6c18503e9",
+    "three": "0.186.0",
+    "typesThree": "0.186.0"
+  },
+  "caseIds": ["C01-centered", "C02-left", "C03-right", "C04-down", "C05-up", "C06-close", "C07-far", "C08-asym", "C09-compound", "C10-outside", "C11-e590", "C12-near-scale"],
+  "tolerances": {
+    "FRUSTUM_ABS_EPS_MM": 1e-9,
+    "MATRIX_ABS_EPS": 1e-9,
+    "NDC_ABS_EPS": 1e-10,
+    "DIRECTION_MARGIN": 1e-6
+  },
+  "clipBaselineMm": { "near": 50, "far": 5000 },
+  "independentOracle": "physical ray-plane intersection at Z=0 followed by physical-aperture normalization; implemented only in tests/helpers/projectionApertureOracle.ts",
+  "commands": [
+    "npm.cmd run check:world-sdk",
+    "npm.cmd run check:world-boundaries",
+    "npm.cmd run typecheck",
+    "npm.cmd test",
+    "npm.cmd run build",
+    "cargo check --manifest-path src-tauri/Cargo.toml --locked",
+    "git diff --check"
+  ],
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "tests": "pass: 8 files, 35 tests before traceability-only Commit B",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo is not on PATH in this environment",
+    "diffCheck": "pass"
+  },
+  "oracle": { "id": "ORC-PROJECTION-001", "review": "approved", "freeze": "draft" },
+  "productionProjectionImplemented": false,
+  "productionProjectionAuthorized": false,
+  "limitations": [
+    "Cargo result is not fabricated; the user-supplied prior successful Cargo check is not independent evidence from this run.",
+    "A separate stronger-review post-materialization audit must freeze the Class C oracle before production projection work."
+  ]
+}

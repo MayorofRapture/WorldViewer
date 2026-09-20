@@ -1,0 +1,21 @@
+# M0B Projection Reference Authority Handoff
+
+- Subsystem status and supported scope: Class C projection design is reviewed/approved and materialized as a reference pack and independent numerical suite; production projection is not implemented and remains blocked.
+- Stable public contract/interface paths: `src/engine/geometry/screenGeometry.ts`; canonical spatial contracts in `src/shared/contracts/`; reference authority in `docs/testing/projection-reference-pack.md`.
+- Oracle IDs: `ORC-PROJECTION-001`.
+- Authoritative tests/oracles: `tests/unit/projectionReferenceOracle.test.ts`; literal data in `tests/fixtures/projectionReferenceCases.ts`; independent helper in `tests/helpers/projectionApertureOracle.ts`.
+- M1 oracle freeze status and Class A/B/C classification: Class C; review approved; repository freeze remains `draft` pending separate post-materialization audit.
+- Known-good reference implementation, when applicable: Kooima generalized perspective; DisplayXR display-centric reference commit `5a04922b01c3b9bf88c0b38a35b33e4a231f8c23`; Three.js `0.186.0` `Matrix4.makePerspective`.
+- REUSE IDs: `REUSE-PROJECTION-001`; `REUSE-RENDER-001`.
+- Approved dependency/reference implementation: reviewed fixed-screen axis-aligned specialization and Three.js r186 matrix primitive; DisplayXR code is reference-only.
+- Authoritative Approval Source: ADR-003; ADR-008; TDS §§17–18 and §41; supplied stronger-reasoning Class C review.
+- Reuse Mode: adapt approved reference; Three.js matrix construction remains adopted through `REUSE-RENDER-001`.
+- Version/source/provenance constraints: Three.js and `@types/three` `0.186.0`; DisplayXR commits pinned above; no upstream source copied or vendored.
+- Remaining project-specific custom-code boundary: future thin fixed-screen adapter and camera/inverse integration only after oracle freeze and separate authorization.
+- Prohibited Reinvention: no novel derivation, symmetric `PerspectiveCamera`/`lookAt` substitution, alternate matrix builder, or production adapter in this task.
+- Deterministic tests and fixture paths: `tests/unit/projectionReferenceOracle.test.ts`; `tests/fixtures/projectionReferenceCases.ts`; `tests/helpers/projectionApertureOracle.ts`.
+- Governing ADR references: ADR-003; ADR-008; ADR-002 for Three.js rendering ownership.
+- Evidence references: `evidence/milestone-0/m0b-7-projection-reference-pack.json`.
+- Known limitations / unsupported behavior: production off-axis adapter, camera position/matrix integration, inverse synchronization, perspective strength, final future-world clipping policy, rotated screens, GPU tolerances, startup/render-loop wiring, and diagnostic viewer reaction remain deferred.
+- Exact verification commands: `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
+- Escalation conditions: any supplied-value discrepancy, oracle semantic change, tolerance/sign/matrix reinterpretation, need for production projection, or request to freeze `ORC-PROJECTION-001` without the separate audit.

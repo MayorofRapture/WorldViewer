@@ -84,3 +84,21 @@ Change authority: Explicit change to the governing contract, task authority, or 
 Milestone applicability: M0B
 Handoff references: `docs/handoff/world-packages.md`
 Notes / limitations: Checks names/origins and static import boundaries; they do not provide a runtime sandbox or package-loader conformance.
+
+## ORC-PROJECTION-001
+
+Oracle ID: ORC-PROJECTION-001
+Subsystem: Fixed-screen off-axis projection geometry and Three/WebGL matrix interpretation
+Governed behavior: A validated effective cyclopean eye and ScreenGeometry define the reviewed asymmetric fixed-aperture perspective, with frozen screen-corner/NDC, motion-direction, viewer-distance, near-scaling, matrix-layout, and WebGL-depth invariants.
+Classification: Class C
+Governing authority: ADR-003; ADR-008; TDS §§17–18; Interface & Contract Specification canonical spatial frame; `docs/testing/projection-reference-pack.md`
+Authoritative test / procedure: `tests/unit/projectionReferenceOracle.test.ts`
+Supporting fixtures / evidence: `tests/fixtures/projectionReferenceCases.ts`; `tests/helpers/projectionApertureOracle.ts`; `evidence/milestone-0/m0b-7-projection-reference-pack.json`
+Review status: approved
+Review owner / result: Supplied GPT-5.6 Sol High stronger-reasoning Class C review, 2026-09-20; formulas, conventions, clip baseline, oracle method, tolerances, and 12 cases were supplied as frozen task input.
+Freeze status: draft
+Frozen baseline: not-yet-frozen; materialization commit `d3e49c8`
+Change authority: Stronger-reasoning Class C review is required for semantic changes to formulas, coordinate interpretation, Three mapping, golden values, near/far baseline, oracle method, tolerances, or invariant interpretation.
+Milestone applicability: M0B
+Handoff references: `docs/handoff/projection.md`
+Notes / limitations: This record materializes reviewed authority; a separate post-materialization audit must freeze it before production projection implementation.
