@@ -1,0 +1,21 @@
+# M0B Public World SDK and Package Scaffold Handoff
+
+- Subsystem status and supported scope: M0B-4 public SDK/source boundary is verified; package-shaped diagnostic source and production loading remain later M0 work.
+- Stable public contract/interface paths: `src/world-sdk/index.ts`; `src/world-sdk/contracts/world.ts`; `src/shared/contracts/`.
+- Oracle IDs: `ORC-WORLD-BOUNDARY-001`.
+- Authoritative tests/oracles: `scripts/check-world-sdk-surface.mjs`; `scripts/check-world-boundaries.mjs`; `tests/unit/worldBoundaryChecks.test.ts`.
+- M1 oracle freeze status and Class A/B/C classification: `ORC-WORLD-BOUNDARY-001` Class B, review `not-required`, frozen after this package baseline.
+- Known-good reference implementation, when applicable: TDS §§ 4, 23, and 24; WPC §§ 7–8 and 18; `REUSE-RENDER-001` Three.js `0.186.0`.
+- REUSE IDs: `REUSE-RENDER-001`.
+- Approved dependency/reference implementation: Three.js for `WorldSceneRoot` as `Group`; no new material dependency.
+- Authoritative Approval Source: ADR-002; TDS §41 and public SDK decisions; Interface & Contract Specification §19B.
+- Reuse Mode: adopt directly for Three.js; project-specific custom implementation for small boundary scripts.
+- Version/source/provenance constraints: Three.js and `@types/three` `0.186.0`; SDK external package name and production ESM protocol remain deferred.
+- Remaining project-specific custom-code boundary: explicit SDK re-exports and dependency-boundary checks only.
+- Prohibited Reinvention: no custom scene graph, renderer, logging framework, schema validator, package loader, or host capability bypass.
+- Deterministic tests and fixture paths: `tests/unit/worldBoundaryChecks.test.ts`; `tests/fixtures/world-boundary/`.
+- Governing ADR references: ADR-002; ADR-011; ADR-012; ADR-013; ADR-016; ADR-019.
+- Evidence references: `evidence/milestone-0/m0b-4-world-sdk.json`.
+- Known limitations / unsupported behavior: `worlds-dev/` diagnostic package, production package build/discovery/manifest validation/dynamic loading, package-local asset runtime, and projection integration are not implemented here.
+- Exact verification commands: `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
+- Escalation conditions: any request to widen the 19-export SDK, expose host-private capabilities, freeze the external module specifier, or author Class C projection correctness.

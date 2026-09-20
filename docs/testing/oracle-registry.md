@@ -66,3 +66,21 @@ Notes / limitations: <short text or none>
 Propose, classify, implement the draft test/procedure, review where required, freeze, register, consume, and change only through the recorded authority. A stale or conflicting record blocks dependent work. Semantic changes to expected behavior, classification, thresholds, tolerances, formulas, interpretation, review/freeze status, or change authority require the recorded review authority and an update to the governing source/test first. Non-semantic path and pointer corrections may be made with verification.
 
 The registry is not a permission system, a replacement for the Testing Strategy, or a way to make a failing implementation acceptable.
+
+## ORC-WORLD-BOUNDARY-001
+
+Oracle ID: ORC-WORLD-BOUNDARY-001
+Subsystem: Public world SDK and world-source/private-import boundary
+Governed behavior: The canonical SDK export surface and world-source import boundary remain exactly enforced.
+Classification: Class B
+Governing authority: Interface & Contract Specification §§19A–19B; TDS §§4, 23–24; WPC §§7–8, 18
+Authoritative test / procedure: `scripts/check-world-sdk-surface.mjs`; `scripts/check-world-boundaries.mjs`; `tests/unit/worldBoundaryChecks.test.ts`
+Supporting fixtures / evidence: `tests/fixtures/world-boundary/`; `evidence/milestone-0/m0b-4-world-sdk.json`
+Review status: not-required
+Review owner / result: Class B behavior maps directly to frozen authority
+Freeze status: frozen
+Frozen baseline: `355c0e1` authority commit plus verified M0B-4B implementation
+Change authority: Explicit change to the governing contract, task authority, or reviewed oracle procedure
+Milestone applicability: M0B
+Handoff references: `docs/handoff/world-packages.md`
+Notes / limitations: Checks names/origins and static import boundaries; they do not provide a runtime sandbox or package-loader conformance.

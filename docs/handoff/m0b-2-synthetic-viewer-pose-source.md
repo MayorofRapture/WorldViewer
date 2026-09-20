@@ -19,3 +19,5 @@
 - Known limitations / unsupported behavior: This source returns the latest scripted sample at or before a monotonic timestamp and returns null before start, after stop, and after script completion.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
 - Escalation conditions: Any request to add tracking/loss timing, state control, projection, calibration/filtering, or packaged synthetic smoke.
+
+Canonical type ownership note: `MonotonicMs` and `Vec3Mm` are consumed from `src/shared/contracts/primitives.ts`; `SyntheticViewerPoseSource.ts` remains host-private.

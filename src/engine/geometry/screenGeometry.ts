@@ -1,10 +1,6 @@
-export type Millimeters = number;
+import type { Millimeters, Vec3Mm } from "../../shared/contracts/primitives";
 
-export interface Vec3Mm {
-  readonly x: Millimeters;
-  readonly y: Millimeters;
-  readonly z: Millimeters;
-}
+export type { Millimeters, Vec3Mm } from "../../shared/contracts/primitives";
 
 export interface ScreenGeometry {
   readonly widthMm: Millimeters;

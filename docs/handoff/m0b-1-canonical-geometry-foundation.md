@@ -19,3 +19,5 @@
 - Known limitations / unsupported behavior: No projection matrices, camera changes, viewer pose, tracking, or world behavior.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
 - Escalation conditions: Any request to derive or apply projection, define golden outputs/tolerances, or alter the canonical coordinate contract.
+
+Canonical type ownership note: `Millimeters` and `Vec3Mm` are now defined in `src/shared/contracts/primitives.ts`; `screenGeometry.ts` remains the engine-owned construction/validation implementation.

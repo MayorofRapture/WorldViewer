@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "oracleId": "ORC-WORLD-BOUNDARY-001",
+  "task": "M0B-4B",
+  "verifiedAt": "2026-09-20",
+  "authorityBaseline": "355c0e1",
+  "implementation": [
+    "src/shared/contracts/",
+    "src/world-sdk/index.ts",
+    "scripts/check-world-sdk-surface.mjs",
+    "scripts/check-world-boundaries.mjs"
+  ],
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved named exports",
+    "worldBoundaries": "pass",
+    "focusedBoundaryTests": "5 tests passed",
+    "typecheck": "pass",
+    "tests": "5 files, 17 tests passed",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo executable is not present in the verification environment",
+    "diffCheck": "pass"
+  },
+  "limitations": [
+    "worlds-dev is absent until M0B-5",
+    "The guards are static architecture checks, not a JavaScript security sandbox.",
+    "Production package loading, package-local asset resolution, and projection remain out of scope."
+  ]
+}

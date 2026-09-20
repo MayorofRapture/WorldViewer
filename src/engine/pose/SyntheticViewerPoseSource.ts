@@ -1,6 +1,8 @@
 import { createVec3Mm, type Vec3Mm } from "../geometry/screenGeometry";
 
-export type MonotonicMs = number;
+import type { MonotonicMs } from "../../shared/contracts/primitives";
+
+export type { MonotonicMs } from "../../shared/contracts/primitives";
 
 export interface RawViewerPose {
   readonly timestampMs: MonotonicMs;
