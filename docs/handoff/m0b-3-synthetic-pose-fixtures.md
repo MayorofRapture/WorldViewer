@@ -1,0 +1,21 @@
+# M0B-3 Synthetic Pose Fixtures Handoff
+
+- Subsystem status and supported scope: Verified reusable deterministic centered, lateral, vertical, near, far, and asymmetric canonical pose fixtures.
+- Stable public contract/interface paths: `src/engine/pose/syntheticPoseFixtures.ts`; canonical `RawViewerPose` source in `src/engine/pose/SyntheticViewerPoseSource.ts`.
+- Oracle IDs: None; fixtures are Class A support data and do not define projection correctness.
+- Authoritative tests/oracles: `tests/unit/syntheticPoseFixtures.test.ts`.
+- M1 oracle freeze status and Class A/B/C classification: Class A support only; no Class C projection expectations encoded.
+- Known-good reference implementation, when applicable: ADR-003 and ADR-004 canonical coordinate/source boundaries.
+- REUSE IDs: None applicable.
+- Approved dependency/reference implementation: None beyond the existing canonical geometry and synthetic source boundaries.
+- Authoritative Approval Source: ADR-003; ADR-004; Interface & Contract Specification §§6, 10, and 31.
+- Reuse Mode: Not applicable.
+- Version/source/provenance constraints: None.
+- Remaining project-specific custom-code boundary: Stable fixture IDs and canonical pose values only.
+- Prohibited Reinvention: No projection answers, NDC outputs, matrices, tolerances, camera changes, or tracking behavior.
+- Deterministic tests and fixture paths: `tests/unit/syntheticPoseFixtures.test.ts`.
+- Governing ADR references: ADR-003 and ADR-004.
+- Evidence references: `evidence/milestone-0/m0b-3-synthetic-pose-fixtures.json`.
+- Known limitations / unsupported behavior: Fixtures intentionally contain no projection expectations and are not production world content.
+- Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
+- Escalation conditions: Any request to add projection golden values, epsilon/tolerance rules, or camera-matrix behavior.

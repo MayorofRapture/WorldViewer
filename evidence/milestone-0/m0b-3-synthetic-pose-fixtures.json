@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-3",
+  "verifiedAt": "2026-09-20",
+  "implementation": "src/engine/pose/syntheticPoseFixtures.ts",
+  "test": "tests/unit/syntheticPoseFixtures.test.ts",
+  "fixtureIds": ["centered", "left", "right", "up", "down", "near", "far", "asymmetric-x-y"],
+  "results": {
+    "typecheck": "pass",
+    "tests": "4 files, 12 tests passed",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "pass",
+    "diffCheck": "pass"
+  },
+  "limitations": [
+    "No projection matrices, NDC values, tolerances, or camera behavior are encoded."
+  ]
+}
