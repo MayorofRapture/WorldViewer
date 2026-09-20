@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-2",
+  "verifiedAt": "2026-09-20",
+  "implementation": "src/engine/pose/SyntheticViewerPoseSource.ts",
+  "test": "tests/unit/syntheticViewerPoseSource.test.ts",
+  "results": {
+    "typecheck": "pass",
+    "tests": "3 files, 9 tests passed",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "pass",
+    "diffCheck": "pass"
+  },
+  "contractCoverage": [
+    "start/stop lifecycle and deterministic reset",
+    "monotonic scripted timestamp ordering",
+    "canonical millimeter pose output",
+    "repeatability and end-of-script null behavior",
+    "invalid confidence, coordinates, timestamps, and estimator IDs rejected"
+  ],
+  "limitations": [
+    "No ViewerStateController, loss/reacquisition timing, tracking, calibration, filtering, projection, or M0C behavior is included."
+  ]
+}
