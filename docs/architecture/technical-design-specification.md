@@ -743,7 +743,7 @@ Each frame:
 7\. render  
 8\. record timings
 
-deltaSeconds is clamped after long pauses/backgrounding so worlds do not receive a huge simulation step.
+The initial M0 maximum delta supplied to a world update is `0.1 seconds` / `100 milliseconds`. Elapsed time above that maximum is clamped before constructing and delivering `WorldFrame`, protecting worlds from extreme simulation steps after pauses/backgrounding. This is an engine timing default and is not world-configurable.
 
 The world update loop runs at render cadence by default. Individual worlds may internally use fixed-timestep simulation accumulators if required, but the engine does not impose a global physics timestep.
 

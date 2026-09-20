@@ -2,7 +2,7 @@ import { PerspectiveCamera, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { SYNTHETIC_MOTION_SCRIPTS, type SyntheticMotionScript } from "../../src/engine/pose/syntheticMotionScripts";
 import type { AnimationFrameScheduler, SyntheticProjectionRenderHost } from "../../src/world-host/development/syntheticProjectionRuntime";
-import { SyntheticProjectionRuntime } from "../../src/world-host/development/syntheticProjectionRuntime";
+import { clampWorldFrameDeltaSeconds, MAX_WORLD_DELTA_SECONDS, SyntheticProjectionRuntime } from "../../src/world-host/development/syntheticProjectionRuntime";
 import { createDiagnosticWorldHost } from "../../src/world-host/development/diagnosticBootstrap";
 
 function script(id: SyntheticMotionScript["id"]): SyntheticMotionScript {
@@ -31,6 +31,17 @@ function renderHost(): { host: SyntheticProjectionRenderHost; render: ReturnType
 }
 
 describe("M0B synthetic projection runtime", () => {
+  it("bounds world-frame deltas after long pauses without changing normal cadence", () => {
+    expect(clampWorldFrameDeltaSeconds(0)).toBe(0);
+    expect(clampWorldFrameDeltaSeconds(1 / 60)).toBe(1 / 60);
+    expect(clampWorldFrameDeltaSeconds(0.016)).toBe(0.016);
+    expect(clampWorldFrameDeltaSeconds(0.1)).toBe(MAX_WORLD_DELTA_SECONDS);
+    expect(clampWorldFrameDeltaSeconds(60)).toBe(MAX_WORLD_DELTA_SECONDS);
+    expect(() => clampWorldFrameDeltaSeconds(-1)).toThrow(RangeError);
+    expect(() => clampWorldFrameDeltaSeconds(Number.NaN)).toThrow(RangeError);
+    expect(() => clampWorldFrameDeltaSeconds(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
+
   it("centers the E590 camera/frustum and keeps the diagnostic root fixed", async () => {
     const { host, render } = renderHost();
     const scheduled = scheduler();

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-12",
+  "implementationBaseline": "c5059dbb7b38e73fe1fe832999b59ef2a6c7c54a",
+  "verifiedAt": "2026-09-20",
+  "implementation": "src/world-host/development/syntheticProjectionRuntime.ts",
+  "test": "tests/unit/syntheticProjectionRuntime.test.ts",
+  "authority": "docs/architecture/technical-design-specification.md §19",
+  "maximumWorldDeltaSeconds": 0.1,
+  "maximumWorldDeltaMilliseconds": 100,
+  "deterministicCases": [
+    "first/zero delta remains 0",
+    "ordinary positive deltas remain in seconds",
+    "16 ms remains 0.016 seconds",
+    "exactly 100 ms remains 0.1 seconds",
+    "long pauses clamp to exactly 0.1 seconds",
+    "negative deltas fail fast",
+    "non-finite deltas fail fast"
+  ],
+  "changedPaths": [
+    "src/world-host/development/syntheticProjectionRuntime.ts",
+    "tests/unit/syntheticProjectionRuntime.test.ts",
+    "docs/architecture/technical-design-specification.md",
+    "docs/tasks/m0b-12-world-frame-delta-bound.md",
+    "evidence/milestone-0/m0b-12-world-frame-delta-bound.json"
+  ],
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved named exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "tests": "pass: 12 files, 54 tests",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo executable is not present in the verification environment",
+    "diffCheck": "pass"
+  },
+  "frozenProjectionOracleUnchanged": true,
+  "finalIndependentM0BAudit": "required; not claimed by this correction"
+}

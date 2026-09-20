@@ -12,6 +12,7 @@ export const M0B_SYNTHETIC_SCREEN_WIDTH_MM = 345.4;
 export const M0B_SYNTHETIC_SCREEN_HEIGHT_MM = 194.3;
 export const M0B_SYNTHETIC_NEAR_MM = 50;
 export const M0B_SYNTHETIC_FAR_MM = 5000;
+export const MAX_WORLD_DELTA_SECONDS = 0.1;
 
 export interface SyntheticProjectionRenderHost {
   readonly renderer: Pick<WebGLRenderer, "render">;
@@ -28,6 +29,16 @@ const browserAnimationFrameScheduler: AnimationFrameScheduler = {
   request: (callback) => requestAnimationFrame(callback),
   cancel: (handle) => cancelAnimationFrame(handle),
 };
+
+export function clampWorldFrameDeltaSeconds(deltaSeconds: Seconds): Seconds {
+  if (!Number.isFinite(deltaSeconds)) {
+    throw new RangeError("world frame deltaSeconds must be finite");
+  }
+  if (deltaSeconds < 0) {
+    throw new RangeError("world frame deltaSeconds must not be negative");
+  }
+  return Math.min(deltaSeconds, MAX_WORLD_DELTA_SECONDS);
+}
 
 function defaultMotionScript(): SyntheticMotionScript {
   const script = SYNTHETIC_MOTION_SCRIPTS.find((candidate) => candidate.id === "asymmetric-x-y");
@@ -115,7 +126,9 @@ export class SyntheticProjectionRuntime {
 
     if (this.latestPose) {
       const previousTimestampMs = this.lastTimestampMs;
-      const deltaSeconds = previousTimestampMs === null ? 0 : (timestampMs - previousTimestampMs) / 1000;
+      const deltaSeconds = clampWorldFrameDeltaSeconds(
+        previousTimestampMs === null ? 0 : (timestampMs - previousTimestampMs) / 1000,
+      );
       const frame = frameFor(this.frameNumber + 1, timestampMs, deltaSeconds, this.latestPose);
       const projectionEyeMm = applyPerspectiveStrength(
         frame.viewer.neutralPositionMm,
