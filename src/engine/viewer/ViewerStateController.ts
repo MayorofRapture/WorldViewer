@@ -185,7 +185,12 @@ export class ViewerStateController implements ViewerStateControllerContract {
       this.effectivePositionMm = pose.positionMm;
       return this.state(nowMs, tracking, pose.positionMm, pose.positionMm, pose.velocityMmPerSec, pose.confidence, "tracked");
     }
-    if (validPose(pose) && tracking.status === "degraded" && elapsedMs < LOSS_CONFIRMATION_MS) {
+    if (
+      validPose(pose) &&
+      tracking.status === "degraded" &&
+      elapsedMs < LOSS_CONFIRMATION_MS &&
+      this.lossPendingOrigin === "normal"
+    ) {
       this.effectivePositionMm = pose.positionMm;
       return this.state(nowMs, tracking, pose.positionMm, pose.positionMm, pose.velocityMmPerSec, pose.confidence, "degraded");
     }

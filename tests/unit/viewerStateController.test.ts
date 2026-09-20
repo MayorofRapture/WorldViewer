@@ -186,6 +186,57 @@ describe("ViewerStateController", () => {
     expect(controller.update(input(clock, "tracked", pose(clock, -100))).effectivePositionMm.x).toBe(-25);
   });
 
+  it("preserves the blended position when reacquisition is interrupted by a usable degraded pose", () => {
+    const clock = new ManualClock();
+    const controller = new ViewerStateController(clock);
+    controller.update(input(clock, "tracked", pose(clock, 0)));
+    controller.update(input(clock, "lost", null));
+    clock.advanceMs(LOSS_CONFIRMATION_MS);
+    controller.update(input(clock, "lost", null));
+    clock.advanceMs(NEUTRAL_RETURN_MS);
+    controller.update(input(clock, "tracked", pose(clock, 100)));
+    clock.advanceMs(150);
+    const blended = controller.update(input(clock, "tracked", pose(clock, 100)));
+    expect(blended.effectivePositionMm.x).toBe(50);
+
+    clock.advanceMs(1);
+    const interrupted = controller.update(input(clock, "degraded", pose(clock, 900)));
+    expect(interrupted.tracking.status).toBe("degraded");
+    expect(interrupted.effectivePositionMm).toEqual(blended.effectivePositionMm);
+    expect(interrupted.effectivePositionMm).not.toEqual({ x: 900, y: 0, z: 600 });
+
+    clock.advanceMs(100);
+    const recovered = controller.update(input(clock, "tracked", pose(clock, 200)));
+    expect(recovered.tracking.status).toBe("tracked");
+    expect(recovered.effectivePositionMm).toEqual(blended.effectivePositionMm);
+
+    clock.advanceMs(REACQUISITION_MS);
+    const complete = controller.update(input(clock, "tracked", pose(clock, 200)));
+    expect(complete.effectivePositionMm).toEqual({ x: 200, y: 0, z: 600 });
+  });
+
+  it("confirms interrupted reacquisition loss from the preserved blended position at exactly 350 ms", () => {
+    const clock = new ManualClock();
+    const controller = new ViewerStateController(clock);
+    controller.update(input(clock, "tracked", pose(clock, 0)));
+    controller.update(input(clock, "lost", null));
+    clock.advanceMs(LOSS_CONFIRMATION_MS);
+    controller.update(input(clock, "lost", null));
+    clock.advanceMs(NEUTRAL_RETURN_MS);
+    controller.update(input(clock, "tracked", pose(clock, 100)));
+    clock.advanceMs(150);
+    const blended = controller.update(input(clock, "tracked", pose(clock, 100)));
+
+    clock.advanceMs(1);
+    controller.update(input(clock, "degraded", pose(clock, 900)));
+    clock.advanceMs(LOSS_CONFIRMATION_MS);
+    const lost = controller.update(input(clock, "degraded", pose(clock, 900)));
+
+    expect(lost.tracking.status).toBe("lost");
+    expect(lost.effectivePositionMm).toEqual(blended.effectivePositionMm);
+    expect(lost.effectivePositionMm).not.toEqual({ x: 900, y: 0, z: 600 });
+  });
+
   it("keeps repeated short interruptions from corrupting transition state", () => {
     const clock = new ManualClock();
     const controller = new ViewerStateController(clock);

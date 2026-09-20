@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "task": "M0C1A",
+  "implementationBaseline": "35ae50b86647b0e6a24b4e2e65e76200fb0d74f2",
+  "verifiedAt": "2026-09-20",
+  "oracle": "ORC-VIEWER-STATE-001",
+  "oracleChange": false,
+  "correction": "Preserve the current effective position during reacquisition-origin loss-pending even when a usable degraded pose is supplied.",
+  "test": "tests/unit/viewerStateController.test.ts",
+  "coverage": [
+    "usable degraded pose during interrupted reacquisition preserves the blended effective position",
+    "reliable recovery before 350 ms starts a fresh 300 ms reacquisition from the preserved position",
+    "exactly 350 ms confirms loss and starts neutral return from the preserved position",
+    "ordinary normal-origin degraded grace remains pose-updating"
+  ],
+  "m0bBehaviorChanged": false,
+  "m0c2IntegrationAdded": false,
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved named exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "tests": "pass: 13 files, 68 tests",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "pass",
+    "diffCheck": "pass"
+  }
+}
