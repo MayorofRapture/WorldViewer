@@ -21,6 +21,7 @@ The generic packaged-launch Class B oracle was created and frozen through M0A-3 
 
 | Oracle ID | Class | Subsystem / Governed Behavior | Governing Authority | Authoritative Test / Procedure | Review | Freeze | Change Authority |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| ORC-VIEWER-STATE-001 | Class B | Deterministic ViewerStateController tracking/loss/reacquisition behavior and immutable frame-scoped state | Accepted viewer-state contract, TDS §15, Testing Strategy §9, ADR-018, ADR-019 | `tests/unit/viewerStateController.test.ts` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
 | ORC-PACKAGED-SMOKE-001 | Class B | Packaged `launch` smoke starts the production executable without Vite/localhost, emits one valid result line, and terminates with status-mapped exit code | TDS §37, §40, §42; Interface & Contract Specification packaged smoke contract; Testing Strategy §19; ADR-001; ADR-020 | `scripts/run-packaged-smoke.ps1` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
 
 ## ORC-PACKAGED-SMOKE-001
@@ -102,3 +103,21 @@ Change authority: Stronger-reasoning Class C review is required for semantic cha
 Milestone applicability: M0B
 Handoff references: `docs/handoff/projection.md`
 Notes / limitations: The completed stronger-reasoning post-materialization audit froze this record after independently verifying cleanup commit `41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9`.
+
+## ORC-VIEWER-STATE-001
+
+Oracle ID: ORC-VIEWER-STATE-001
+Subsystem: Deterministic viewer-state controller
+Governed behavior: Injected monotonic time drives deterministic tracking, loss confirmation, neutral return, internal reacquisition, reset, invalid-pose, and immutable ViewerState behavior.
+Classification: Class B
+Governing authority: Interface & Contract Specification viewer-state contract; TDS §15; Testing Strategy §9; ADR-018; ADR-019
+Authoritative test / procedure: `tests/unit/viewerStateController.test.ts`
+Supporting fixtures / evidence: `evidence/milestone-0/m0c-1-viewer-state-controller.json`
+Review status: not-required
+Review owner / result: Class B behavior is directly derived from accepted authority; no stronger review required
+Freeze status: frozen
+Frozen baseline: `Implement M0C1 ViewerStateController` commit
+Change authority: Explicit change to the governing contract, task authority, or reviewed oracle procedure
+Milestone applicability: M0C1
+Handoff references: `docs/handoff/viewer-state.md`
+Notes / limitations: ManualClock is test-only; the controller is host-private and is not integrated into M0B runtime or M0C2 packaged smoke.

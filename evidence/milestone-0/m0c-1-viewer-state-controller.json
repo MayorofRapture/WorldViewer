@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "task": "M0C1",
+  "implementationBaseline": "2ff860d4314e3ee171a2fa7368f5199c08885860",
+  "verifiedAt": "2026-09-20",
+  "implementation": [
+    "src/engine/viewer/ViewerStateController.ts",
+    "src/engine/viewer/contracts.ts",
+    "src/engine/viewer/monotonicClock.ts"
+  ],
+  "test": "tests/unit/viewerStateController.test.ts",
+  "oracle": "ORC-VIEWER-STATE-001",
+  "timing": {
+    "lossConfirmationMs": 350,
+    "neutralReturnMs": 5000,
+    "reacquisitionMs": 300,
+    "easing": "smoothstep"
+  },
+  "coverage": [
+    "startup statuses and neutral hold",
+    "first reliable acquisition and normal tracked updates",
+    "degraded grace with usable marginal pose",
+    "349 ms recovery and exact 350 ms confirmation",
+    "five-second neutral return midpoint and completion",
+    "300 ms reacquisition with latest target",
+    "reacquisition interruption and repeated short interruptions",
+    "invalid/non-finite pose rejection",
+    "reset, backward clock rejection, and immutability"
+  ],
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved named exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "tests": "pass: 13 files, 66 tests",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo executable is not installed",
+    "diffCheck": "pass"
+  },
+  "m0bProjectionOracleUnchanged": true,
+  "m0c2IntegrationAdded": false
+}

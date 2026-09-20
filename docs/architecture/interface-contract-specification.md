@@ -389,6 +389,8 @@ Contract rules:
 • loss-confirmation, neutral-return, and reacquisition interpolation details are owned by the TDS while preserving the observable ViewerState semantics in this specification.  
 • reacquisition remains internal to the controller and does not add a public tracking state.
 
+Before the controller has received both reliable tracked health and a usable finite filtered pose, effectivePositionMm remains at neutralPositionMm. For unavailable, initializing, and acquiring inputs, trackedPositionMm is null, velocityMmPerSec is zero, and pose-level confidence is null while the corresponding public tracking status is preserved. A usable filtered pose requires finite timestamp, position, velocity, and confidence in the [0,1] range. The controller reports the accepted filtered-pose velocity and confidence; transition easing does not manufacture or replace velocity.
+
 # 
 
 # 12\. Display Profile Contract

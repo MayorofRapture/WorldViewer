@@ -668,6 +668,8 @@ Reset clears loss/reacquisition timestamps and blend snapshots, restores effecti
 
 The 350 ms and 300 ms values remain Milestone 0 tuning defaults; the 5-second neutral return is fixed by the product requirement. All three durations and the easing function must be centralized and covered by deterministic tests rather than being chosen by an implementation agent.
 
+Before first reliable tracking, the controller preserves unavailable, initializing, or acquiring status while holding the supplied neutral position with no tracked pose, zero velocity, and null pose-level confidence. A filtered pose is usable only when its timestamp, position, velocity, and confidence are finite and its confidence is within [0,1]; otherwise it is treated as missing and never reaches ViewerState. ViewerState velocity and pose-level confidence come from the currently accepted filtered pose, while neutral-return and reacquisition easing do not synthesize velocity or replace that accepted-pose velocity.
+
 # 16\. Perspective Strength Semantics
 
 Perspective strength modifies viewer displacement relative to neutral without changing the stored physical calibration.

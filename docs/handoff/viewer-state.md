@@ -1,0 +1,21 @@
+# M0C1 Viewer State Controller Handoff
+
+- Subsystem status and supported scope: Host-private deterministic `ViewerStateController` is implemented under `src/engine/viewer/`; it owns startup, tracking-loss grace, neutral return, internal reacquisition, reset, and immutable frame-scoped `ViewerState` construction. M0C2 packaged synthetic integration and M0E live filtered-pose integration remain deferred.
+- Stable public contract/interface paths: `src/shared/contracts/viewer.ts`; host-private contracts in `src/engine/viewer/contracts.ts`.
+- Oracle IDs: `ORC-VIEWER-STATE-001`.
+- Authoritative tests/oracles: `tests/unit/viewerStateController.test.ts`.
+- M1 oracle freeze status and Class A/B/C classification: Class B; review not required; frozen after M0C1 verification.
+- Known-good reference implementation, when applicable: none; project-specific state-machine glue follows the accepted TDS/ADR timing contract.
+- REUSE IDs: none.
+- Approved dependency/reference implementation: none; no external dependency or mature timing framework is applicable.
+- Authoritative Approval Source: ADR-018; ADR-019; TDS §15; Interface & Contract Specification viewer-state contract.
+- Reuse Mode: project-specific custom implementation for the host-owned controller boundary.
+- Version/source/provenance constraints: no external dependency; production time adapter uses `performance.now()` through `performanceMonotonicClock`; tests use ManualClock only.
+- Remaining project-specific custom-code boundary: `ViewerStateController` and its private input/clock contracts under `src/engine/viewer/`.
+- Prohibited Reinvention: worlds do not own tracking loss or reacquisition; no wall-clock timers, timer callbacks, or alternate public tracking state.
+- Deterministic tests and fixture paths: `tests/unit/viewerStateController.test.ts`.
+- Governing ADR references: ADR-018; ADR-019.
+- Evidence references: `evidence/milestone-0/m0c-1-viewer-state-controller.json`.
+- Known limitations / unsupported behavior: not integrated into the M0B synthetic runtime; packaged synthetic smoke is M0C2; live RawViewerPose, calibration, and filtering integration are later M0E work.
+- Exact verification commands: `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
+- Escalation conditions: any change to public ViewerState semantics, timing defaults, easing, public SDK exposure, or controller/world ownership boundary.
