@@ -6,3 +6,5 @@
 *.tsbuildinfo
 /src-tauri/target/
 /src-tauri/gen/schemas/
+/.spike-tools/
+/evidence/spikes/m0d-openseeface-physical-pose/sessions/
