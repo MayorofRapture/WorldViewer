@@ -7,7 +7,7 @@
 - Task type: implementation
 - Implementation model: Luna — Medium after authority resolution
 - Baseline branch/commit: `feat/m0a1-foundation` / `eb631a34e7ef36c8f6f19310b304a638c04cf90c`
-- Status: blocked
+- Status: ready
 
 ## Objective
 
@@ -20,7 +20,7 @@ Materialize the narrow `src/world-sdk/index.ts` export surface from frozen world
 - World Package Conformance Specification §§7–8.
 - M0B roadmap public SDK boundary deliverable.
 
-## Exact Authority Gap
+## Historical Authority Gap
 
 The current authorities do not freeze all semantics required for a usable SDK:
 
@@ -29,9 +29,20 @@ The current authorities do not freeze all semantics required for a usable SDK:
 - `WorldSceneRoot` is described as a Three.js `Group` or equivalent, while WPC explicitly lists its exact host representation as deferred implementation/TDS authority.
 - WPC also states that the exact public SDK/module name and boundary-check mechanism are not frozen; this task prompt authorizes `src/world-sdk/index.ts`, but does not resolve the missing contract semantics above.
 
+The gap above is retained as historical context. It is resolved for this implementation by the explicitly authorized M0B-4A specification change recorded in the owning documents.
+
+## Resolved Authority
+
+- JSON-safe `JsonPrimitive`, `JsonValue`, and `JsonObject` are defined in Interface & Contract Specification §19B.
+- `WorldLogger` is the four-method structured logger in Interface & Contract Specification §19B.
+- `WorldSceneRoot` is exactly the type-only Three.js `Group` representation in Interface & Contract Specification §19B, consuming `REUSE-RENDER-001`.
+- Canonical shared pure data types belong under `src/shared/contracts/`; `src/shared/` remains private to worlds.
+- `src/world-sdk/index.ts` is the canonical repository entrypoint with the exact 19 named exports recorded in Interface §19B and TDS §4.
+- Static enforcement remains an implementation choice under the existing TDS/WPC decisions.
+
 ## Status / Stop Condition
 
-Blocked before implementation. Do not create `src/world-sdk`, choose logger methods, choose an opaque/Three.js root representation, or author boundary checks until the owning authority explicitly resolves these gaps.
+The authority blocker is resolved. Implementation may proceed within the existing M0B-4 scope. Stop if implementation would require changing the recorded contract, widening the SDK export set, or redesigning the broader world API.
 
 ## Explicitly Not Attempted
 

@@ -106,7 +106,7 @@ Contract rule:
 
 Example:  
 physicalWidthMm: 345.4  
-screenWidthMmm: 345.4
+screenWidthMm: 345.4
 
 # 5\. Time and Identifier Conventions
 
@@ -152,13 +152,13 @@ type Seconds \= number;
 type MonotonicMs \= number;  
 type Confidence \= number; // validated 0.0–1.0
 
-interface Vec3Mmm {  
+interface Vec3Mm {
   x: Millimeters;  
   y: Millimeters;  
   z: Millimeters;  
 }
 
-interface Vec3MmmPerSec {  
+interface Vec3MmPerSec {
   x: number;  
   y: number;  
   z: number;  
@@ -273,7 +273,7 @@ Decision: the production pipeline shall expose ViewerPoseSource as the main esti
 
 A ViewerPoseEstimator converts tracker observations into physical viewer position in the canonical screen-relative coordinate system.
 
-Decision: ViewerPose.positionMmm represents the midpoint between the viewer’s left and right eyes (“cyclopean eye”), because the product renders one monoscopic head-coupled view.
+Decision: ViewerPose.positionMm represents the midpoint between the viewer’s left and right eyes (“cyclopean eye”), because the product renders one monoscopic head-coupled view.
 
 Conceptual contract:
 
@@ -337,7 +337,7 @@ interface PoseFilter {
 interface FilteredViewerPose {  
   timestampMs: MonotonicMs;  
   positionMm: Vec3Mm;  
-  velocityMmPerSec: Vec3MmmPerSec;  
+  velocityMmPerSec: Vec3MmPerSec;
   confidence: Confidence;  
 }
 
@@ -349,7 +349,7 @@ interface ViewerState {
   trackedPositionMm: Vec3Mm | null;  
   effectivePositionMm: Vec3Mm;  
   neutralPositionMm: Vec3Mm;  
-  velocityMmPerSec: Vec3MmmPerSec;  
+  velocityMmPerSec: Vec3MmPerSec;
   confidence: number | null;  
 }
 
@@ -728,6 +728,48 @@ Boundary rules:
 • The diagnostic room is subject to this same public/private boundary. It receives no privileged world-facing capability.
 
 This classification is intentionally capability-oriented rather than tied to final repository paths. The Technical Design Specification may choose module/package names and enforcement tooling without changing the boundary itself.
+
+# 19B. Initial Repository Public World SDK Contracts
+
+The initial repository-local public world SDK is exposed from `src/world-sdk/index.ts`. The exact external package/module specifier and production ESM world-module export protocol remain deferred.
+
+Canonical JSON-safe data types are:
+
+```ts
+type JsonPrimitive = null | boolean | number | string;
+type JsonValue = JsonPrimitive | readonly JsonValue[] | JsonObject;
+interface JsonObject { readonly [key: string]: JsonValue; }
+```
+
+Public JSON data contains no `undefined`, functions, symbols, or class instances. Numeric values crossing validated JSON boundaries are finite JSON-compatible numbers. Arrays and objects are read-only across the world-facing boundary.
+
+The initial logger capability is:
+
+```ts
+interface WorldLogger {
+  debug(message: string, context?: Readonly<JsonObject>): void;
+  info(message: string, context?: Readonly<JsonObject>): void;
+  warn(message: string, context?: Readonly<JsonObject>): void;
+  error(message: string, context?: Readonly<JsonObject>): void;
+}
+```
+
+`WorldLogger` is scoped to the active world. Worlds do not choose transports, sinks, files, rotation, host logging configuration, child loggers, or arbitrary error/class-instance parameters.
+
+`WorldSceneRoot` is exactly the approved Three.js `Group` type, imported type-only where applicable:
+
+```ts
+import type { Group } from "three";
+type WorldSceneRoot = Group;
+```
+
+The host creates a fresh root per activation and owns attaching/removing it from the host `Scene`. Worlds attach and dispose only their own descendants; they do not receive or own the host scene or projection camera.
+
+Canonical pure data types genuinely shared across engine and public-host boundaries live under `src/shared/contracts/`. `src/shared/` is not public to worlds; only the intentionally exposed subset re-exported by `src/world-sdk/index.ts` is available to them.
+
+The exact initial TypeScript-visible named exports are:
+
+`JsonPrimitive`, `JsonValue`, `JsonObject`, `Millimeters`, `Seconds`, `MonotonicMs`, `Vec3Mm`, `Vec3MmPerSec`, `TrackingStatus`, `TrackingHealth`, `ViewerState`, `ViewportState`, `WorldSceneRoot`, `WorldAssetService`, `WorldLogger`, `WorldHostInfo`, `WorldContext`, `WorldFrame`, and `VirtualWorld`.
 
 # 20\. World Asset Service Contract
 
@@ -1230,4 +1272,3 @@ D-IC-14 — World-package conformance: compilation or successful rendering alone
 D-IC-15 — Diagnostic reference world parity: the diagnostic room is subject to the same public world-facing contract as production worlds and receives no privileged camera/projection/tracking/native/persistence capability. It may be temporarily statically wired during early M0 only without widening the world API, and by the package-loading milestone it must use the production package path.  
 D-IC-16 — World resource ownership: resources created by a world are world-owned unless an explicit public host contract says otherwise. dispose() is the world cleanup boundary, while host scene-root removal remains defense in depth and does not replace explicit disposal/unsubscription required by Three.js/browser/runtime semantics.  
 D-IC-17 — World lifecycle failure isolation: failed initialization never enters update or becomes the successfully active world; update failure stops normal updates and enters the defined safe/recovery path; dispose failure is reported but does not prevent host-owned root removal and best-effort cleanup.
-
