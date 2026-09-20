@@ -1,0 +1,8 @@
+/node_modules/
+/dist/
+/.vitest/
+*.log
+*.local
+*.tsbuildinfo
+/src-tauri/target/
+/src-tauri/gen/schemas/

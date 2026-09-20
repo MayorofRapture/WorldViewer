@@ -1,0 +1,23 @@
+[package]
+name = "worldviewer"
+version = "0.1.0"
+description = "WorldViewer application foundation"
+edition = "2021"
+
+[lib]
+# Keep the library name distinct from the Windows executable (official scaffold).
+name = "worldviewer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
