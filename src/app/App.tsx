@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { RendererFoundation } from "../engine/rendering/RendererFoundation";
 
 type SmokeMode = "launch" | "synthetic";
 type SmokeStatus = "pass" | "fail";
@@ -14,6 +15,24 @@ type SmokeResult = {
 
 export default function App() {
   const smokeCompleted = useRef(false);
+  const rendererHost = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let foundation: RendererFoundation | undefined;
+    let cancelled = false;
+
+    void invoke<SmokeMode | null>("get_startup_mode")
+      .catch(() => null)
+      .then((mode) => {
+        if (cancelled || mode === "launch" || !rendererHost.current) return;
+        foundation = new RendererFoundation(rendererHost.current);
+      });
+
+    return () => {
+      cancelled = true;
+      foundation?.dispose();
+    };
+  }, []);
 
   useEffect(() => {
     if (smokeCompleted.current) return;
@@ -48,6 +67,7 @@ export default function App() {
     <main>
       <h1>WorldViewer</h1>
       <p>Application foundation.</p>
+      <div className="renderer-host" ref={rendererHost} aria-label="WorldViewer renderer" />
     </main>
   );
 }

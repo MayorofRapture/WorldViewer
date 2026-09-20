@@ -8,5 +8,6 @@ describe("App Foundation", () => {
 
     expect(markup).toContain("WorldViewer");
     expect(markup).toContain("Application foundation.");
+    expect(markup).toContain("renderer-host");
   });
 });

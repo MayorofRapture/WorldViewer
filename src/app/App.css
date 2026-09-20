@@ -13,3 +13,14 @@ body {
 main {
   padding: 2rem;
 }
+
+.renderer-host {
+  min-height: 20rem;
+  overflow: hidden;
+}
+
+.renderer-host canvas {
+  display: block;
+  height: 100%;
+  width: 100%;
+}

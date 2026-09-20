@@ -2,8 +2,8 @@
 
 ## Task Metadata
 
-- Status: Proposed — future task; not executed by M0A-2
-- Baseline commit: to be populated and validated when promoted to ready
+- Status: Complete — verified at M0A-4 renderer checkpoint
+- Baseline commit: `24b5f577d7c709907fe489ec56ec7ee56c6ad9e8`
 - Preferred execution model: Luna — Medium
 - Escalation: genuine architecture/specification conflict only
 

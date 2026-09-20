@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "task": "M0A-4",
+  "verifiedAt": "2026-09-20",
+  "reuseId": "REUSE-RENDER-001",
+  "threeVersion": "0.186.0",
+  "typesVersion": "0.186.0",
+  "implementation": "src/engine/rendering/RendererFoundation.ts",
+  "commands": [
+    "npm.cmd run typecheck",
+    "npm.cmd test",
+    "npm.cmd run build",
+    "cargo check --manifest-path src-tauri/Cargo.toml --locked",
+    "npx.cmd tauri build",
+    "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run-packaged-smoke.ps1",
+    "git diff --check"
+  ],
+  "results": {
+    "typecheck": "pass",
+    "tests": "1 file, 1 test passed",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "pass",
+    "tauriPackage": "pass",
+    "packagedLaunchRegression": {
+      "status": "pass",
+      "mode": "launch",
+      "exitCode": 0,
+      "stdoutLines": 1
+    },
+    "diffCheck": "pass"
+  },
+  "limitations": [
+    "Renderer initialization is skipped by M0A-3 launch mode so the frozen minimal-launch contract remains unchanged.",
+    "Projection, render-loop, world, tracking, and M0C synthetic behavior remain out of scope."
+  ]
+}
