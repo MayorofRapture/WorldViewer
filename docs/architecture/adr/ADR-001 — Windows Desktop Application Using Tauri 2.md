@@ -15,4 +15,3 @@ Alternatives considered
 • Electron — capable, but heavier than required for this single-user project.  
 • Pure browser/PWA — insufficient for the desired local package-directory and native-file workflow.  
 • Native Rust application — would move too much UI/rendering work away from the chosen TypeScript/Three.js ecosystem.  
-d  
