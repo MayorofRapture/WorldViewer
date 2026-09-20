@@ -15,7 +15,7 @@
 - Prohibited Reinvention: No live tracking, MediaPipe, ViewerStateController, calibration, filtering, projection, or wall-clock timing.
 - Deterministic tests and fixture paths: `tests/unit/syntheticViewerPoseSource.test.ts`.
 - Governing ADR references: `docs/architecture/adr/ADR-004 — ViewerPoseSource as the Primary Viewer-Input Boundary.md`; `docs/architecture/adr/ADR-003 — Canonical Screen Coordinate System and Millimeter Units.md`.
-- Evidence references: `evidence/milestone-0/m0b-2-synthetic-pose-source.json`.
+- Evidence references: `evidence/milestone-0/m0b-2-synthetic-pose-source.json`; `evidence/milestone-0/m0b-6-synthetic-motion-scripts.json`.
 - Known limitations / unsupported behavior: This source returns the latest scripted sample at or before a monotonic timestamp and returns null before start, after stop, and after script completion.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
 - Escalation conditions: Any request to add tracking/loss timing, state control, projection, calibration/filtering, or packaged synthetic smoke.

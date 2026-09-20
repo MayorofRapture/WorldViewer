@@ -44,10 +44,13 @@ The gap above is retained as historical context. It is resolved for this impleme
 
 The authority blocker is resolved. Implementation may proceed within the existing M0B-4 scope. Stop if implementation would require changing the recorded contract, widening the SDK export set, or redesigning the broader world API.
 
-## Explicitly Not Attempted
+## Completed M0B-4 Work
 
-VirtualWorld/WorldContext SDK exports, world-private import checker, SDK-surface checker, diagnostic world, package manifests, dynamic loading, and all projection/tracking behavior.
+- `VirtualWorld`/`WorldContext` and the exact 19-symbol SDK export surface are implemented under `src/world-sdk/`.
+- SDK-surface and world/private source-boundary checks are implemented and run by the normal test path.
+- `ORC-WORLD-BOUNDARY-001` is registered as a frozen Class B oracle.
+- Diagnostic-world scaffolding is completed separately by M0B-5; timed motion scripts are completed separately by M0B-6.
 
-## Decision Required
+## Later Work Still Out of Scope
 
-Resolve the missing public contract shapes and exact `WorldSceneRoot` representation in the owning interface/TDS authority, or provide an explicit non-architectural task decision authorized by the project governance.
+Production package build/discovery/manifest validation/dynamic loading, the external SDK/module specifier, and all Class C projection design and implementation remain later work. This task remains complete without claiming those capabilities.

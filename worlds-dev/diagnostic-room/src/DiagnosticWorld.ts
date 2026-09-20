@@ -34,8 +34,7 @@ export class DiagnosticWorld implements VirtualWorld {
 
   update(frame: WorldFrame): void {
     if (!this.scene) return;
-    const viewer = frame.viewer;
-    this.scene.root.position.set(viewer.effectivePositionMm.x * 0.02, viewer.effectivePositionMm.y * 0.02, 0);
+    void frame.viewer;
   }
 
   resize(_viewport: Readonly<ViewportState>): void {

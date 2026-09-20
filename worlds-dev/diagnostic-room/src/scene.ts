@@ -28,9 +28,11 @@ export function createDiagnosticScene(showGrid: boolean, gridSpacingMm: number, 
   const lines: LineSegments[] = [];
 
   const gridPoints: Vector3[] = [];
-  for (let coordinate = -300; coordinate <= 300; coordinate += gridSpacingMm) {
-    gridPoints.push(new Vector3(-300, 0, coordinate), new Vector3(300, 0, coordinate));
-    gridPoints.push(new Vector3(coordinate, 0, -300), new Vector3(coordinate, 0, 300));
+  for (let xMm = -300; xMm <= 300; xMm += gridSpacingMm) {
+    gridPoints.push(new Vector3(xMm, 0, -900), new Vector3(xMm, 0, -50));
+  }
+  for (let depthMm = -900; depthMm <= -50; depthMm += gridSpacingMm) {
+    gridPoints.push(new Vector3(-300, 0, depthMm), new Vector3(300, 0, depthMm));
   }
   if (showGrid) {
     const gridGeometry = lineGeometry(gridPoints);

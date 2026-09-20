@@ -41,4 +41,22 @@ describe("world boundary guards", () => {
     expect(result.status).toBe(1);
     expect(result.output).toContain("unexpected export Unexpected");
   });
+
+  it("detects direct exported declarations", () => {
+    const fixture = path.join(repositoryRoot, "tests/WorldBoundarySdkDirectDeclarations.mjs");
+    const result = run(sdkChecker, [`--entry=${fixture}`]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("Unexpected");
+    expect(result.output).toContain("UnexpectedInterface");
+    expect(result.output).toContain("UnexpectedValue");
+  });
+
+  it("rejects default, wildcard, and local export forms", () => {
+    const fixture = path.join(repositoryRoot, "tests/WorldBoundarySdkUnsupportedForms.mjs");
+    const result = run(sdkChecker, [`--entry=${fixture}`]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("default export");
+    expect(result.output).toContain("wildcard export");
+    expect(result.output).toContain("local export declaration");
+  });
 });

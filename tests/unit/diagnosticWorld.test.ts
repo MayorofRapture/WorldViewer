@@ -1,4 +1,4 @@
-import { Group, Scene } from "three";
+import { Group, Scene, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import type {
   JsonObject,
@@ -51,7 +51,10 @@ describe("diagnostic reference world", () => {
     world.initialize(context(root, logger));
     expect(root.children.length).toBe(1);
     expect(info).toHaveBeenCalledWith("Diagnostic room initialized", { asset: "asset://assets/marker.txt" });
+    const diagnosticRoot = root.children[0] as Group;
+    const rootPositionBeforeUpdate = diagnosticRoot.position.clone();
     world.update(frame());
+    expect(diagnosticRoot.position).toEqual(rootPositionBeforeUpdate);
     world.resize({ pixelWidth: 800, pixelHeight: 600, devicePixelRatio: 1 });
     world.onSettingsChanged?.(Object.freeze({ showGrid: false, gridSpacingMm: 75, accent: "amber" }));
     expect(root.children.length).toBe(1);
@@ -70,6 +73,21 @@ describe("diagnostic reference world", () => {
     scene.dispose();
     expect(scene.root.children).toHaveLength(0);
     expect(disposers.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+  });
+
+  it("keeps every diagnostic geometry vertex behind the physical screen", () => {
+    const scene = createDiagnosticScene(true, 50, 0x00d9ff);
+    scene.root.updateMatrixWorld(true);
+    for (const child of scene.root.children) {
+      const geometry = (child as unknown as { geometry?: { getAttribute: (name: string) => { count: number; getX: (index: number) => number; getY: (index: number) => number; getZ: (index: number) => number } } }).geometry;
+      if (!geometry) continue;
+      const positions = geometry.getAttribute("position");
+      for (let index = 0; index < positions.count; index += 1) {
+        const worldPoint = child.localToWorld(new Vector3(positions.getX(index), positions.getY(index), positions.getZ(index)));
+        expect(worldPoint.z).toBeLessThan(0);
+      }
+    }
+    scene.dispose();
   });
 
   it("uses the temporary bootstrap lifecycle and removes the host root", async () => {
