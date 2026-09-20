@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-8",
+  "frozenOracle": {
+    "id": "ORC-PROJECTION-001",
+    "baseline": "41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9"
+  },
+  "implementationBaseline": "d9239655c847b8bc2b7ae84985f9b1adc2ae4643",
+  "implementation": "src/engine/projection/offAxisProjection.ts",
+  "test": "tests/unit/offAxisProjection.test.ts",
+  "reuse": ["REUSE-PROJECTION-001", "REUSE-RENDER-001"],
+  "matrixPrimitive": "Three.js 0.186.0 Matrix4.makePerspective with WebGLCoordinateSystem and reversedDepth=false",
+  "referenceCases": 12,
+  "validation": ["finite eye coordinates", "near > 0", "far > near", "eye.z > near", "no fallback eye"],
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "focusedTests": "pass: 2 files, 10 tests",
+    "tests": "pass: 9 files, 37 tests",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo is not on PATH in this environment"
+  },
+  "integrationDeferred": ["camera application", "projectionMatrixInverse synchronization", "resize handling", "render loop", "startup", "synthetic viewer", "diagnostic world", "perspective strength", "rotated screens"]
+}
