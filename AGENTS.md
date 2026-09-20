@@ -10,9 +10,23 @@ If applicable authority conflicts, is missing, or does not authorize a needed ar
 
 ## Required workflow
 
-- For normal implementation work, use the `bounded-task-execution` skill.
-- For a bug, failed check, unexpected behavior, or unclear regression, use the `systematic-debugging` skill before proposing a fix.
-- Before claiming that implementation is complete, correct, passing, or ready, use the `project-verification` skill and obtain fresh evidence.
+- For normal implementation work, use [bounded-task-execution](.agents/skills/bounded-task-execution/SKILL.md).
+- For a bug, failed check, unexpected behavior, or unclear regression, use [systematic-debugging](.agents/skills/systematic-debugging/SKILL.md) before proposing a fix.
+- Before claiming that implementation is complete, correct, passing, or ready, use [project-verification](.agents/skills/project-verification/SKILL.md) and obtain fresh evidence.
+
+## Documentation routing
+
+Start with the current task's Required Context; this map is navigation, not a reading checklist.
+
+- Tasks: `docs/tasks/`; authoring and context rules in `docs/tasks/task-specification-template.md`. A template is not an assigned task.
+- Product: `docs/product/product-specification-prd.md`, `docs/product/non-functional-requirements.md`, and `docs/product/project-vision-charter.md`.
+- Architecture/contracts: `docs/architecture/technical-design-specification.md` and `docs/architecture/interface-contract-specification.md`.
+- ADRs: `docs/architecture/adr/README.md` indexes status and links to individual decision records. Read the applicable record; the index is not its replacement.
+- Verification: `docs/testing/testing-strategy.md`; world-package requirements in `docs/testing/world-package-conformance-specification.md`; estimator experiments in `docs/experiments/pose-estimator-experiment-specification.md`.
+- Planning/gates: `docs/planning/milestone-roadmap.md`.
+- Reuse approval rules: TDS section 41; registry design in `docs/reuse-register-design.md`. Oracle registry design: `docs/testing/oracle-registry-design.md`.
+
+Check for live `docs/reuse-register.md`, `docs/testing/oracle-registry.md`, and task-relevant `docs/handoff/` notes before resolving IDs. The registry design documents describe planned artifacts, not live approved entries. If a task requires an absent registry entry, handoff, or inaccessible linked ADR, surface that specific prerequisite under the authority rule; do not infer it from a design template or index.
 
 ## Repository safety
 
@@ -27,3 +41,5 @@ If applicable authority conflicts, is missing, or does not authorize a needed ar
 ## Context discipline
 
 Load only the authoritative material needed for the current task. Resolve referenced ORC/REUSE IDs instead of copying registry content into prompts or skills. Prefer deterministic repository scripts for repeatable operations when they exist.
+
+Discover filenames with `rg --files docs`; search the selected document's headings or exact IDs with `rg -n` before reading the relevant sections. Follow cross-references only when needed to resolve the task's authority or evidence. Load only applicable skill bodies; do not preload the entire skill collection or documentation tree.
