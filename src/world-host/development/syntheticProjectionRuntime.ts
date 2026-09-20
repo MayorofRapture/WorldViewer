@@ -1,6 +1,7 @@
 import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import { createScreenGeometry, createVec3Mm, type ScreenGeometry } from "../../engine/geometry/screenGeometry";
 import { applyOffAxisProjectionToCamera } from "../../engine/projection/cameraProjection";
+import { applyPerspectiveStrength } from "../../engine/projection/perspectiveStrength";
 import { SyntheticViewerPoseSource, type RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource";
 import { SYNTHETIC_MOTION_SCRIPTS, type SyntheticMotionScript } from "../../engine/pose/syntheticMotionScripts";
 import type { MonotonicMs, Seconds, Vec3Mm, Vec3MmPerSec } from "../../shared/contracts/primitives";
@@ -70,6 +71,7 @@ export class SyntheticProjectionRuntime {
   private readonly worldHost: DiagnosticWorldHost;
   private readonly scheduler: AnimationFrameScheduler;
   private readonly host: SyntheticProjectionRenderHost;
+  private readonly perspectiveStrength: number;
   private scheduledFrame: number | null = null;
   private started = false;
   private disposed = false;
@@ -82,12 +84,14 @@ export class SyntheticProjectionRuntime {
     host: SyntheticProjectionRenderHost,
     motionScript: SyntheticMotionScript = defaultMotionScript(),
     scheduler: AnimationFrameScheduler = browserAnimationFrameScheduler,
+    perspectiveStrength = 1,
   ) {
     this.host = host;
     this.scheduler = scheduler;
     this.source = new SyntheticViewerPoseSource(motionScript.samples);
     this.worldHost = createDiagnosticWorldHost(host.scene);
     this.screenGeometry = createScreenGeometry(M0B_SYNTHETIC_SCREEN_WIDTH_MM, M0B_SYNTHETIC_SCREEN_HEIGHT_MM);
+    this.perspectiveStrength = perspectiveStrength;
   }
 
   async start(): Promise<void> {
@@ -112,15 +116,21 @@ export class SyntheticProjectionRuntime {
     if (this.latestPose) {
       const previousTimestampMs = this.lastTimestampMs;
       const deltaSeconds = previousTimestampMs === null ? 0 : (timestampMs - previousTimestampMs) / 1000;
+      const frame = frameFor(this.frameNumber + 1, timestampMs, deltaSeconds, this.latestPose);
+      const projectionEyeMm = applyPerspectiveStrength(
+        frame.viewer.neutralPositionMm,
+        frame.viewer.effectivePositionMm,
+        this.perspectiveStrength,
+      );
       applyOffAxisProjectionToCamera(
         this.host.camera,
         this.screenGeometry,
-        this.latestPose.positionMm,
+        projectionEyeMm,
         M0B_SYNTHETIC_NEAR_MM,
         M0B_SYNTHETIC_FAR_MM,
       );
       this.frameNumber += 1;
-      this.worldHost.update(frameFor(this.frameNumber, timestampMs, deltaSeconds, this.latestPose));
+      this.worldHost.update(frame);
     }
 
     this.lastTimestampMs = timestampMs;

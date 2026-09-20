@@ -84,6 +84,30 @@ describe("M0B synthetic projection runtime", () => {
     await distanceRuntime.dispose();
   });
 
+  it("applies strength zero at neutral and strength one at the physical synthetic eye", async () => {
+    const strengthZero = renderHost();
+    const neutralRuntime = new SyntheticProjectionRuntime(strengthZero.host, script("asymmetric-x-y"), scheduler().scheduler, 0);
+    await neutralRuntime.start();
+    neutralRuntime.step(1000);
+    neutralRuntime.step(1200);
+    expect(strengthZero.host.camera.position.toArray()).toEqual([0, 0, 600]);
+    expect(strengthZero.host.camera.projectionMatrix.elements[8]).toBe(0);
+    expect(strengthZero.host.camera.projectionMatrix.elements[9]).toBe(0);
+    const neutralDiagnosticPosition = strengthZero.host.scene.children[0]!.children[0]!.position.clone();
+    await neutralRuntime.dispose();
+
+    const strengthOne = renderHost();
+    const physicalRuntime = new SyntheticProjectionRuntime(strengthOne.host, script("asymmetric-x-y"), scheduler().scheduler, 1);
+    await physicalRuntime.start();
+    physicalRuntime.step(1000);
+    physicalRuntime.step(1200);
+    expect(strengthOne.host.camera.position.toArray()).toEqual([35, -20, 600]);
+    expect(strengthOne.host.camera.projectionMatrix.elements[8]).toBeLessThan(0);
+    expect(strengthOne.host.camera.projectionMatrix.elements[9]).toBeGreaterThan(0);
+    expect(strengthOne.host.scene.children[0]!.children[0]!.position).toEqual(neutralDiagnosticPosition);
+    await physicalRuntime.dispose();
+  });
+
   it("cancels scheduling, disposes the diagnostic world, and keeps world context private", async () => {
     const { host } = renderHost();
     const scheduled = scheduler();
