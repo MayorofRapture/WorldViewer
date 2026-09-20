@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-9",
+  "implementationBaseline": "5a55ddbcde30cf3f8f2731a9940bc53a3f52c21e",
+  "frozenOracle": {
+    "id": "ORC-PROJECTION-001",
+    "baseline": "41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9"
+  },
+  "cameraApplication": "src/engine/projection/cameraProjection.ts",
+  "test": "tests/unit/cameraProjection.test.ts",
+  "reuse": ["REUSE-PROJECTION-001", "REUSE-RENDER-001"],
+  "verifiedCaseIds": ["C01-centered", "C02-left", "C04-down", "C10-outside", "C11-e590"],
+  "behavior": ["camera position equals effective eye", "identity orientation with up=(0,1,0)", "projectionMatrixInverse synchronized", "near/far synchronized", "resize preserves custom projection"],
+  "results": {
+    "sdkSurface": "pass: exactly 19 approved exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "focusedTests": "pass: 3 files, 17 tests",
+    "tests": "pass: 10 files, 44 tests",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo is not on PATH in this environment"
+  },
+  "deferred": ["render loop", "startup", "synthetic viewer playback", "diagnostic runtime wiring", "tracking", "perspective strength", "rotated screens"]
+}

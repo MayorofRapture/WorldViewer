@@ -39,8 +39,6 @@ export class RendererFoundation {
 
     const width = Math.max(this.host.clientWidth, 1);
     const height = Math.max(this.host.clientHeight, 1);
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
   }
 

@@ -11,11 +11,11 @@
 - Authoritative Approval Source: ADR-002; TDS §6, §41; `docs/reuse-register.md`.
 - Reuse Mode: A.
 - Version/source/provenance constraints: `three` `0.186.0`; `@types/three` `0.186.0`; package manifests/lockfile authoritative.
-- Remaining project-specific custom-code boundary: Renderer host lifecycle, resize observer/fallback, and cleanup wrapper only.
-- Prohibited Reinvention: No custom renderer, scene graph, general asset pipeline, React Three Fiber, projection, tracking, or world behavior.
+- Remaining project-specific custom-code boundary: Renderer host lifecycle, resize observer/fallback, cleanup wrapper, and externally owned projection preservation only.
+- Prohibited Reinvention: No custom renderer, scene graph, general asset pipeline, React Three Fiber, symmetric-projection regeneration on resize, tracking, or world behavior.
 - Deterministic tests and fixture paths: `tests/unit/app.test.tsx`; `src/engine/rendering/RendererFoundation.ts`.
 - Governing ADR references: `docs/architecture/adr/ADR-002 — Imperative Three.js Engine; React for Application UI.md`.
 - Evidence references: `evidence/milestone-0/renderer-foundation.json`; `evidence/milestone-0/packaged-launch-smoke.json`.
-- Known limitations / unsupported behavior: No render loop, projection math, world content, tracking, or M0C synthetic mode is implemented.
+- Known limitations / unsupported behavior: No render loop, world content, tracking, or M0C synthetic mode is implemented; custom projection application remains owned by `src/engine/projection/`.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `npx.cmd tauri build`; `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-packaged-smoke.ps1`; `git diff --check`.
 - Escalation conditions: Any request for projection, viewer state, tracking, world loading, or a renderer architecture change.
