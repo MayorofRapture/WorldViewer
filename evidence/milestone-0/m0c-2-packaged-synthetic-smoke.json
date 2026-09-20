@@ -3,7 +3,7 @@
   "oracleId": "ORC-PACKAGED-SYNTHETIC-001",
   "task": "M0C2",
   "implementationBaseline": "b0a48fef2c1921af8de8a572118201ca47828938",
-  "finalImplementationCommit": "recorded by the final M0C2 commit",
+  "finalImplementationCommit": "2475f7eab5273e2051c914e7669dc9c7b8694735",
   "verifiedAt": "2026-09-20",
   "procedure": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run-packaged-smoke.ps1 -Mode synthetic",
   "requiredChecks": [

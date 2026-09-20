@@ -4,12 +4,12 @@
 
 - Task ID: M0C2
 - Baseline: `b0a48fef2c1921af8de8a572118201ca47828938`
-- Status: fresh verification passed; final Git mutation pending
+- Status: completed; final M0C2 implementation commit recorded
 - Oracle: `ORC-PACKAGED-SYNTHETIC-001`, Class B, not-required review, frozen after the packaged procedure passed
 
 ## Scope delivered
 
-- Corrected deterministic final-sample delivery in `SyntheticViewerPoseSource`.
+- Consumes the already-corrected deterministic final-sample delivery baseline in `SyntheticViewerPoseSource`.
 - Replaced fabricated `ViewerState` construction in `SyntheticProjectionRuntime` with the production `ViewerStateController` and a host-private monotonic clock adapter.
 - Added the identity synthetic RawViewerPose-to-FilteredViewerPose smoke adapter, bounded observer seam, post-render ordering, and scheduled-error reporting.
 - Extended `App.tsx` for explicit `asymmetric-x-y` synthetic smoke and five stable checks while preserving launch and ordinary diagnostic behavior.
