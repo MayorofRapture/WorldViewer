@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "task": "M0B-13",
+  "auditedHead": "d3c3a83b61b000eeaf6356491355e146ddd5afb4",
+  "auditedBranch": "feat/m0a1-foundation",
+  "verifiedAt": "2026-09-20",
+  "priorAudit": {
+    "result": "fail",
+    "finding": "SyntheticProjectionRuntime forwarded unbounded WorldFrame.deltaSeconds",
+    "correction": "M0B-12 established and materialized the 0.1 second / 100 millisecond engine maximum"
+  },
+  "finalAudit": {
+    "review": "stronger-reasoning independent re-audit",
+    "result": "pass",
+    "remainingSubstantiveFindings": 0
+  },
+  "frozenOracle": {
+    "id": "ORC-PROJECTION-001",
+    "baseline": "41f7071b2c2fbb6df64dc1280e6b3c63b5ec8ef9",
+    "fixturesHelperTestChanged": false,
+    "unauthorizedChange": false
+  },
+  "exitGate": "satisfied",
+  "m0cAuthorized": true,
+  "verification": {
+    "sdkSurface": "pass: exactly 19 approved named exports",
+    "worldBoundaries": "pass",
+    "typecheck": "pass",
+    "tests": "pass: 12 files, 54 tests",
+    "frontendBuild": "pass",
+    "cargoCheckLocked": "unavailable: cargo executable is not installed",
+    "diffCheck": "pass"
+  },
+  "scopeNote": "M0B projection/synthetic scope is accepted; later production integration remains governed by later milestones."
+}
