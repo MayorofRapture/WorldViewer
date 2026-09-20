@@ -16,8 +16,14 @@
     "monotonic scripted timestamp ordering",
     "canonical millimeter pose output",
     "repeatability and end-of-script null behavior",
+    "final sample delivery when a timestamp crosses script completion",
     "invalid confidence, coordinates, timestamps, and estimator IDs rejected"
   ],
+  "correction": {
+    "verifiedAt": "2026-09-20",
+    "description": "Final scripted sample is delivered once when sampling crosses its timestamp, then later timestamps return null; restart resets completion state.",
+    "regressionTest": "tests/unit/syntheticViewerPoseSource.test.ts"
+  },
   "limitations": [
     "No ViewerStateController, loss/reacquisition timing, tracking, calibration, filtering, projection, or M0C behavior is included."
   ]

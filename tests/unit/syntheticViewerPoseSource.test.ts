@@ -21,6 +21,34 @@ describe("SyntheticViewerPoseSource", () => {
     expect(source.sample(201)).toBeNull();
   });
 
+  it("delivers the final sample once when sampling crosses its timestamp", async () => {
+    const source = new SyntheticViewerPoseSource([
+      pose(0, 0, 0, 600),
+      pose(100, 10, 0, 600),
+      pose(200, 20, 0, 600),
+    ]);
+
+    await source.start();
+    expect(source.sample(150)?.positionMm).toEqual({ x: 10, y: 0, z: 600 });
+    expect(source.sample(215)?.positionMm).toEqual({ x: 20, y: 0, z: 600 });
+    expect(source.sample(216)).toBeNull();
+  });
+
+  it("delivers the final sample after a delayed first sample and resets completion on restart", async () => {
+    const source = new SyntheticViewerPoseSource([
+      pose(0, 0, 0, 600),
+      pose(100, 10, 0, 600),
+      pose(200, 20, 0, 600),
+    ]);
+
+    await source.start();
+    expect(source.sample(250)?.positionMm).toEqual({ x: 20, y: 0, z: 600 });
+    expect(source.sample(251)).toBeNull();
+    await source.start();
+    expect(source.sample(250)?.positionMm).toEqual({ x: 20, y: 0, z: 600 });
+    expect(source.sample(251)).toBeNull();
+  });
+
   it("resets deterministically on start and stops sampling after stop", async () => {
     const source = new SyntheticViewerPoseSource([pose(10, 5, 6, 700)]);
 

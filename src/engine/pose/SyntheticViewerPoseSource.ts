@@ -48,6 +48,7 @@ export class SyntheticViewerPoseSource implements ViewerPoseSource {
   private cursor = 0;
   private started = false;
   private lastTimestampMs: MonotonicMs | null = null;
+  private finalSampleDelivered = false;
 
   constructor(script: readonly RawViewerPose[]) {
     let previousTimestampMs: MonotonicMs | null = null;
@@ -61,6 +62,7 @@ export class SyntheticViewerPoseSource implements ViewerPoseSource {
   async start(): Promise<void> {
     this.cursor = 0;
     this.lastTimestampMs = null;
+    this.finalSampleDelivered = false;
     this.started = true;
   }
 
@@ -68,6 +70,7 @@ export class SyntheticViewerPoseSource implements ViewerPoseSource {
     this.started = false;
     this.cursor = 0;
     this.lastTimestampMs = null;
+    this.finalSampleDelivered = false;
   }
 
   sample(timestampMs: MonotonicMs): RawViewerPose | null {
@@ -87,8 +90,9 @@ export class SyntheticViewerPoseSource implements ViewerPoseSource {
     const sampleIndex = this.cursor - 1;
     const currentSample = this.script[sampleIndex];
     if (!currentSample) return null;
-    if (this.cursor === this.script.length && timestampMs > currentSample.timestampMs) {
-      return null;
+    if (this.cursor === this.script.length) {
+      if (this.finalSampleDelivered && timestampMs > currentSample.timestampMs) return null;
+      this.finalSampleDelivered = true;
     }
     return currentSample;
   }
