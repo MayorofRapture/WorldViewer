@@ -99,13 +99,14 @@ fn tracking_args() -> [&'static str; 26] {
 async fn run_tracking_sidecar(app: tauri::AppHandle) -> Result<TrackingEvidence, String> {
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, OPENSEEFACE_PORT)).map_err(|error| format!("could not bind loopback UDP receiver 127.0.0.1:{OPENSEEFACE_PORT}: {error}"))?;
     socket.set_nonblocking(true).map_err(|error| error.to_string())?;
-    let runtime_root = app.path().resource_dir().map_err(|error| format!("could not resolve packaged resource directory: {error}"))?.join("resources").join("openseeface-runtime");
-    if !runtime_root.join("Binary").join("facetracker.exe").is_file() || !runtime_root.join("models").is_dir() || !runtime_root.join("Licenses").is_dir() {
-        return Err(format!("packaged OpenSeeFace runtime is incomplete at {}; expected Binary\\facetracker.exe, models, and Licenses", runtime_root.display()));
+    let runtime_root = app.path().resource_dir().map_err(|error| format!("could not resolve packaged resource directory: {error}"))?;
+    let required_runtime_files = ["openseeface-facetracker.exe", "python37.dll", "models/lm_model3_opt.onnx", "models/mnv3_detection_opt.onnx", "models/retinaface_640x640_opt.onnx"];
+    let missing_files: Vec<_> = required_runtime_files.iter().filter(|relative| !runtime_root.join(relative).is_file()).collect();
+    if !missing_files.is_empty() || !runtime_root.join("models").is_dir() || !runtime_root.join("Licenses").is_dir() {
+        return Err(format!("packaged OpenSeeFace runtime is incomplete at {}; missing files: {:?}, models directory: {}, Licenses directory: {}", runtime_root.display(), missing_files, runtime_root.join("models").is_dir(), runtime_root.join("Licenses").is_dir()));
     }
     let started = Instant::now();
-    let runtime_binary_dir = runtime_root.join("Binary");
-    let command = app.shell().sidecar("openseeface-facetracker").map_err(|error| format!("could not resolve packaged OpenSeeFace sidecar: {error}"))?.current_dir(&runtime_binary_dir).args(tracking_args());
+    let command = app.shell().sidecar("openseeface-facetracker").map_err(|error| format!("could not resolve packaged OpenSeeFace sidecar: {error}"))?.current_dir(&runtime_root).args(tracking_args());
     let (_events, child) = command.spawn().map_err(|error| format!("could not start packaged OpenSeeFace sidecar: {error}"))?;
     let spawn_ms = started.elapsed().as_secs_f64() * 1000.0;
     let sidecar_pid = child.pid();

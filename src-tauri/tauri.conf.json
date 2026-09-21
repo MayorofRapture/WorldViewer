@@ -21,6 +21,6 @@
     "targets": "all",
     "icon": ["icons/icon.ico"],
     "externalBin": ["binaries/openseeface-facetracker"],
-    "resources": ["resources/openseeface-runtime"]
+    "resources": { "resources/openseeface-runtime": "" }
   }
 }
