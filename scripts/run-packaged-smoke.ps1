@@ -1,7 +1,7 @@
 param(
     [string]$ExecutablePath = "src-tauri/target/release/worldviewer.exe",
     [int]$TimeoutSeconds = 30,
-    [ValidateSet("launch", "synthetic")]
+    [ValidateSet("launch", "synthetic", "tracking-sidecar")]
     [string]$Mode = "launch"
 )
 
@@ -45,13 +45,15 @@ try {
     if ($result.schemaVersion -ne 1 -or $result.mode -ne $Mode -or $result.status -notin @("pass", "fail")) {
         throw "Packaged smoke result does not match the requested '$Mode' contract."
     }
+    # Preserve machine-readable failure evidence before mode-specific assertions.
+    $result | ConvertTo-Json -Depth 10
 
     if ($Mode -eq "launch") {
         $launchCheck = @($result.checks | Where-Object { $_.id -eq "application-shell-ready" })
         if ($launchCheck.Count -ne 1 -or $launchCheck[0].status -ne "pass") {
             throw "Launch smoke result must contain a passing application-shell-ready check."
         }
-    } else {
+    } elseif ($Mode -eq "synthetic") {
         $requiredSyntheticChecks = @(
             "renderer-ready",
             "diagnostic-world-ready",
@@ -65,6 +67,11 @@ try {
                 throw "Synthetic smoke result must contain a passing '$checkId' check."
             }
         }
+    } else {
+        $trackingCheck = @($result.checks | Where-Object { $_.id -eq "packaged-openseeface-operational-run" })
+        if ($trackingCheck.Count -ne 1 -or $trackingCheck[0].status -ne "pass") {
+            throw "Tracking-sidecar smoke result must contain a passing packaged-openseeface-operational-run check."
+        }
     }
 
     $expectedExitCode = if ($result.status -eq "pass") { 0 } else { 1 }
@@ -72,7 +79,6 @@ try {
         throw "Smoke result status '$($result.status)' mapped to exit code $($process.ExitCode), expected $expectedExitCode."
     }
 
-    $result | ConvertTo-Json -Depth 10
     if ($result.status -ne "pass") {
         throw "Packaged launch smoke reported failure."
     }

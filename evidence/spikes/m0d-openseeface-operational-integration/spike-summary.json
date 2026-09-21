@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "spikeId": "m0d-openseeface-operational-integration",
+  "status": "inconclusive-with-packaging-failure",
+  "observedAt": "2026-09-21",
+  "baseline": {
+    "productionBranch": "feat/m0a1-foundation",
+    "productionHead": "34d7e843362691c053ebd461fac0e3f7d451ff64",
+    "physicalPoseSpikeHead": "9b6d80ef82574a02000f0d2339811f44d20d3283"
+  },
+  "upstream": {
+    "version": "v1.20.5",
+    "releaseUrl": "https://github.com/emilianavt/OpenSeeFace/releases/download/v1.20.5/OpenSeeFace-v1.20.5.zip",
+    "releaseSha256": "c9223f3547dce65b09705bb9ff74439b7d36e1c37bbe9668672711cf5aa31147",
+    "facetrackerSha256": "ee44485d440a8528cf9ed5c8e4d3a4be750763c34088ab829602f3dc145e25a9",
+    "licensesPreserved": true
+  },
+  "packaging": {
+    "mechanism": "Tauri 2 bundle.externalBin plus tauri-plugin-shell",
+    "runtimeResourcesPresent": true,
+    "externalExecutablePresent": true,
+    "status": "Failed",
+    "observedFact": "The Tauri external-binary output contained facetracker.exe but did not place python37.dll adjacent to it. Running that executable produced: Error loading Python DLL ... target\\release\\python37.dll.",
+    "inference": "The pinned PyInstaller OpenSeeFace runtime requires a multi-file side-by-side package layout not supplied by the tested standard externalBin output.",
+    "notAttempted": ["custom launcher", "Windows Job Object", "custom supervisor", "OpenSeeFace modification"]
+  },
+  "operationalRun": {
+    "status": "Failed",
+    "procedure": "scripts/run-packaged-smoke.ps1 -Mode tracking-sidecar -TimeoutSeconds 45",
+    "result": "No valid got_3d_points packet within 20 seconds; test-owned sidecar was not left running after the failure.",
+    "liveTracking": "Unverified because the packaged sidecar could not load its required Python DLL runtime.",
+    "normalShutdownCleanup": "Observed no facetracker.exe remained after the bounded failure path; normal successful-run cleanup remains Unverified.",
+    "forcedHostTermination": "Blocked by packaged-sidecar startup failure.",
+    "offlineOperation": "Blocked by packaged-sidecar startup failure.",
+    "cpuMeasurement": "Blocked by packaged-sidecar startup failure.",
+    "networkObservation": "Unverified; no successful live interval existed."
+  },
+  "provenance": {
+    "licenseStatement": "Carry forward the prior spike's BSD-2-Clause code/model statement and preserved upstream Licenses directory.",
+    "telemetryStatement": "Carry forward the prior spike's upstream telemetry-free ONNX Runtime statement; it is distinct from this local runtime observation.",
+    "trainingDataCaveat": "Carry forward the documented prior-spike training-data provenance caveat; no new legal conclusion is made."
+  }
+}

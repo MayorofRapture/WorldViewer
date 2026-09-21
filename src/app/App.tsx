@@ -4,7 +4,7 @@ import { RendererFoundation } from "../engine/rendering/RendererFoundation";
 import { SYNTHETIC_MOTION_SCRIPTS } from "../engine/pose/syntheticMotionScripts";
 import { SyntheticProjectionRuntime, type SyntheticProjectionRuntimeObservation } from "../world-host/development/syntheticProjectionRuntime";
 
-type SmokeMode = "launch" | "synthetic";
+type SmokeMode = "launch" | "synthetic" | "tracking-sidecar";
 type SmokeStatus = "pass" | "fail";
 type SmokeResult = {
   schemaVersion: 1;
@@ -99,7 +99,7 @@ export default function App() {
     void invoke<SmokeMode | null>("get_startup_mode")
       .catch(() => null)
       .then((mode) => {
-        if (cancelled || mode === "launch" || !rendererHost.current) return;
+        if (cancelled || mode === "launch" || mode === "tracking-sidecar" || !rendererHost.current) return;
         const startedAt = performance.now();
         let completeSynthetic: ((result: SmokeResult) => void) | undefined;
         if (mode === "synthetic") {

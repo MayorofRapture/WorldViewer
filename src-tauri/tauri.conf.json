@@ -19,6 +19,8 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.ico"]
+    "icon": ["icons/icon.ico"],
+    "externalBin": ["binaries/openseeface-facetracker"],
+    "resources": ["resources/openseeface-runtime"]
   }
 }
