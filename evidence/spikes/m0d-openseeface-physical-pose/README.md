@@ -23,8 +23,14 @@ Close other applications using the E590 webcam, sit in front of the screen, and 
 cargo run --manifest-path src-tauri/Cargo.toml --bin openseeface-spike -- --interactive
 ```
 
-For every prompt, press Enter when settled, then hold the requested position
-still for the fixed 5-second capture. The order is three centered depths
+Sit normally with your face visible and press Enter to begin the required
+tracking preflight. It must receive and decode a valid 3D loopback pose before
+the measurement plan begins; otherwise it terminates the tracker and prints a
+camera-discovery hint. For every later prompt, press Enter when settled, then
+hold the requested position still for the fixed 5-second capture. Depth is the
+approximate distance from the physical screen plane outward to the midpoint
+between your eyes (the cyclopean eye). Centered means that cyclopean eye is
+approximately aligned with display center. The order is three centered depths
 (450/600/750 mm); horizontal -150/0/+150 mm at 600 mm; vertical -100/0/+100 mm
 at 600 mm; three centered 600 mm stationary holds; and centered 600 mm neutral,
 left/right turn, slight up/down orientation holds.
@@ -37,6 +43,8 @@ gaze tracking disabled. It persists no camera image or video.
 
 Return the newly created directory under `sessions/`, specifically
 `session-metadata.json`, `raw-samples.jsonl`, and `segment-summary.json`.
-The raw PnP translation remains explicitly labeled `openseeface-model-units`;
-the cyclopean signal is only the uncalibrated midpoint of upstream 3D points 68
-and 69. No result in this spike is in WorldViewer millimeters.
+The raw PnP translation remains explicitly labeled `openseeface-model-units`.
+The raw midpoint of wire points 68/69 is retained only as an object-space
+diagnostic. The primary cyclopean signal restores the wire signs, applies the
+raw OpenCV quaternion and raw PnP translation, and remains uncalibrated
+`openseeface-model-units`. No result in this spike is in WorldViewer millimeters.
