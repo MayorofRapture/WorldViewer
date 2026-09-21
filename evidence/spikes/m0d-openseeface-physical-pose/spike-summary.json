@@ -26,11 +26,11 @@
   },
   "candidateSignals": [
     "raw-pnp-translation-openseeface-model-units",
-    "object-space-cyclopean-midpoint-of-points3d-68-and-69-openseeface-model-units-diagnostic-only",
+    "tracker-local-cyclopean-midpoint-of-points3d-68-and-69-openseeface-model-units-diagnostic-only",
     "camera-space-cyclopean-eye-from-raw-pnp-transform-openseeface-model-units",
     "image-space-eye-centers-and-interocular-distance-pixels"
   ],
   "sessionRunner": "cargo run --manifest-path src-tauri/Cargo.toml --bin openseeface-spike -- --interactive",
-  "cameraSpaceTransform": "Restore each wire point as (x, -y, -z), midpoint points 68/69, normalize the raw OpenCV quaternion, then apply R * localCyclopean + rawPnpTranslation. This produces no millimeter or WorldViewer-axis claim.",
+  "cameraSpaceTransform": "Restore each wire point as (x, -y, -z), midpoint points 68/69, normalize the raw OpenSeeFace quaternion, conjugate its vector component before applying the conventional quaternion-to-matrix formula, then apply R * localCyclopean + rawPnpTranslation. The raw quaternion remains preserved unchanged. This produces no millimeter or WorldViewer-axis claim.",
   "measurementPreflight": "Before segments, require one decoded loopback packet with got_3d_points and a valid camera-space candidate within 12 seconds."
 }

@@ -46,7 +46,7 @@ struct Packet {
 #[derive(Serialize)]
 struct CandidateSignals {
     raw_pnp_translation_openseeface_model_units: Vec3,
-    object_space_cyclopean_midpoint_openseeface_model_units: Option<Vec3>,
+    tracker_local_cyclopean_midpoint_openseeface_model_units: Option<Vec3>,
     camera_space_cyclopean_eye_openseeface_model_units: Option<Vec3>,
     left_eye_center_pixels: Vec2,
     right_eye_center_pixels: Vec2,
@@ -134,11 +134,14 @@ fn decode_packet(bytes: &[u8]) -> Result<Vec<Packet>, String> {
 fn midpoint(a: Vec3, b: Vec3) -> Vec3 { Vec3 { x: (a.x + b.x) / 2.0, y: (a.y + b.y) / 2.0, z: (a.z + b.z) / 2.0 } }
 fn tracker_local_from_wire(point: Vec3) -> Vec3 { Vec3 { x: point.x, y: -point.y, z: -point.z } }
 fn add(a: Vec3, b: Vec3) -> Vec3 { Vec3 { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z } }
-fn rotate_by_raw_quaternion(point: Vec3, quaternion: Quaternion) -> Option<Vec3> {
+// OpenSeeFace serializes its raw quaternion with the conjugate vector-sign
+// convention relative to the conventional quaternion-to-matrix formula. Keep
+// the packet value unchanged; conjugate only while rebuilding object-to-camera R.
+fn rotate_by_openseeface_raw_quaternion(point: Vec3, quaternion: Quaternion) -> Option<Vec3> {
     let magnitude_squared = quaternion.x * quaternion.x + quaternion.y * quaternion.y + quaternion.z * quaternion.z + quaternion.w * quaternion.w;
     if !magnitude_squared.is_finite() || magnitude_squared <= 1e-12 { return None; }
     let magnitude = magnitude_squared.sqrt();
-    let (x, y, z, w) = (quaternion.x / magnitude, quaternion.y / magnitude, quaternion.z / magnitude, quaternion.w / magnitude);
+    let (x, y, z, w) = (-quaternion.x / magnitude, -quaternion.y / magnitude, -quaternion.z / magnitude, quaternion.w / magnitude);
     let r00 = 1.0 - 2.0 * (y * y + z * z); let r01 = 2.0 * (x * y - z * w); let r02 = 2.0 * (x * z + y * w);
     let r10 = 2.0 * (x * y + z * w); let r11 = 1.0 - 2.0 * (x * x + z * z); let r12 = 2.0 * (y * z - x * w);
     let r20 = 2.0 * (x * z - y * w); let r21 = 2.0 * (y * z + x * w); let r22 = 1.0 - 2.0 * (x * x + y * y);
@@ -148,7 +151,7 @@ fn rotate_by_raw_quaternion(point: Vec3, quaternion: Quaternion) -> Option<Vec3>
 fn camera_space_cyclopean(packet: &Packet) -> Option<Vec3> {
     if !packet.got_3d_points { return None; }
     let local = midpoint(tracker_local_from_wire(packet.points_3d[68]), tracker_local_from_wire(packet.points_3d[69]));
-    rotate_by_raw_quaternion(local, packet.raw_quaternion).map(|rotated| add(rotated, packet.raw_pnp_translation))
+    rotate_by_openseeface_raw_quaternion(local, packet.raw_quaternion).map(|rotated| add(rotated, packet.raw_pnp_translation))
 }
 fn eye_center(points: &[Vec2], indices: &[usize]) -> Vec2 {
     let (x, y) = indices.iter().fold((0.0, 0.0), |(x, y), &i| (x + points[i].x, y + points[i].y));
@@ -161,7 +164,7 @@ fn candidates(packet: &Packet) -> CandidateSignals {
     let right = eye_center(&packet.landmarks_2d, &right_indices);
     let image_midpoint = Vec2 { x: (left.x + right.x) / 2.0, y: (left.y + right.y) / 2.0 };
     let dx = left.x - right.x; let dy = left.y - right.y;
-    CandidateSignals { raw_pnp_translation_openseeface_model_units: packet.raw_pnp_translation, object_space_cyclopean_midpoint_openseeface_model_units: packet.got_3d_points.then(|| midpoint(packet.points_3d[68], packet.points_3d[69])), camera_space_cyclopean_eye_openseeface_model_units: camera_space_cyclopean(packet), left_eye_center_pixels: left, right_eye_center_pixels: right, cyclopean_image_point_pixels: image_midpoint, interocular_distance_pixels: (dx * dx + dy * dy).sqrt(), eye_landmark_indices: [36,37,38,39,40,41,42,43,44,45,46,47] }
+    CandidateSignals { raw_pnp_translation_openseeface_model_units: packet.raw_pnp_translation, tracker_local_cyclopean_midpoint_openseeface_model_units: packet.got_3d_points.then(|| midpoint(tracker_local_from_wire(packet.points_3d[68]), tracker_local_from_wire(packet.points_3d[69]))), camera_space_cyclopean_eye_openseeface_model_units: camera_space_cyclopean(packet), left_eye_center_pixels: left, right_eye_center_pixels: right, cyclopean_image_point_pixels: image_midpoint, interocular_distance_pixels: (dx * dx + dy * dy).sqrt(), eye_landmark_indices: [36,37,38,39,40,41,42,43,44,45,46,47] }
 }
 
 fn stats(values: &[f64]) -> AxisStats {
@@ -261,7 +264,7 @@ mod tests {
     #[test] fn rejects_truncated_and_nonfinite_packets() { assert!(decode_packet(&fixture()[..100]).is_err()); let mut bad = fixture(); bad[0..8].copy_from_slice(&f64::NAN.to_le_bytes()); assert!(decode_packet(&bad).is_err()); }
     #[test] fn restores_wire_signs_before_camera_transform() { let mut packet = decode_packet(&fixture()).unwrap().remove(0); packet.points_3d[68] = Vec3 { x: 2.0, y: -3.0, z: 4.0 }; packet.points_3d[69] = Vec3 { x: 4.0, y: -5.0, z: 6.0 }; packet.raw_quaternion = Quaternion { x: 0.0, y: 0.0, z: 0.0, w: 1.0 }; packet.raw_pnp_translation = Vec3 { x: 0.0, y: 0.0, z: 0.0 }; let camera = camera_space_cyclopean(&packet).unwrap(); assert_eq!((camera.x, camera.y, camera.z), (3.0, 4.0, -5.0)); }
     #[test] fn identity_rotation_adds_translation_to_local_cyclopean_point() { let mut packet = decode_packet(&fixture()).unwrap().remove(0); packet.points_3d[68] = Vec3 { x: 1.0, y: 0.0, z: 0.0 }; packet.points_3d[69] = Vec3 { x: 3.0, y: 0.0, z: 0.0 }; packet.raw_quaternion = Quaternion { x: 0.0, y: 0.0, z: 0.0, w: 1.0 }; packet.raw_pnp_translation = Vec3 { x: 10.0, y: 20.0, z: 30.0 }; let camera = camera_space_cyclopean(&packet).unwrap(); assert_eq!((camera.x, camera.y, camera.z), (12.0, 20.0, 30.0)); }
-    #[test] fn known_ninety_degree_rotation_is_analytic() { let mut packet = decode_packet(&fixture()).unwrap().remove(0); packet.points_3d[68] = Vec3 { x: 1.0, y: 0.0, z: 0.0 }; packet.points_3d[69] = Vec3 { x: 1.0, y: 0.0, z: 0.0 }; let s = 0.5_f32.sqrt(); packet.raw_quaternion = Quaternion { x: 0.0, y: 0.0, z: s, w: s }; packet.raw_pnp_translation = Vec3 { x: 0.0, y: 0.0, z: 0.0 }; let camera = camera_space_cyclopean(&packet).unwrap(); assert!((camera.x - 0.0).abs() < 1e-5 && (camera.y - 1.0).abs() < 1e-5 && camera.z.abs() < 1e-5); }
+    #[test] fn upstream_serialized_rz_positive_ninety_degrees_is_analytic() { let mut packet = decode_packet(&fixture()).unwrap().remove(0); packet.points_3d[68] = Vec3 { x: 1.0, y: 0.0, z: 0.0 }; packet.points_3d[69] = Vec3 { x: 1.0, y: 0.0, z: 0.0 }; let s = 0.5_f32.sqrt(); packet.raw_quaternion = Quaternion { x: 0.0, y: 0.0, z: -s, w: s }; packet.raw_pnp_translation = Vec3 { x: 0.0, y: 0.0, z: 0.0 }; let camera = camera_space_cyclopean(&packet).unwrap(); assert!((camera.x - 0.0).abs() < 1e-5 && (camera.y - 1.0).abs() < 1e-5 && camera.z.abs() < 1e-5); }
     #[test] fn invalid_quaternion_does_not_fabricate_camera_space_pose() { let mut packet = decode_packet(&fixture()).unwrap().remove(0); packet.raw_quaternion = Quaternion { x: 0.0, y: 0.0, z: 0.0, w: 0.0 }; assert!(camera_space_cyclopean(&packet).is_none()); }
     #[test] fn failed_pose_packets_remain_counted_but_do_not_supply_position_statistics() { let mut packet = decode_packet(&fixture()).unwrap().remove(0); packet.got_3d_points = false; let result = summary("failed", "fixture", Duration::from_secs(1), &[packet]); assert_eq!((result.sample_count, result.valid_pose_count, result.invalid_pose_count), (1, 0, 1)); assert!(result.raw_pnp_x.is_none() && result.valid_pnp_error.is_none() && result.camera_space_cyclopean_z.is_none()); }
     #[test] fn calculates_descriptive_statistics() { let value = stats(&[1.,2.,3.,4.,5.]); assert_eq!(value.median, 3.); assert_eq!(value.p95_abs_deviation_from_median, 2.); }
