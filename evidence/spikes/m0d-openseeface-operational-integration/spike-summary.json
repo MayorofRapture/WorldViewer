@@ -163,6 +163,67 @@
       "artifact": "evidence/spikes/m0d-openseeface-operational-integration/harness-correction.json",
       "noPerformanceTuning": true
     },
+    "threadingPerformanceExperiment": {
+      "status": "Verified",
+      "model": 3,
+      "control": "Only --max-threads changed; packaged path, camera 0, 640x360, requested 24 FPS, one face, gaze disabled, --no-3d-adapt 1, pose-validity rules, and 10-second warm-up plus 60-second measurement remained frozen.",
+      "baselineArtifact": "evidence/spikes/m0d-openseeface-operational-integration/operational-matrix.json",
+      "conditions": [
+        {
+          "maxThreads": 1,
+          "cadenceHz": 9.519267600510382,
+          "validRate": 1.0,
+          "medianInterPoseIntervalMs": 97.4617,
+          "p95InterPoseIntervalMs": 153.6454,
+          "averagePercentTotalSystem": 8.07412347386464,
+          "peakPercentTotalSystem": 11.746436124051387,
+          "performanceTarget15Hz": "Failed",
+          "preferred20To30Hz": "Failed"
+        },
+        {
+          "maxThreads": 2,
+          "artifact": "evidence/spikes/m0d-openseeface-operational-integration/threading-model3-threads2.json",
+          "warmUpDurationMs": 10000.048600000002,
+          "measurementDurationMs": 60000.6451,
+          "measurementTotalPacketCount": 1397,
+          "measurementValidPoseCount": 1397,
+          "measurementInvalidPoseCount": 0,
+          "validRate": 1.0,
+          "cadenceHz": 23.287370342081577,
+          "medianInterPoseIntervalMs": 42.6071,
+          "p95InterPoseIntervalMs": 52.5783,
+          "minimumInterPoseIntervalMs": 24.1632,
+          "maximumInterPoseIntervalMs": 100.9111,
+          "upstreamTimestampsMonotonic": true,
+          "averagePercentTotalSystem": 21.294924209619804,
+          "peakPercentTotalSystem": 24.531794807297874,
+          "performanceTarget15Hz": "Passed",
+          "preferred20To30Hz": "Achieved"
+        },
+        {
+          "maxThreads": 4,
+          "artifact": "evidence/spikes/m0d-openseeface-operational-integration/threading-model3-threads4.json",
+          "warmUpDurationMs": 10002.144499999995,
+          "measurementDurationMs": 60000.1762,
+          "measurementTotalPacketCount": 1399,
+          "measurementValidPoseCount": 1399,
+          "measurementInvalidPoseCount": 0,
+          "validRate": 1.0,
+          "cadenceHz": 23.334046590710273,
+          "medianInterPoseIntervalMs": 42.684,
+          "p95InterPoseIntervalMs": 49.437799999999996,
+          "minimumInterPoseIntervalMs": 19.7224,
+          "maximumInterPoseIntervalMs": 99.6763,
+          "upstreamTimestampsMonotonic": true,
+          "averagePercentTotalSystem": 44.582576014156814,
+          "peakPercentTotalSystem": 46.809286174442065,
+          "performanceTarget15Hz": "Passed",
+          "preferred20To30Hz": "Achieved"
+        }
+      ],
+      "remoteUdpBehavior": "Unverified",
+      "productionAdoption": "No decision made"
+    },
     "productionAdoption": "Unverified; no adoption decision was made."
   },
   "provenance": {

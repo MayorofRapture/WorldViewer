@@ -81,6 +81,33 @@ and 11.7464% peak of total system capacity, equivalent to 64.5930% average
 of one logical core on an eight-logical-processor machine. This is a process
 CPU measurement, not a render or motion-to-photon metric.
 
+### Controlled model-3 thread experiment
+
+The controlled follow-up changed only OpenSeeFace `--max-threads`; model 3,
+one face, camera 0, 640x360, requested 24 FPS, gaze disabled, `--no-3d-adapt
+1`, the packaged path, pose-validity rules, and the 10-second warm-up plus
+60-second measurement procedure remained frozen. The emitted evidence records
+the actual thread count and complete tracker argument string.
+
+| Max threads | Cadence Hz | Valid rate | Median interval | P95 interval | Avg CPU total | Peak CPU total | >=15 Hz | 20-30 Hz |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: |
+| 1 | 9.519267600510382 | 1.0 | 97.4617 ms | 153.6454 ms | 8.0741% | 11.7464% | Failed | Failed |
+| 2 | 23.287370342081577 | 1.0 | 42.6071 ms | 52.5783 ms | 21.2949% | 24.5318% | Passed | Achieved |
+| 4 | 23.334046590710273 | 1.0 | 42.6840 ms | 49.4378 ms | 44.5826% | 46.8093% | Passed | Achieved |
+
+The new formal thread-2 run used 10.0000 seconds of warm-up and 60.0006
+seconds of measurement, with 1,397 valid poses and zero invalid poses. The
+thread-4 run used 10.0021 seconds of warm-up and 60.0002 seconds of
+measurement, with 1,399 valid poses and zero invalid poses. Upstream timestamps
+were monotonic in both runs. CPU samples used the existing one-second process
+`TotalProcessorTime` delta method on the eight-logical-processor machine.
+
+Raw artifacts are `threading-model3-threads2.json` and
+`threading-model3-threads4.json`; the accepted one-thread artifact remains
+`operational-matrix.json`. These are performance measurements only. No
+production adoption decision was made, and remote UDP behavior remains
+Unverified.
+
 Network observation was Verified only to the extent supported by the tools:
 expected loopback UDP pose traffic was established by the application
 protocol, and no non-loopback TCP connection was observed during the sustained

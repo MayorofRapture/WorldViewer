@@ -3,7 +3,10 @@ param(
     [string]$OutputPath = "evidence/spikes/m0d-openseeface-operational-integration/operational-matrix.json",
     [switch]$TestOffline,
     [switch]$OfflineOnly,
-    [switch]$HarnessCorrection
+    [switch]$HarnessCorrection,
+    [ValidateSet(1, 2, 4)]
+    [int]$MaxThreads = 1,
+    [switch]$SustainedOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,6 +48,7 @@ function Start-PackagedMode([string]$Mode, [switch]$LifecycleHold) {
     $startInfo.RedirectStandardError = $true
     $startInfo.CreateNoWindow = $true
     $startInfo.Environment["WORLD_VIEWER_SMOKE_MODE"] = $Mode
+    $startInfo.Environment["WORLD_VIEWER_OPENSEEFACE_MAX_THREADS"] = $MaxThreads.ToString()
     if ($LifecycleHold) { $startInfo.Environment["WORLD_VIEWER_SMOKE_LIFECYCLE_HOLD"] = "1" }
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
@@ -130,6 +134,7 @@ function Run-SustainedMeasurement {
     }
     $cpuValues = @($cpuSamples | ForEach-Object { $_.percentTotalSystem })
     [pscustomobject]@{
+        maxThreads = $MaxThreads
         status = if ($completed.result.status -eq "pass") { "Verified" } else { "Failed" }
         sidecarPid = $sidecarPid
         processIdentity = "openseeface-facetracker.exe"
@@ -245,6 +250,9 @@ if ($HarnessCorrection) {
 $matrix = [ordered]@{
     schemaVersion = 1
     observedAt = [DateTimeOffset]::UtcNow.ToString("o")
+    maxThreads = $MaxThreads
+    experiment = "model3-max-threads-$MaxThreads"
+    trackerArguments = "-i 127.0.0.1 -p 11573 -W 640 -H 360 -F 24 -c 0 -v 0 -s 1 --faces 1 --model 3 --gaze-tracking 0 --max-threads $MaxThreads --no-3d-adapt 1"
     executable = $resolvedExecutable
     sidecar = $resolvedSidecar
     trackerArgumentsFrozen = $true
@@ -253,11 +261,13 @@ $matrix = [ordered]@{
 
 if (-not $OfflineOnly) {
     $matrix.sustainedTracking = Run-SustainedMeasurement
-    $matrix.normalSuccessfulCleanup = Run-NormalSuccessfulCleanup
-    $matrix.forcedHostTerminationTrials = @(1..3 | ForEach-Object { Run-ReadinessGatedForcedHostTrial $_ })
-    $matrix.duplicateProcess = Run-DuplicateProcess
-    $matrix.missingSidecar = Run-ReversibleAssetFailure "openseeface-facetracker.exe" "missing-sidecar"
-    $matrix.missingModelRuntime = Run-ReversibleAssetFailure "models/lm_model3_opt.onnx" "missing-required-model"
+    if (-not $SustainedOnly) {
+        $matrix.normalSuccessfulCleanup = Run-NormalSuccessfulCleanup
+        $matrix.forcedHostTerminationTrials = @(1..3 | ForEach-Object { Run-ReadinessGatedForcedHostTrial $_ })
+        $matrix.duplicateProcess = Run-DuplicateProcess
+        $matrix.missingSidecar = Run-ReversibleAssetFailure "openseeface-facetracker.exe" "missing-sidecar"
+        $matrix.missingModelRuntime = Run-ReversibleAssetFailure "models/lm_model3_opt.onnx" "missing-required-model"
+    }
 }
 
 if ($TestOffline) {
