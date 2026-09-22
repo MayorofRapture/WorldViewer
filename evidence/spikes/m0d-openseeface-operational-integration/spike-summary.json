@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "spikeId": "m0d-openseeface-operational-integration",
-  "status": "packaging-correction-succeeded-tracking-smoke-passed-performance-unverified",
+  "status": "operational-evidence-collected-performance-failed-crash-containment-unverified",
   "observedAt": "2026-09-21",
   "baseline": {
     "productionBranch": "feat/m0a1-foundation",
@@ -70,7 +70,7 @@
     "model": 3,
     "camera": [0, 640, 360],
     "udp": "127.0.0.1:11573",
-    "trackingPerformanceAcceptance": "Unverified: approximately 8.99 Hz was observed during this short smoke; the prescribed 10-second warm-up plus 60-second measurement was not performed.",
+    "trackingPerformanceAcceptance": "Unverified at this short-smoke stage; the later formal 10-second warm-up plus 60-second measurement superseded it with a Failed 15 Hz target result.",
     "normalShutdownCleanup": "Unverified; this smoke evidence does not establish cleanup beyond the existing test-owned child termination.",
     "forcedHostTermination": "Unverified",
     "orphanAfterForcedHostTermination": "Unverified",
@@ -79,16 +79,17 @@
     "missingModelOrRuntime": "Unverified",
     "offlineOperation": "Unverified",
     "cpuMeasurement": "Unverified",
-    "networkObservation": "Unverified; only loopback UDP was exercised.",
+    "networkObservation": "Unverified at this short-smoke stage; later TCP observation and remote-UDP limits are recorded by operationalMatrix.",
     "productionAdoption": "Unverified; this evidence makes no adoption recommendation."
   },
   "operationalMatrix": {
-    "status": "Verified evidence collected with unresolved and contradictory lifecycle results",
+    "status": "Verified evidence collected; sustained performance target Failed and crash containment Unverified",
     "evidence": [
       "evidence/spikes/m0d-openseeface-operational-integration/operational-matrix.json",
       "evidence/spikes/m0d-openseeface-operational-integration/offline-operation.json",
       "evidence/spikes/m0d-openseeface-operational-integration/operational-matrix-history.json",
-      "evidence/spikes/m0d-openseeface-operational-integration/basic-tracking-smoke.json"
+      "evidence/spikes/m0d-openseeface-operational-integration/basic-tracking-smoke.json",
+      "evidence/spikes/m0d-openseeface-operational-integration/harness-correction.json"
     ],
     "sustainedTracking": {
       "execution": "Verified",
@@ -124,36 +125,43 @@
       "status": "Verified",
       "loopbackUdp": "Observed through the valid packaged pose stream",
       "nonLoopbackTcp": "None observed during the sustained interval",
-      "nonLoopbackUdp": "None observed during the sustained interval",
-      "limitation": "Short observation does not prove future network behavior."
+      "localUdpEndpointObservation": "Get-NetUDPEndpoint identifies local endpoints only.",
+      "remoteUdpBehavior": "Unverified",
+      "limitation": "Short TCP observation does not prove future network behavior."
     },
     "normalShutdown": {
-      "status": "Verified",
-      "result": "No sidecar remained after the test-owned sustained-run shutdown path."
+      "status": "Unverified",
+      "result": "The corrected pre-emergency-cleanup probe did not obtain a successful valid-pose smoke run because of transient camera acquisition; it did not count emergency cleanup as success."
     },
     "forcedHostTermination": {
-      "execution": "Verified",
-      "orphanPrevention": "Unverified: one run observed a sidecar orphan after two seconds and a repeat run did not; both results are preserved."
+      "execution": "Blocked by transient camera acquisition in all three readiness-gated correction trials after one unchanged retry each",
+      "historicalObservations": "Preserved: earlier non-readiness-gated trials produced contradictory orphan observations.",
+      "crashContainment": "Unverified: no explicit crash-containment mechanism exists and the correction trials could not establish valid-pose readiness."
     },
     "duplicateProcess": {
       "execution": "Verified",
       "secondInstanceOutcome": "Failed boundedly on UDP port 11573 while the first sidecar remained running",
-      "hostExitStatusPropagation": "Failed: the application emitted a failure result but exited with code 0",
+      "hostExitStatusPropagation": "Verified: corrected fresh test emitted structured failure and exited with code 1",
       "cleanup": "Verified"
     },
     "missingSidecar": {
       "execution": "Verified",
       "boundedFailure": "Verified",
       "asset": "openseeface-facetracker.exe",
-      "hostExitStatusPropagation": "Failed: failure result was emitted but exit code was 0",
+      "hostExitStatusPropagation": "Verified: corrected fresh test emitted structured failure and exited with code 1",
       "restoration": "Verified"
     },
     "missingModelRuntime": {
       "execution": "Verified",
       "boundedFailure": "Verified",
       "asset": "models/lm_model3_opt.onnx",
-      "hostExitStatusPropagation": "Failed: failure result was emitted but exit code was 0",
+      "hostExitStatusPropagation": "Verified: corrected fresh test emitted structured failure and exited with code 1",
       "restoration": "Verified"
+    },
+    "harnessCorrection": {
+      "status": "Verified",
+      "artifact": "evidence/spikes/m0d-openseeface-operational-integration/harness-correction.json",
+      "noPerformanceTuning": true
     },
     "productionAdoption": "Unverified; no adoption decision was made."
   },

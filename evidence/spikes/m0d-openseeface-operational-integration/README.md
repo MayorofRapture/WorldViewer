@@ -48,13 +48,11 @@ PnP error was 3.417027227256609; the observation interval was 10001.3117 ms;
 OpenSeeFace was v1.20.5 using model 3 with camera `0,640x360` and UDP
 `127.0.0.1:11573`. No camera imagery or video is persisted.
 
-The approximately 8.99 Hz cadence is an observation from this short smoke,
-not formal tracking-performance acceptance. The Testing Strategy requires a
-10-second warm-up followed by a 60-second measurement window for standard
-performance measurement, so tracking performance acceptance remains
-Unverified. The larger operational-integration matrix also remains
-unverified and out of scope; this evidence makes no OpenSeeFace
-production-adoption recommendation.
+The approximately 8.99 Hz cadence was only an observation from this short
+smoke, not formal tracking-performance acceptance. The later prescribed
+10-second warm-up plus 60-second measurement superseded that uncertainty:
+it measured approximately 9.5193 Hz and the >=15 Hz target is Failed. No
+performance tuning was performed.
 
 ## Follow-on operational matrix
 
@@ -65,7 +63,9 @@ machine-readable outputs are `operational-matrix.json` (canonical run),
 `offline-operation.json` (separate reversible offline probe),
 `operational-matrix-history.json` (repeated observations, including a
 contradictory forced-host result), and `basic-tracking-smoke.json` (final
-basic tracking regression result).
+basic tracking regression result). `harness-correction.json` records the
+focused exit-status and lifecycle-evidence correction without rerunning
+performance, CPU, or offline collection.
 
 The canonical sustained run used the prescribed 10.0013-second warm-up and
 60.0025-second measurement window. It received 571 packets, all 571 valid
@@ -81,26 +81,32 @@ and 11.7464% peak of total system capacity, equivalent to 64.5930% average
 of one logical core on an eight-logical-processor machine. This is a process
 CPU measurement, not a render or motion-to-photon metric.
 
-Network observation was Verified for the sustained interval: expected
-loopback UDP pose traffic was present, and no non-loopback TCP or UDP activity
-was observed. This short observation does not prove future network behavior.
+Network observation was Verified only to the extent supported by the tools:
+expected loopback UDP pose traffic was established by the application
+protocol, and no non-loopback TCP connection was observed during the sustained
+interval. `Get-NetUDPEndpoint` identifies local UDP endpoints only, so remote
+UDP behavior is Unverified. This short TCP observation does not prove future
+network behavior.
 The separate offline probe temporarily blocked outbound sidecar traffic using
 a reversible Windows Firewall rule, removed the rule afterward, kept loopback
 available, and still passed with 83 valid poses and zero invalid poses.
 
-Normal test-owned shutdown was Verified with no sidecar remaining. Forced-host
-execution was Verified, but orphan-prevention is Unverified because one run
-left the sidecar observable after two seconds while a repeat run did not; both
-outcomes remain in `operational-matrix-history.json`. No architectural fix was
-introduced.
+The original normal-cleanup observation remains historical only: it checked
+after emergency cleanup. The corrected pre-emergency-cleanup probe could not
+obtain a successful valid-pose smoke run because of transient camera
+acquisition, so successful-run sidecar cleanup is Unverified. Three corrected
+readiness-gated forced-host trials each exhausted one unchanged retry without
+valid pose readiness and are Blocked by transient camera acquisition. Earlier
+non-readiness-gated forced-host observations remain preserved, but crash/orphan
+containment is Unverified because no explicit containment mechanism exists.
+No architectural fix was introduced.
 
 The duplicate-process test was Verified as an execution, while the second
 instance Failed boundedly on UDP port `11573` and did not disturb the first
 sidecar. The missing-sidecar test (`openseeface-facetracker.exe`) and
 missing-model test (`models/lm_model3_opt.onnx`) both produced bounded
-failure results and restored the package. In both failure cases, the host
-reported the failure but exited with code `0`; that status-propagation defect
-is recorded as Failed and was not repaired in this evidence task.
+failure results and restored the package. The corrected fresh duplicate and
+missing-asset tests all emitted structured failure and exited with code `1`.
 
 An earlier unchanged basic tracking retry passed with 100 valid poses, but the
 two final post-verification basic-smoke attempts both hit the same transient
@@ -110,9 +116,10 @@ retry and the later failures are retained in the machine-readable history
 rather than being treated as an uninterrupted sequence.
 
 The operational matrix is suitable for higher-level review with these limits:
-formal performance acceptance Failed at the 15 Hz target, forced-host
-orphan prevention is Unverified due to contradictory observations,
-duplicate/missing-asset host exit-status propagation Failed, and the latest
-basic tracking regression is Failed due to repeated camera acquisition
-invalidations after an earlier successful retry. No production-adoption
-decision was made, and no production tracking architecture was modified.
+formal performance acceptance Failed at the 15 Hz target, successful-run
+cleanup is Unverified, readiness-gated forced-host trials are Blocked by
+transient camera acquisition, crash containment is Unverified, remote UDP
+behavior is Unverified, and the latest basic tracking regression is Failed due
+to repeated camera acquisition invalidations after an earlier successful retry.
+No production-adoption decision was made, and no production tracking
+architecture was modified.

@@ -1,0 +1,182 @@
+﻿{
+    "schemaVersion":  1,
+    "observedAt":  "2026-09-22T22:53:25.4690046+00:00",
+    "purpose":  "Focused correction of tracking-smoke exit status and lifecycle evidence; no sustained-performance, CPU, or offline rerun.",
+    "trackerArgumentsFrozen":  true,
+    "normalSuccessfulCleanup":  {
+                                    "execution":  "Failed",
+                                    "sidecarPid":  18980,
+                                    "smoke":  {
+                                                  "schemaVersion":  1,
+                                                  "mode":  "tracking-sidecar",
+                                                  "status":  "fail",
+                                                  "checks":  [
+                                                                 {
+                                                                     "id":  "packaged-openseeface-operational-run",
+                                                                     "status":  "fail",
+                                                                     "detail":  "OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                                 }
+                                                             ],
+                                                  "durationMs":  20100.1109,
+                                                  "errors":  [
+                                                                 {
+                                                                     "code":  "TRACKING_SIDECAR_FAILED",
+                                                                     "message":  "OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                                 }
+                                                             ]
+                                              },
+                                    "sidecarExistsBeforeEmergencyCleanup":  false,
+                                    "successfulRunCleanup":  "Failed",
+                                    "emergencyCleanupPerformed":  false
+                                },
+    "forcedHostTerminationTrials":  [
+                                        {
+                                            "trial":  1,
+                                            "execution":  "Blocked",
+                                            "attempts":  [
+                                                             {
+                                                                 "attempt":  1,
+                                                                 "readiness":  "Blocked",
+                                                                 "reason":  "Lifecycle readiness unavailable: OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                             },
+                                                             {
+                                                                 "attempt":  2,
+                                                                 "readiness":  "Blocked",
+                                                                 "reason":  "Lifecycle readiness unavailable: OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                             }
+                                                         ],
+                                            "reason":  "Transient camera acquisition prevented valid pose readiness after one unchanged retry.",
+                                            "cleanup":  "Any test-owned process was terminated",
+                                            "architecturalFixIntroduced":  false
+                                        },
+                                        {
+                                            "trial":  2,
+                                            "execution":  "Blocked",
+                                            "attempts":  [
+                                                             {
+                                                                 "attempt":  1,
+                                                                 "readiness":  "Blocked",
+                                                                 "reason":  "Lifecycle readiness unavailable: OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                             },
+                                                             {
+                                                                 "attempt":  2,
+                                                                 "readiness":  "Blocked",
+                                                                 "reason":  "Lifecycle readiness unavailable: OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                             }
+                                                         ],
+                                            "reason":  "Transient camera acquisition prevented valid pose readiness after one unchanged retry.",
+                                            "cleanup":  "Any test-owned process was terminated",
+                                            "architecturalFixIntroduced":  false
+                                        },
+                                        {
+                                            "trial":  3,
+                                            "execution":  "Blocked",
+                                            "attempts":  [
+                                                             {
+                                                                 "attempt":  1,
+                                                                 "readiness":  "Blocked",
+                                                                 "reason":  "Lifecycle readiness unavailable: OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                             },
+                                                             {
+                                                                 "attempt":  2,
+                                                                 "readiness":  "Blocked",
+                                                                 "reason":  "Lifecycle readiness unavailable: OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                                                             }
+                                                         ],
+                                            "reason":  "Transient camera acquisition prevented valid pose readiness after one unchanged retry.",
+                                            "cleanup":  "Any test-owned process was terminated",
+                                            "architecturalFixIntroduced":  false
+                                        }
+                                    ],
+    "duplicateProcess":  {
+                             "execution":  "Verified",
+                             "firstHostPid":  11396,
+                             "firstSidecarPid":  1544,
+                             "secondHostPid":  17600,
+                             "secondResult":  {
+                                                  "schemaVersion":  1,
+                                                  "mode":  "tracking-sidecar",
+                                                  "status":  "fail",
+                                                  "checks":  [
+                                                                 {
+                                                                     "id":  "packaged-openseeface-operational-run",
+                                                                     "status":  "fail",
+                                                                     "detail":  "could not bind loopback UDP receiver 127.0.0.1:11573: Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)"
+                                                                 }
+                                                             ],
+                                                  "durationMs":  2.5247,
+                                                  "errors":  [
+                                                                 {
+                                                                     "code":  "TRACKING_SIDECAR_FAILED",
+                                                                     "message":  "could not bind loopback UDP receiver 127.0.0.1:11573: Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)"
+                                                                 }
+                                                             ]
+                                              },
+                             "secondExitCode":  1,
+                             "secondProcessExitStatus":  "Verified",
+                             "firstSidecarStillRunning":  true,
+                             "observedBehavior":  "Second instance attempted the same loopback UDP port and was recorded without changing the first test-owned sidecar.",
+                             "cleanup":  "Both test-owned host/sidecar processes terminated"
+                         },
+    "missingSidecar":  {
+                           "execution":  "Verified",
+                           "asset":  "openseeface-facetracker.exe",
+                           "failureType":  "missing-sidecar",
+                           "smokeStatus":  "Verified bounded failure",
+                           "exitCode":  1,
+                           "hostExitStatus":  "Verified",
+                           "result":  {
+                                          "schemaVersion":  1,
+                                          "mode":  "tracking-sidecar",
+                                          "status":  "fail",
+                                          "checks":  [
+                                                         {
+                                                             "id":  "packaged-openseeface-operational-run",
+                                                             "status":  "fail",
+                                                             "detail":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"openseeface-facetracker.exe\"], models directory: true, Licenses directory: true"
+                                                         }
+                                                     ],
+                                          "durationMs":  2.8514,
+                                          "errors":  [
+                                                         {
+                                                             "code":  "TRACKING_SIDECAR_FAILED",
+                                                             "message":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"openseeface-facetracker.exe\"], models directory: true, Licenses directory: true"
+                                                         }
+                                                     ]
+                                      },
+                           "restored":  true
+                       },
+    "missingModelRuntime":  {
+                                "execution":  "Verified",
+                                "asset":  "models/lm_model3_opt.onnx",
+                                "failureType":  "missing-required-model",
+                                "smokeStatus":  "Verified bounded failure",
+                                "exitCode":  1,
+                                "hostExitStatus":  "Verified",
+                                "result":  {
+                                               "schemaVersion":  1,
+                                               "mode":  "tracking-sidecar",
+                                               "status":  "fail",
+                                               "checks":  [
+                                                              {
+                                                                  "id":  "packaged-openseeface-operational-run",
+                                                                  "status":  "fail",
+                                                                  "detail":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"models/lm_model3_opt.onnx\"], models directory: true, Licenses directory: true"
+                                                              }
+                                                          ],
+                                               "durationMs":  3.7053,
+                                               "errors":  [
+                                                              {
+                                                                  "code":  "TRACKING_SIDECAR_FAILED",
+                                                                  "message":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"models/lm_model3_opt.onnx\"], models directory: true, Licenses directory: true"
+                                                              }
+                                                          ]
+                                           },
+                                "restored":  true
+                            },
+    "networkEvidenceSemantics":  {
+                                     "tcpObservation":  "Get-NetTCPConnection can observe TCP connections for the sidecar during its collection interval.",
+                                     "localUdpObservation":  "Get-NetUDPEndpoint can identify local UDP endpoints only.",
+                                     "remoteUdpBehavior":  "Unverified: this harness has no valid remote UDP destination observation."
+                                 }
+}

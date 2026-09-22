@@ -49,6 +49,10 @@ fn startup_mode_from_environment() -> Option<SmokeMode> {
     }
 }
 
+fn lifecycle_hold_from_environment() -> bool {
+    std::env::var("WORLD_VIEWER_SMOKE_LIFECYCLE_HOLD").ok().as_deref() == Some("1")
+}
+
 const OPENSEEFACE_PACKET_BYTES: usize = 1785;
 const OPENSEEFACE_PORT: u16 = 11573;
 
@@ -87,6 +91,15 @@ struct TrackingEvidence {
     performance_target_met: Option<bool>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LifecycleReadiness {
+    schema_version: u8,
+    kind: &'static str,
+    sidecar_pid: u32,
+    first_valid_pose_ms: f64,
+}
+
 #[derive(Clone, Copy)]
 struct PacketHeader { upstream_timestamp: f64, face_id: i32, width: f32, height: f32, got_3d_points: bool, pnp_error: f32 }
 
@@ -117,7 +130,7 @@ fn percentile(sorted_values: &[f64], percentile: f64) -> Option<f64> {
     sorted_values.get(index).copied()
 }
 
-async fn run_tracking_sidecar(app: tauri::AppHandle, sustained: bool) -> Result<TrackingEvidence, String> {
+async fn run_tracking_sidecar(app: tauri::AppHandle, sustained: bool, lifecycle_hold: bool) -> Result<TrackingEvidence, String> {
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, OPENSEEFACE_PORT)).map_err(|error| format!("could not bind loopback UDP receiver 127.0.0.1:{OPENSEEFACE_PORT}: {error}"))?;
     socket.set_nonblocking(true).map_err(|error| error.to_string())?;
     let runtime_root = app.path().resource_dir().map_err(|error| format!("could not resolve packaged resource directory: {error}"))?;
@@ -156,6 +169,13 @@ async fn run_tracking_sidecar(app: tauri::AppHandle, sustained: bool) -> Result<
             }
         }
         if first_valid_pose_ms.is_none() { return Err("OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership.".to_owned()); }
+        if lifecycle_hold {
+            let readiness = LifecycleReadiness { schema_version: 1, kind: "tracking-lifecycle-ready", sidecar_pid, first_valid_pose_ms: first_valid_pose_ms.expect("readiness was checked") };
+            let line = serde_json::to_string(&readiness).map_err(|error| format!("lifecycle readiness serialization failed: {error}"))?;
+            println!("{line}");
+            std::io::stdout().flush().map_err(|error| format!("lifecycle readiness flush failed: {error}"))?;
+            loop { thread::sleep(Duration::from_secs(1)); }
+        }
         let warm_up_started = Instant::now();
         if sustained {
             while warm_up_started.elapsed() < Duration::from_secs(10) {
@@ -238,9 +258,10 @@ pub fn run() {
             if matches!(startup_mode_from_environment(), Some(SmokeMode::TrackingSidecar | SmokeMode::TrackingSustained)) {
                 let handle = app.handle().clone();
                 let sustained = startup_mode_from_environment() == Some(SmokeMode::TrackingSustained);
+                let lifecycle_hold = lifecycle_hold_from_environment();
                 tauri::async_runtime::spawn(async move {
                     let started = Instant::now();
-                    let result = run_tracking_sidecar(handle.clone(), sustained).await;
+                    let result = run_tracking_sidecar(handle.clone(), sustained, lifecycle_hold).await;
                     let (status, checks, errors) = match result {
                         Ok(evidence) => {
                             let detail = serde_json::to_string(&evidence).unwrap_or_else(|error| format!("evidence serialization failed: {error}"));
@@ -251,11 +272,21 @@ pub fn run() {
                     };
                     let mode = if sustained { SmokeMode::TrackingSustained } else { SmokeMode::TrackingSidecar };
                     let output = SmokeResult { schema_version: 1, mode, status, checks, duration_ms: started.elapsed().as_secs_f64() * 1000.0, errors };
+                    let exit_code = if output.status == SmokeStatus::Pass { 0 } else { 1 };
                     match serde_json::to_string(&output) {
-                        Ok(line) => println!("{line}"),
-                        Err(error) => eprintln!("tracking-sidecar result serialization failed: {error}"),
+                        Ok(line) => {
+                            println!("{line}");
+                            if let Err(error) = std::io::stdout().flush() {
+                                eprintln!("tracking-sidecar result flush failed: {error}");
+                                process::exit(1);
+                            }
+                            process::exit(exit_code);
+                        }
+                        Err(error) => {
+                            eprintln!("tracking-sidecar result serialization failed: {error}");
+                            process::exit(1);
+                        }
                     }
-                    handle.exit(if output.status == SmokeStatus::Pass { 0 } else { 1 });
                 });
             }
             Ok(())
