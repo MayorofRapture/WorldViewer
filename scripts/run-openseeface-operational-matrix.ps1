@@ -134,7 +134,6 @@ function Run-SustainedMeasurement {
         sidecarPid = $sidecarPid
         processIdentity = "openseeface-facetracker.exe"
         smoke = $completed.result
-        shutdown = [pscustomobject]@{ childExitedWithHost = $true; remainingSidecarPids = @(Get-SidecarPids); method = "WorldViewer test-owned shutdown after sustained run" }
         cpu = [pscustomobject]@{ status = if ($cpuSamples.Count -gt 0) { "Verified" } else { "Unverified" }; collectionIntervalSeconds = 1; method = "Get-Process TotalProcessorTime deltas"; sampleCount = $cpuSamples.Count; averagePercentTotalSystem = if ($cpuValues.Count) { ($cpuValues | Measure-Object -Average).Average } else { $null }; peakPercentTotalSystem = if ($cpuValues.Count) { ($cpuValues | Measure-Object -Maximum).Maximum } else { $null }; averagePercentOneLogicalCore = if ($cpuSamples.Count) { ($cpuSamples | ForEach-Object percentOneLogicalCore | Measure-Object -Average).Average } else { $null }; logicalProcessors = $logicalProcessors; limitation = "Total-system percentage divides one process CPU time by elapsed wall time and logical processor count." }
         network = [pscustomobject]@{ status = "Verified"; loopbackUdpExpected = $true; nonLoopbackTcpObserved = @($nonLoopbackTcp); localUdpEndpoints = @($localUdpEndpoints); remoteUdpObservation = "Unverified: Get-NetUDPEndpoint identifies local UDP endpoints, not remote destinations."; limitation = "TCP observation covered the sustained run only; absence does not prove future network behavior." }
     }
