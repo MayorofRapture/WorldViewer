@@ -131,7 +131,7 @@
     },
     "normalShutdown": {
       "status": "Unverified",
-      "result": "The corrected pre-emergency-cleanup probe did not obtain a successful valid-pose smoke run because of transient camera acquisition; it did not count emergency cleanup as success."
+      "result": "Unverified because successful tracking readiness was not established: the corrected pre-emergency-cleanup probe did not obtain a successful valid-pose smoke run because of transient camera acquisition, and it did not count emergency cleanup as success."
     },
     "forcedHostTermination": {
       "execution": "Blocked by transient camera acquisition in all three readiness-gated correction trials after one unchanged retry each",

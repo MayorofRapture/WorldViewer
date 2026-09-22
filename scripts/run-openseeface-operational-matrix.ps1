@@ -140,32 +140,23 @@ function Run-SustainedMeasurement {
     }
 }
 
-function Run-ForcedHostTermination {
-    $run = Start-PackagedMode "tracking-sidecar"
-    $sidecarPid = Get-SidecarPid $run.process.Id
-    if (-not $sidecarPid) { Stop-TestProcess $run.process.Id; throw "Forced-host setup did not expose a sidecar child process." }
-    try {
-        Stop-Process -Id $run.process.Id -Force
-        Start-Sleep -Seconds 2
-        $survived = [bool](Get-Process -Id $sidecarPid -ErrorAction SilentlyContinue)
-        [pscustomobject]@{ execution = "Verified"; hostPid = $run.process.Id; sidecarPid = $sidecarPid; forceKillMethod = "Stop-Process -Force on WorldViewer host"; sidecarSurvivedAfterTwoSeconds = $survived; orphanBehavior = if ($survived) { "Failed" } else { "Verified" }; cleanup = "Test-owned sidecar terminated after observation"; architecturalFixIntroduced = $false }
-    } finally { Stop-TestProcess $run.process.Id; Stop-TestProcess $sidecarPid }
-}
-
 function Run-NormalSuccessfulCleanup {
     $run = Start-PackagedMode "tracking-sidecar"
     $sidecarPid = Get-SidecarPid $run.process.Id
     if (-not $sidecarPid) { Stop-TestProcess $run.process.Id; throw "Successful-cleanup probe did not expose a sidecar child process." }
     $result = $null
+    $completed = $null
+    $completionError = $null
     try {
-        $completed = Complete-PackagedMode $run 45
+        try { $completed = Complete-PackagedMode $run 45 } catch { $completionError = $_.Exception.Message }
         $stillRunningBeforeEmergencyCleanup = [bool](Get-Process -Id $sidecarPid -ErrorAction SilentlyContinue)
         $result = [pscustomobject]@{
-            execution = if ($completed.result.status -eq "pass") { "Verified" } else { "Failed" }
+            execution = if ($completed -and $completed.result.status -eq "pass") { "Verified" } else { "Unverified" }
             sidecarPid = $sidecarPid
-            smoke = $completed.result
+            smoke = if ($completed) { $completed.result } else { $null }
+            completionError = $completionError
             sidecarExistsBeforeEmergencyCleanup = $stillRunningBeforeEmergencyCleanup
-            successfulRunCleanup = if ($completed.result.status -eq "pass" -and -not $stillRunningBeforeEmergencyCleanup) { "Verified" } else { "Failed" }
+            successfulRunCleanup = if ($completed -and $completed.result.status -eq "pass" -and -not $stillRunningBeforeEmergencyCleanup) { "Verified" } elseif ($completed -and $completed.result.status -eq "pass") { "Failed" } else { "Unverified" }
             emergencyCleanupPerformed = $false
         }
     } finally {
@@ -235,11 +226,7 @@ if ($HarnessCorrection) {
         purpose = "Focused correction of tracking-smoke exit status and lifecycle evidence; no sustained-performance, CPU, or offline rerun."
         trackerArgumentsFrozen = $true
         normalSuccessfulCleanup = Run-NormalSuccessfulCleanup
-        forcedHostTerminationTrials = @(
-            (Run-ReadinessGatedForcedHostTrial 1),
-            (Run-ReadinessGatedForcedHostTrial 2),
-            (Run-ReadinessGatedForcedHostTrial 3)
-        )
+        forcedHostTerminationTrials = @(1..3 | ForEach-Object { Run-ReadinessGatedForcedHostTrial $_ })
         duplicateProcess = Run-DuplicateProcess
         missingSidecar = Run-ReversibleAssetFailure "openseeface-facetracker.exe" "missing-sidecar"
         missingModelRuntime = Run-ReversibleAssetFailure "models/lm_model3_opt.onnx" "missing-required-model"
@@ -267,7 +254,8 @@ $matrix = [ordered]@{
 
 if (-not $OfflineOnly) {
     $matrix.sustainedTracking = Run-SustainedMeasurement
-    $matrix.forcedHostTermination = Run-ForcedHostTermination
+    $matrix.normalSuccessfulCleanup = Run-NormalSuccessfulCleanup
+    $matrix.forcedHostTerminationTrials = @(1..3 | ForEach-Object { Run-ReadinessGatedForcedHostTrial $_ })
     $matrix.duplicateProcess = Run-DuplicateProcess
     $matrix.missingSidecar = Run-ReversibleAssetFailure "openseeface-facetracker.exe" "missing-sidecar"
     $matrix.missingModelRuntime = Run-ReversibleAssetFailure "models/lm_model3_opt.onnx" "missing-required-model"
