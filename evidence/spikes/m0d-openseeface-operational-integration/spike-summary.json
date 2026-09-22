@@ -82,6 +82,81 @@
     "networkObservation": "Unverified; only loopback UDP was exercised.",
     "productionAdoption": "Unverified; this evidence makes no adoption recommendation."
   },
+  "operationalMatrix": {
+    "status": "Verified evidence collected with unresolved and contradictory lifecycle results",
+    "evidence": [
+      "evidence/spikes/m0d-openseeface-operational-integration/operational-matrix.json",
+      "evidence/spikes/m0d-openseeface-operational-integration/offline-operation.json",
+      "evidence/spikes/m0d-openseeface-operational-integration/operational-matrix-history.json",
+      "evidence/spikes/m0d-openseeface-operational-integration/basic-tracking-smoke.json"
+    ],
+    "sustainedTracking": {
+      "execution": "Verified",
+      "warmUpDurationMs": 10001.2557,
+      "measurementDurationMs": 60002.4519,
+      "measurementTotalPacketCount": 571,
+      "measurementValidPoseCount": 571,
+      "measurementInvalidPoseCount": 0,
+      "measurementValidRate": 1.0,
+      "measurementLivePoseCadenceHz": 9.519267600510382,
+      "interPoseIntervalMsMedian": 97.4617,
+      "interPoseIntervalMsP95": 153.6454,
+      "interPoseIntervalMsMin": 38.5108,
+      "interPoseIntervalMsMax": 1016.5388,
+      "performanceTarget15Hz": "Failed",
+      "preferred20To30Hz": "Failed",
+      "tuningPerformed": false
+    },
+    "cpu": {
+      "status": "Verified",
+      "method": "Get-Process TotalProcessorTime deltas at one-second collection intervals",
+      "averagePercentTotalSystem": 8.07412347386464,
+      "peakPercentTotalSystem": 11.746436124051387,
+      "averagePercentOneLogicalCore": 64.59298779091712,
+      "logicalProcessors": 8
+    },
+    "offline": {
+      "status": "Verified",
+      "method": "Temporary outbound firewall block for the sidecar, removed after the run; loopback UDP remained available",
+      "trackingResult": "Pass: 83 valid poses, 0 invalid"
+    },
+    "network": {
+      "status": "Verified",
+      "loopbackUdp": "Observed through the valid packaged pose stream",
+      "nonLoopbackTcp": "None observed during the sustained interval",
+      "nonLoopbackUdp": "None observed during the sustained interval",
+      "limitation": "Short observation does not prove future network behavior."
+    },
+    "normalShutdown": {
+      "status": "Verified",
+      "result": "No sidecar remained after the test-owned sustained-run shutdown path."
+    },
+    "forcedHostTermination": {
+      "execution": "Verified",
+      "orphanPrevention": "Unverified: one run observed a sidecar orphan after two seconds and a repeat run did not; both results are preserved."
+    },
+    "duplicateProcess": {
+      "execution": "Verified",
+      "secondInstanceOutcome": "Failed boundedly on UDP port 11573 while the first sidecar remained running",
+      "hostExitStatusPropagation": "Failed: the application emitted a failure result but exited with code 0",
+      "cleanup": "Verified"
+    },
+    "missingSidecar": {
+      "execution": "Verified",
+      "boundedFailure": "Verified",
+      "asset": "openseeface-facetracker.exe",
+      "hostExitStatusPropagation": "Failed: failure result was emitted but exit code was 0",
+      "restoration": "Verified"
+    },
+    "missingModelRuntime": {
+      "execution": "Verified",
+      "boundedFailure": "Verified",
+      "asset": "models/lm_model3_opt.onnx",
+      "hostExitStatusPropagation": "Failed: failure result was emitted but exit code was 0",
+      "restoration": "Verified"
+    },
+    "productionAdoption": "Unverified; no adoption decision was made."
+  },
   "provenance": {
     "licenseStatement": "Carry forward the prior spike's BSD-2-Clause code/model statement and preserved upstream Licenses directory.",
     "telemetryStatement": "Carry forward the prior spike's upstream telemetry-free ONNX Runtime statement; it is distinct from this local runtime observation.",

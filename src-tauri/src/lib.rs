@@ -14,7 +14,7 @@ struct StartupMode(Option<SmokeMode>);
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar }
+enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -44,6 +44,7 @@ fn startup_mode_from_environment() -> Option<SmokeMode> {
         Some("launch") => Some(SmokeMode::Launch),
         Some("synthetic") => Some(SmokeMode::Synthetic),
         Some("tracking-sidecar") => Some(SmokeMode::TrackingSidecar),
+        Some("tracking-sustained") => Some(SmokeMode::TrackingSustained),
         _ => None,
     }
 }
@@ -70,6 +71,20 @@ struct TrackingEvidence {
     model: u8,
     camera: [u32; 3],
     udp: &'static str,
+    warm_up_duration_ms: Option<f64>,
+    measurement_duration_ms: Option<f64>,
+    measurement_total_packet_count: Option<usize>,
+    measurement_valid_pose_count: Option<usize>,
+    measurement_invalid_pose_count: Option<usize>,
+    measurement_valid_rate: Option<f64>,
+    measurement_live_pose_cadence_hz: Option<f64>,
+    measurement_inter_pose_interval_ms_median: Option<f64>,
+    measurement_inter_pose_interval_ms_p95: Option<f64>,
+    measurement_inter_pose_interval_ms_min: Option<f64>,
+    measurement_inter_pose_interval_ms_max: Option<f64>,
+    measurement_upstream_timestamps_monotonic: Option<bool>,
+    performance_target_hz: Option<f64>,
+    performance_target_met: Option<bool>,
 }
 
 #[derive(Clone, Copy)]
@@ -96,7 +111,13 @@ fn tracking_args() -> [&'static str; 26] {
     ["-i", "127.0.0.1", "-p", "11573", "-W", "640", "-H", "360", "-F", "24", "-c", "0", "-v", "0", "-s", "1", "--faces", "1", "--model", "3", "--gaze-tracking", "0", "--max-threads", "1", "--no-3d-adapt", "1"]
 }
 
-async fn run_tracking_sidecar(app: tauri::AppHandle) -> Result<TrackingEvidence, String> {
+fn percentile(sorted_values: &[f64], percentile: f64) -> Option<f64> {
+    if sorted_values.is_empty() { return None; }
+    let index = ((sorted_values.len() - 1) as f64 * percentile).round() as usize;
+    sorted_values.get(index).copied()
+}
+
+async fn run_tracking_sidecar(app: tauri::AppHandle, sustained: bool) -> Result<TrackingEvidence, String> {
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, OPENSEEFACE_PORT)).map_err(|error| format!("could not bind loopback UDP receiver 127.0.0.1:{OPENSEEFACE_PORT}: {error}"))?;
     socket.set_nonblocking(true).map_err(|error| error.to_string())?;
     let runtime_root = app.path().resource_dir().map_err(|error| format!("could not resolve packaged resource directory: {error}"))?;
@@ -135,8 +156,28 @@ async fn run_tracking_sidecar(app: tauri::AppHandle) -> Result<TrackingEvidence,
             }
         }
         if first_valid_pose_ms.is_none() { return Err("OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership.".to_owned()); }
+        let warm_up_started = Instant::now();
+        if sustained {
+            while warm_up_started.elapsed() < Duration::from_secs(10) {
+                match socket.recv_from(&mut buffer) {
+                    Ok((count, source)) if source.ip().is_loopback() => for header in parse_tracking_headers(&buffer[..count])? {
+                        ids.insert(header.face_id); dimensions.insert((header.width as u32, header.height as u32));
+                    },
+                    Ok(_) => {},
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => thread::sleep(Duration::from_millis(2)),
+                    Err(error) => return Err(format!("loopback UDP receive failed: {error}")),
+                }
+            }
+            total = 0;
+            valid = 0;
+            invalid = 0;
+            pnp_errors.clear();
+            receive_times.clear();
+            upstream_times.clear();
+        }
         let observation_started = Instant::now();
-        while observation_started.elapsed() < Duration::from_secs(10) {
+        let observation_duration = if sustained { Duration::from_secs(60) } else { Duration::from_secs(10) };
+        while observation_started.elapsed() < observation_duration {
             match socket.recv_from(&mut buffer) {
                 Ok((count, source)) if source.ip().is_loopback() => for header in parse_tracking_headers(&buffer[..count])? {
                     total += 1; ids.insert(header.face_id); dimensions.insert((header.width as u32, header.height as u32));
@@ -148,10 +189,13 @@ async fn run_tracking_sidecar(app: tauri::AppHandle) -> Result<TrackingEvidence,
             }
         }
         let cadence = match (receive_times.first(), receive_times.last()) { (Some(first), Some(last)) if receive_times.len() > 1 && last > first => Some((receive_times.len() - 1) as f64 / last.duration_since(*first).as_secs_f64()), _ => None };
-        let _upstream_live_timing_observed = upstream_times.windows(2).all(|pair| pair[1] >= pair[0]);
+        let mut intervals_ms: Vec<_> = receive_times.windows(2).map(|pair| pair[1].duration_since(pair[0]).as_secs_f64() * 1000.0).collect();
+        intervals_ms.sort_by(f64::total_cmp);
+        let upstream_monotonic = upstream_times.windows(2).all(|pair| pair[1] >= pair[0]);
         let mut face_ids_observed: Vec<_> = ids.into_iter().collect(); face_ids_observed.sort_unstable();
         let mut frame_dimensions_reported: Vec<_> = dimensions.into_iter().map(|(w, h)| [w, h]).collect(); frame_dimensions_reported.sort_unstable();
-        Ok(TrackingEvidence { sidecar_spawn_ms: spawn_ms, first_valid_pose_ms, sidecar_pid, total_packet_count: total, valid_pose_count: valid, invalid_pose_count: invalid, valid_rate: valid as f64 / total.max(1) as f64, live_pose_cadence_hz: cadence, face_ids_observed, frame_dimensions_reported, pnp_error_mean: (!pnp_errors.is_empty()).then(|| pnp_errors.iter().sum::<f64>() / pnp_errors.len() as f64), observation_duration_ms: observation_started.elapsed().as_secs_f64() * 1000.0, openseeface_version: "v1.20.5", model: 3, camera: [0, 640, 360], udp: "127.0.0.1:11573" })
+        let measurement_duration_ms = observation_started.elapsed().as_secs_f64() * 1000.0;
+        Ok(TrackingEvidence { sidecar_spawn_ms: spawn_ms, first_valid_pose_ms, sidecar_pid, total_packet_count: total, valid_pose_count: valid, invalid_pose_count: invalid, valid_rate: valid as f64 / total.max(1) as f64, live_pose_cadence_hz: cadence, face_ids_observed, frame_dimensions_reported, pnp_error_mean: (!pnp_errors.is_empty()).then(|| pnp_errors.iter().sum::<f64>() / pnp_errors.len() as f64), observation_duration_ms: measurement_duration_ms, openseeface_version: "v1.20.5", model: 3, camera: [0, 640, 360], udp: "127.0.0.1:11573", warm_up_duration_ms: sustained.then(|| warm_up_started.elapsed().as_secs_f64() * 1000.0 - measurement_duration_ms), measurement_duration_ms: sustained.then_some(measurement_duration_ms), measurement_total_packet_count: sustained.then_some(total), measurement_valid_pose_count: sustained.then_some(valid), measurement_invalid_pose_count: sustained.then_some(invalid), measurement_valid_rate: sustained.then_some(valid as f64 / total.max(1) as f64), measurement_live_pose_cadence_hz: sustained.then_some(cadence).flatten(), measurement_inter_pose_interval_ms_median: sustained.then(|| percentile(&intervals_ms, 0.5)).flatten(), measurement_inter_pose_interval_ms_p95: sustained.then(|| percentile(&intervals_ms, 0.95)).flatten(), measurement_inter_pose_interval_ms_min: sustained.then(|| intervals_ms.first().copied()).flatten(), measurement_inter_pose_interval_ms_max: sustained.then(|| intervals_ms.last().copied()).flatten(), measurement_upstream_timestamps_monotonic: sustained.then_some(upstream_monotonic), performance_target_hz: sustained.then_some(15.0), performance_target_met: sustained.then(|| cadence.is_some_and(|value| value >= 15.0)) })
     })();
     child.kill().map_err(|error| format!("could not terminate test-owned OpenSeeFace sidecar {sidecar_pid}: {error}"))?;
     result
@@ -191,19 +235,22 @@ pub fn run() {
         .manage(StartupMode(startup_mode_from_environment()))
         .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke])
         .setup(|app| {
-            if startup_mode_from_environment() == Some(SmokeMode::TrackingSidecar) {
+            if matches!(startup_mode_from_environment(), Some(SmokeMode::TrackingSidecar | SmokeMode::TrackingSustained)) {
                 let handle = app.handle().clone();
+                let sustained = startup_mode_from_environment() == Some(SmokeMode::TrackingSustained);
                 tauri::async_runtime::spawn(async move {
                     let started = Instant::now();
-                    let result = run_tracking_sidecar(handle.clone()).await;
+                    let result = run_tracking_sidecar(handle.clone(), sustained).await;
                     let (status, checks, errors) = match result {
                         Ok(evidence) => {
                             let detail = serde_json::to_string(&evidence).unwrap_or_else(|error| format!("evidence serialization failed: {error}"));
-                            (SmokeStatus::Pass, vec![SmokeCheck { id: "packaged-openseeface-operational-run".into(), status: SmokeStatus::Pass, detail: Some(detail) }], vec![])
+                            let check_id = if sustained { "packaged-openseeface-sustained-operational-run" } else { "packaged-openseeface-operational-run" };
+                            (SmokeStatus::Pass, vec![SmokeCheck { id: check_id.into(), status: SmokeStatus::Pass, detail: Some(detail) }], vec![])
                         }
-                        Err(message) => (SmokeStatus::Fail, vec![SmokeCheck { id: "packaged-openseeface-operational-run".into(), status: SmokeStatus::Fail, detail: Some(message.clone()) }], vec![SmokeError { code: "TRACKING_SIDECAR_FAILED".into(), message }]),
+                        Err(message) => { let check_id = if sustained { "packaged-openseeface-sustained-operational-run" } else { "packaged-openseeface-operational-run" }; (SmokeStatus::Fail, vec![SmokeCheck { id: check_id.into(), status: SmokeStatus::Fail, detail: Some(message.clone()) }], vec![SmokeError { code: "TRACKING_SIDECAR_FAILED".into(), message }]) },
                     };
-                    let output = SmokeResult { schema_version: 1, mode: SmokeMode::TrackingSidecar, status, checks, duration_ms: started.elapsed().as_secs_f64() * 1000.0, errors };
+                    let mode = if sustained { SmokeMode::TrackingSustained } else { SmokeMode::TrackingSidecar };
+                    let output = SmokeResult { schema_version: 1, mode, status, checks, duration_ms: started.elapsed().as_secs_f64() * 1000.0, errors };
                     match serde_json::to_string(&output) {
                         Ok(line) => println!("{line}"),
                         Err(error) => eprintln!("tracking-sidecar result serialization failed: {error}"),

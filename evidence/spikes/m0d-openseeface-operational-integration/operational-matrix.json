@@ -1,0 +1,157 @@
+﻿{
+    "schemaVersion":  1,
+    "observedAt":  "2026-09-21T23:51:41.7038477+00:00",
+    "executable":  "D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release\\worldviewer.exe",
+    "sidecar":  "D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release\\openseeface-facetracker.exe",
+    "trackerArgumentsFrozen":  true,
+    "offline":  {
+                    "status":  "Blocked",
+                    "reason":  "No external-network isolation method was enabled by this invocation; loopback must remain available and no persistent firewall change is made implicitly."
+                },
+    "sustainedTracking":  {
+                              "status":  "Verified",
+                              "sidecarPid":  11244,
+                              "processIdentity":  "openseeface-facetracker.exe",
+                              "smoke":  {
+                                            "schemaVersion":  1,
+                                            "mode":  "tracking-sustained",
+                                            "status":  "pass",
+                                            "checks":  [
+                                                           {
+                                                               "id":  "packaged-openseeface-sustained-operational-run",
+                                                               "status":  "pass",
+                                                               "detail":  "{\"sidecarSpawnMs\":21.963,\"firstValidPoseMs\":5748.083799999999,\"sidecarPid\":11244,\"totalPacketCount\":571,\"validPoseCount\":571,\"invalidPoseCount\":0,\"validRate\":1.0,\"livePoseCadenceHz\":9.519267600510382,\"faceIdsObserved\":[0],\"frameDimensionsReported\":[[640,360]],\"pnpErrorMean\":5.743200066419491,\"observationDurationMs\":60002.4519,\"openseefaceVersion\":\"v1.20.5\",\"model\":3,\"camera\":[0,640,360],\"udp\":\"127.0.0.1:11573\",\"warmUpDurationMs\":10001.255699999994,\"measurementDurationMs\":60002.4519,\"measurementTotalPacketCount\":571,\"measurementValidPoseCount\":571,\"measurementInvalidPoseCount\":0,\"measurementValidRate\":1.0,\"measurementLivePoseCadenceHz\":9.519267600510382,\"measurementInterPoseIntervalMsMedian\":97.4617,\"measurementInterPoseIntervalMsP95\":153.6454,\"measurementInterPoseIntervalMsMin\":38.510799999999996,\"measurementInterPoseIntervalMsMax\":1016.5387999999999,\"measurementUpstreamTimestampsMonotonic\":true,\"performanceTargetHz\":15.0,\"performanceTargetMet\":false}"
+                                                           }
+                                                       ],
+                                            "durationMs":  75759.6463,
+                                            "errors":  [
+
+                                                       ]
+                                        },
+                              "shutdown":  {
+                                               "childExitedWithHost":  true,
+                                               "remainingSidecarPids":  [
+
+                                                                        ],
+                                               "method":  "WorldViewer test-owned shutdown after sustained run"
+                                           },
+                              "cpu":  {
+                                          "status":  "Verified",
+                                          "collectionIntervalSeconds":  1,
+                                          "method":  "Get-Process TotalProcessorTime deltas",
+                                          "sampleCount":  47,
+                                          "averagePercentTotalSystem":  8.07412347386464,
+                                          "peakPercentTotalSystem":  11.746436124051387,
+                                          "averagePercentOneLogicalCore":  64.592987790917121,
+                                          "logicalProcessors":  8,
+                                          "limitation":  "Total-system percentage divides one process CPU time by elapsed wall time and logical processor count."
+                                      },
+                              "network":  {
+                                              "status":  "Verified",
+                                              "loopbackUdpExpected":  true,
+                                              "nonLoopbackTcpObserved":  [
+
+                                                                         ],
+                                              "nonLoopbackUdpObserved":  [
+
+                                                                         ],
+                                              "limitation":  "Observation covered the sustained run only; absence does not prove future network behavior."
+                                          }
+                          },
+    "forcedHostTermination":  {
+                                  "execution":  "Verified",
+                                  "hostPid":  25524,
+                                  "sidecarPid":  22632,
+                                  "forceKillMethod":  "Stop-Process -Force on WorldViewer host",
+                                  "sidecarSurvivedAfterTwoSeconds":  false,
+                                  "orphanBehavior":  "Verified",
+                                  "cleanup":  "Test-owned sidecar terminated after observation",
+                                  "architecturalFixIntroduced":  false
+                              },
+    "duplicateProcess":  {
+                             "execution":  "Verified",
+                             "firstHostPid":  21528,
+                             "firstSidecarPid":  25852,
+                             "secondHostPid":  848,
+                             "secondResult":  {
+                                                  "schemaVersion":  1,
+                                                  "mode":  "tracking-sidecar",
+                                                  "status":  "fail",
+                                                  "checks":  [
+                                                                 {
+                                                                     "id":  "packaged-openseeface-operational-run",
+                                                                     "status":  "fail",
+                                                                     "detail":  "could not bind loopback UDP receiver 127.0.0.1:11573: Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)"
+                                                                 }
+                                                             ],
+                                                  "durationMs":  5.1857,
+                                                  "errors":  [
+                                                                 {
+                                                                     "code":  "TRACKING_SIDECAR_FAILED",
+                                                                     "message":  "could not bind loopback UDP receiver 127.0.0.1:11573: Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)"
+                                                                 }
+                                                             ]
+                                              },
+                             "secondExitCode":  0,
+                             "secondProcessExitStatus":  "Failed: application reported bounded failure but exited with code 0",
+                             "firstSidecarStillRunning":  true,
+                             "observedBehavior":  "Second instance attempted the same loopback UDP port and was recorded without changing the first test-owned sidecar.",
+                             "cleanup":  "Both test-owned host/sidecar processes terminated"
+                         },
+    "missingSidecar":  {
+                           "execution":  "Verified",
+                           "asset":  "openseeface-facetracker.exe",
+                           "failureType":  "missing-sidecar",
+                           "smokeStatus":  "Verified bounded failure",
+                           "exitCode":  0,
+                           "hostExitStatus":  "Failed: application reported bounded failure but exited with code 0",
+                           "result":  {
+                                          "schemaVersion":  1,
+                                          "mode":  "tracking-sidecar",
+                                          "status":  "fail",
+                                          "checks":  [
+                                                         {
+                                                             "id":  "packaged-openseeface-operational-run",
+                                                             "status":  "fail",
+                                                             "detail":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"openseeface-facetracker.exe\"], models directory: true, Licenses directory: true"
+                                                         }
+                                                     ],
+                                          "durationMs":  7.5922,
+                                          "errors":  [
+                                                         {
+                                                             "code":  "TRACKING_SIDECAR_FAILED",
+                                                             "message":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"openseeface-facetracker.exe\"], models directory: true, Licenses directory: true"
+                                                         }
+                                                     ]
+                                      },
+                           "restored":  true
+                       },
+    "missingModelRuntime":  {
+                                "execution":  "Verified",
+                                "asset":  "models/lm_model3_opt.onnx",
+                                "failureType":  "missing-required-model",
+                                "smokeStatus":  "Verified bounded failure",
+                                "exitCode":  0,
+                                "hostExitStatus":  "Failed: application reported bounded failure but exited with code 0",
+                                "result":  {
+                                               "schemaVersion":  1,
+                                               "mode":  "tracking-sidecar",
+                                               "status":  "fail",
+                                               "checks":  [
+                                                              {
+                                                                  "id":  "packaged-openseeface-operational-run",
+                                                                  "status":  "fail",
+                                                                  "detail":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"models/lm_model3_opt.onnx\"], models directory: true, Licenses directory: true"
+                                                              }
+                                                          ],
+                                               "durationMs":  6.8867,
+                                               "errors":  [
+                                                              {
+                                                                  "code":  "TRACKING_SIDECAR_FAILED",
+                                                                  "message":  "packaged OpenSeeFace runtime is incomplete at \\\\?\\D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release; missing files: [\"models/lm_model3_opt.onnx\"], models directory: true, Licenses directory: true"
+                                                              }
+                                                          ]
+                                           },
+                                "restored":  true
+                            }
+}

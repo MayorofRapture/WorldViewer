@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Preserve repeated operational-matrix observations without replacing contradictory evidence with the latest run.",
+  "observations": [
+    {
+      "observedAt": "2026-09-21T23:47:17.0887138Z",
+      "sustainedTracking": {
+        "status": "Verified",
+        "warmUpDurationMs": 10000.8177,
+        "measurementDurationMs": 60001.4295,
+        "measurementTotalPacketCount": 424,
+        "measurementValidPoseCount": 424,
+        "measurementInvalidPoseCount": 0,
+        "measurementLivePoseCadenceHz": 9.90568989361029,
+        "measurementInterPoseIntervalMsMedian": 97.2311,
+        "measurementInterPoseIntervalMsP95": 146.217,
+        "performanceTargetMet": false
+      },
+      "forcedHostTermination": {
+        "execution": "Verified",
+        "sidecarSurvivedAfterTwoSeconds": true,
+        "orphanPrevention": "Failed",
+        "cleanup": "Test-owned orphan terminated after observation"
+      }
+    },
+    {
+      "observedAt": "2026-09-21T23:51:41.7038477Z",
+      "sustainedTracking": {
+        "status": "Verified",
+        "warmUpDurationMs": 10001.2557,
+        "measurementDurationMs": 60002.4519,
+        "measurementTotalPacketCount": 571,
+        "measurementValidPoseCount": 571,
+        "measurementInvalidPoseCount": 0,
+        "measurementLivePoseCadenceHz": 9.519267600510382,
+        "measurementInterPoseIntervalMsMedian": 97.4617,
+        "measurementInterPoseIntervalMsP95": 153.6454,
+        "measurementInterPoseIntervalMsMin": 38.5108,
+        "measurementInterPoseIntervalMsMax": 1016.5388,
+        "performanceTargetMet": false
+      },
+      "forcedHostTermination": {
+        "execution": "Verified",
+        "sidecarSurvivedAfterTwoSeconds": false,
+        "orphanPrevention": "Verified",
+        "cleanup": "No remaining test-owned sidecar"
+      }
+    }
+  ],
+  "basicTrackingRegression": {
+    "firstAttempt": "Failed: no valid got_3d_points pose within 20 seconds after the matrix run.",
+    "unchangedRetry": "Verified: 100 valid poses, 0 invalid, 9.995857878044557 Hz.",
+    "finalVerificationAttempts": "Failed twice unchanged: no valid got_3d_points pose within 20 seconds on each attempt."
+  },
+  "interpretation": "Forced-host orphan behavior is non-deterministic across these two observed runs; both observations are retained and no lifecycle fix was introduced. The first basic tracking invalidation was retried unchanged and passed."
+}

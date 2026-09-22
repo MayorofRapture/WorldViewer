@@ -1,8 +1,10 @@
 param(
     [string]$ExecutablePath = "src-tauri/target/release/worldviewer.exe",
     [int]$TimeoutSeconds = 30,
-    [ValidateSet("launch", "synthetic", "tracking-sidecar")]
-    [string]$Mode = "launch"
+    [ValidateSet("launch", "synthetic", "tracking-sidecar", "tracking-sustained")]
+    [string]$Mode = "launch",
+    [string]$ResultPath,
+    [switch]$AllowFailure
 )
 
 $resolvedExecutable = (Resolve-Path -LiteralPath $ExecutablePath -ErrorAction Stop).Path
@@ -46,7 +48,10 @@ try {
         throw "Packaged smoke result does not match the requested '$Mode' contract."
     }
     # Preserve machine-readable failure evidence before mode-specific assertions.
-    $result | ConvertTo-Json -Depth 10
+    $result | ConvertTo-Json -Depth 10 -Compress
+    if ($ResultPath) {
+        $result | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ResultPath -Encoding utf8
+    }
 
     if ($Mode -eq "launch") {
         $launchCheck = @($result.checks | Where-Object { $_.id -eq "application-shell-ready" })
@@ -67,19 +72,20 @@ try {
                 throw "Synthetic smoke result must contain a passing '$checkId' check."
             }
         }
-    } else {
-        $trackingCheck = @($result.checks | Where-Object { $_.id -eq "packaged-openseeface-operational-run" })
-        if ($trackingCheck.Count -ne 1 -or $trackingCheck[0].status -ne "pass") {
-            throw "Tracking-sidecar smoke result must contain a passing packaged-openseeface-operational-run check."
+    } elseif ($Mode -in @("tracking-sidecar", "tracking-sustained")) {
+        $expectedCheckId = if ($Mode -eq "tracking-sustained") { "packaged-openseeface-sustained-operational-run" } else { "packaged-openseeface-operational-run" }
+        $trackingCheck = @($result.checks | Where-Object { $_.id -eq $expectedCheckId })
+        if ($trackingCheck.Count -ne 1 -or ((-not $AllowFailure) -and $trackingCheck[0].status -ne "pass")) {
+            throw "Tracking smoke result must contain a passing $expectedCheckId check."
         }
     }
 
     $expectedExitCode = if ($result.status -eq "pass") { 0 } else { 1 }
-    if ($process.ExitCode -ne $expectedExitCode) {
+    if ($process.ExitCode -ne $expectedExitCode -and -not $AllowFailure) {
         throw "Smoke result status '$($result.status)' mapped to exit code $($process.ExitCode), expected $expectedExitCode."
     }
 
-    if ($result.status -ne "pass") {
+    if ($result.status -ne "pass" -and -not $AllowFailure) {
         throw "Packaged launch smoke reported failure."
     }
 }

@@ -55,3 +55,64 @@ performance measurement, so tracking performance acceptance remains
 Unverified. The larger operational-integration matrix also remains
 unverified and out of scope; this evidence makes no OpenSeeFace
 production-adoption recommendation.
+
+## Follow-on operational matrix
+
+The bounded matrix harness is `scripts/run-openseeface-operational-matrix.ps1`.
+It uses the existing packaged executable and frozen tracker arguments; it does
+not add production supervision, tuning, dependencies, or tracker changes. The
+machine-readable outputs are `operational-matrix.json` (canonical run),
+`offline-operation.json` (separate reversible offline probe),
+`operational-matrix-history.json` (repeated observations, including a
+contradictory forced-host result), and `basic-tracking-smoke.json` (final
+basic tracking regression result).
+
+The canonical sustained run used the prescribed 10.0013-second warm-up and
+60.0025-second measurement window. It received 571 packets, all 571 valid
+3D poses, zero invalid poses, valid rate 1.0, and 9.519267600510382 Hz live
+pose cadence. Inter-pose intervals were 97.4617 ms median, 153.6454 ms p95,
+38.5108 ms minimum, and 1016.5388 ms maximum. The 15 Hz useful-pose target
+was Failed for this measurement; the 20–30 Hz preferred range was also not
+met. No tracker tuning was performed.
+
+CPU collection was Verified using one-second `Get-Process
+TotalProcessorTime` deltas for `openseeface-facetracker.exe`: 8.0741% average
+and 11.7464% peak of total system capacity, equivalent to 64.5930% average
+of one logical core on an eight-logical-processor machine. This is a process
+CPU measurement, not a render or motion-to-photon metric.
+
+Network observation was Verified for the sustained interval: expected
+loopback UDP pose traffic was present, and no non-loopback TCP or UDP activity
+was observed. This short observation does not prove future network behavior.
+The separate offline probe temporarily blocked outbound sidecar traffic using
+a reversible Windows Firewall rule, removed the rule afterward, kept loopback
+available, and still passed with 83 valid poses and zero invalid poses.
+
+Normal test-owned shutdown was Verified with no sidecar remaining. Forced-host
+execution was Verified, but orphan-prevention is Unverified because one run
+left the sidecar observable after two seconds while a repeat run did not; both
+outcomes remain in `operational-matrix-history.json`. No architectural fix was
+introduced.
+
+The duplicate-process test was Verified as an execution, while the second
+instance Failed boundedly on UDP port `11573` and did not disturb the first
+sidecar. The missing-sidecar test (`openseeface-facetracker.exe`) and
+missing-model test (`models/lm_model3_opt.onnx`) both produced bounded
+failure results and restored the package. In both failure cases, the host
+reported the failure but exited with code `0`; that status-propagation defect
+is recorded as Failed and was not repaired in this evidence task.
+
+An earlier unchanged basic tracking retry passed with 100 valid poses, but the
+two final post-verification basic-smoke attempts both hit the same transient
+20-second camera-acquisition invalidation. The latest
+`basic-tracking-smoke.json` therefore records Failed; the earlier successful
+retry and the later failures are retained in the machine-readable history
+rather than being treated as an uninterrupted sequence.
+
+The operational matrix is suitable for higher-level review with these limits:
+formal performance acceptance Failed at the 15 Hz target, forced-host
+orphan prevention is Unverified due to contradictory observations,
+duplicate/missing-asset host exit-status propagation Failed, and the latest
+basic tracking regression is Failed due to repeated camera acquisition
+invalidations after an earlier successful retry. No production-adoption
+decision was made, and no production tracking architecture was modified.

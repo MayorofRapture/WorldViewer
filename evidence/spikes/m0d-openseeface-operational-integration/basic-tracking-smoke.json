@@ -1,0 +1,19 @@
+﻿{
+    "schemaVersion":  1,
+    "mode":  "tracking-sidecar",
+    "status":  "fail",
+    "checks":  [
+                   {
+                       "id":  "packaged-openseeface-operational-run",
+                       "status":  "fail",
+                       "detail":  "OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                   }
+               ],
+    "durationMs":  20015.178200000002,
+    "errors":  [
+                   {
+                       "code":  "TRACKING_SIDECAR_FAILED",
+                       "message":  "OpenSeeFace did not produce a valid got_3d_points pose within 20 seconds; check camera index 0 and camera ownership."
+                   }
+               ]
+}

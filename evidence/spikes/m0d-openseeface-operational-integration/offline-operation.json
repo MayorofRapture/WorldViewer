@@ -1,0 +1,27 @@
+﻿{
+    "schemaVersion":  1,
+    "observedAt":  "2026-09-21T23:50:48.0181522+00:00",
+    "executable":  "D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release\\worldviewer.exe",
+    "sidecar":  "D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release\\openseeface-facetracker.exe",
+    "trackerArgumentsFrozen":  true,
+    "offline":  {
+                    "status":  "Verified",
+                    "method":  "Temporary outbound firewall block for the sidecar; rule removed in finally; loopback UDP receiver remained enabled.",
+                    "smoke":  {
+                                  "schemaVersion":  1,
+                                  "mode":  "tracking-sidecar",
+                                  "status":  "pass",
+                                  "checks":  [
+                                                 {
+                                                     "id":  "packaged-openseeface-operational-run",
+                                                     "status":  "pass",
+                                                     "detail":  "{\"sidecarSpawnMs\":18.388,\"firstValidPoseMs\":7406.8759,\"sidecarPid\":19124,\"totalPacketCount\":83,\"validPoseCount\":83,\"invalidPoseCount\":0,\"validRate\":1.0,\"livePoseCadenceHz\":8.219499529709305,\"faceIdsObserved\":[0],\"frameDimensionsReported\":[[640,360]],\"pnpErrorMean\":4.910678831927748,\"observationDurationMs\":10001.4091,\"openseefaceVersion\":\"v1.20.5\",\"model\":3,\"camera\":[0,640,360],\"udp\":\"127.0.0.1:11573\",\"warmUpDurationMs\":null,\"measurementDurationMs\":null,\"measurementTotalPacketCount\":null,\"measurementValidPoseCount\":null,\"measurementInvalidPoseCount\":null,\"measurementValidRate\":null,\"measurementLivePoseCadenceHz\":null,\"measurementInterPoseIntervalMsMedian\":null,\"measurementInterPoseIntervalMsP95\":null,\"measurementInterPoseIntervalMsMin\":null,\"measurementInterPoseIntervalMsMax\":null,\"measurementUpstreamTimestampsMonotonic\":null,\"performanceTargetHz\":null,\"performanceTargetMet\":null}"
+                                                 }
+                                             ],
+                                  "durationMs":  17415.9066,
+                                  "errors":  [
+
+                                             ]
+                              }
+                }
+}
