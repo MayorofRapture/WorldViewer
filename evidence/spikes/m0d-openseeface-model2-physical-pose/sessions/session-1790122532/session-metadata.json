@@ -1,0 +1,64 @@
+{
+  "limitations": [
+    "OpenSeeFace has no control-channel shutdown in this pinned UDP mode, so normal harness shutdown terminates its direct child and waits for it; no process supervisor was added.",
+    "Loopback binding rejects non-loopback UDP packets; it does not prove absence of every possible external connection.",
+    "The accepted model-3 transform and coordinate convention are reused unchanged; raw coordinate units are preserved and no physical-position conclusion is produced by this runner."
+  ],
+  "physicalMeasurementStatus": "completed-user-run-pending-review",
+  "schemaVersion": 1,
+  "spikeId": "m0d-openseeface-model2-physical-pose",
+  "tracker": {
+    "arguments": [
+      "-i",
+      "127.0.0.1",
+      "-p",
+      "11573",
+      "-W",
+      "640",
+      "-H",
+      "360",
+      "-F",
+      "24",
+      "-c",
+      "0",
+      "-v",
+      "0",
+      "-s",
+      "1",
+      "--faces",
+      "1",
+      "--model",
+      "2",
+      "--gaze-tracking",
+      "0",
+      "--max-threads",
+      "1",
+      "--no-3d-adapt",
+      "1"
+    ],
+    "camera": {
+      "fps": 24,
+      "height": 360,
+      "index": 0,
+      "width": 640
+    },
+    "cpuMeasurement": "unavailable: no additional process-profiler dependency was introduced",
+    "exitStatus": 1,
+    "firstValidPacketMs": 68676.8211,
+    "nonLoopbackPacketsAccepted": false,
+    "path": ".spike-tools/Binary\\facetracker.exe",
+    "processSpawnMs": 333.1967,
+    "shutdownMethod": "harness-terminated-and-waited",
+    "shutdownMs": 19.7464,
+    "udp": "127.0.0.1:11573",
+    "unexpectedExitObserved": false
+  },
+  "upstream": {
+    "model": 2,
+    "modelArtifact": "models/lm_model2_opt.onnx",
+    "modelArtifactSha256": "16b33ba7d854a0643875ab3da3a620b4b650f2a7f032dd6f634f881cac108304",
+    "releaseAsset": "OpenSeeFace-v1.20.5.zip",
+    "releaseSha256": "c9223f3547dce65b09705bb9ff74439b7d36e1c37bbe9668672711cf5aa31147",
+    "version": "v1.20.5"
+  }
+}

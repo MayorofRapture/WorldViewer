@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "spikeId": "m0d-openseeface-model2-physical-pose",
+  "status": "inconclusive",
+  "purpose": "Isolated technical comparison of OpenSeeFace v1.20.5 model 2 under the accepted physical-pose procedure; no production adoption decision.",
+  "upstream": {
+    "project": "OpenSeeFace",
+    "version": "v1.20.5",
+    "releaseAsset": "OpenSeeFace-v1.20.5.zip",
+    "releaseSha256": "c9223f3547dce65b09705bb9ff74439b7d36e1c37bbe9668672711cf5aa31147",
+    "model": 2,
+    "modelArtifact": "models/lm_model2_opt.onnx",
+    "modelArtifactSha256": "16b33ba7d854a0643875ab3da3a620b4b650f2a7f032dd6f634f881cac108304"
+  },
+  "runner": {
+    "camera": { "index": 0, "width": 640, "height": 360, "fps": 24 },
+    "faces": 1,
+    "gazeTracking": false,
+    "maxThreads": 1,
+    "no3dAdapt": true,
+    "udp": "127.0.0.1:11573",
+    "session": "sessions/session-1790122532"
+  },
+  "evidence": {
+    "poseValidity": { "status": "verified", "segments": 17, "validSegments": 17, "invalidPoseSamples": 0, "faceIds": [0] },
+    "depthOrdering": { "status": "verified", "cameraSpaceZMeans": { "depth450": -5.158655, "depth600": -5.903438, "depth750": -8.588467 } },
+    "verticalDirectionality": { "status": "verified-qualitative", "cameraSpaceYMeans": { "down": -0.880458, "center": -1.349735, "up": -1.372520 } },
+    "horizontalDirectionality": { "status": "failed", "cameraSpaceXMeans": { "left": 1.593266, "center": 1.623233, "right": 1.506759 }, "reason": "left-center-right is non-monotonic" },
+    "stationaryRawStability": { "status": "mixed", "units": "openseeface-model-units", "stdDev": { "stationary1": [0.395958, 0.051002, 0.231160], "stationary2": [0.007185, 0.028715, 0.039679], "stationary3": [0.013115, 0.013742, 0.048625] } },
+    "millimeterGates": { "status": "unverified", "reason": "no authorized model-unit to millimeter calibration" },
+    "model3Equivalence": { "status": "unverified", "reason": "no completed comparable model-3 physical session is present in the accepted evidence" }
+  },
+  "transform": "Accepted model-3 wire restoration, quaternion handling, and camera-space composition reused unchanged; output remains uncalibrated model units.",
+  "limitations": [
+    "No physical-position conclusion is produced.",
+    "No camera image or video was persisted.",
+    "CPU measurement was unavailable because no profiler dependency was introduced.",
+    "Harness termination produced tracker exit code 1 with unexpectedExitObserved false."
+  ]
+}

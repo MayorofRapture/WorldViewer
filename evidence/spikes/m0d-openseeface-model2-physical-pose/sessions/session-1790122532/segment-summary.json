@@ -1,0 +1,1243 @@
+[
+  {
+    "id": "depth-450",
+    "target_description": "Approximately 450 mm from the physical screen plane to the midpoint between your eyes; keep that cyclopean eye centered on the display",
+    "elapsed_monotonic_ms": 5001.9927,
+    "sample_count": 111,
+    "valid_pose_count": 111,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.191155936712985,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 111,
+      "mean": 2.5215707920693062,
+      "median": 2.5676586627960205,
+      "std_dev": 0.3192012417169814,
+      "min": 1.797818899154663,
+      "max": 3.1532773971557617,
+      "p95_abs_deviation_from_median": 0.5856187343597412
+    },
+    "raw_pnp_x": {
+      "count": 111,
+      "mean": 1.02955585234874,
+      "median": 0.8963103890419006,
+      "std_dev": 0.19878183069985314,
+      "min": 0.8745640516281128,
+      "max": 1.523608922958374,
+      "p95_abs_deviation_from_median": 0.4230586886405945
+    },
+    "raw_pnp_y": {
+      "count": 111,
+      "mean": -1.1126871296951362,
+      "median": -1.021823525428772,
+      "std_dev": 0.1383845588598773,
+      "min": -1.642839789390564,
+      "max": -0.998329222202301,
+      "p95_abs_deviation_from_median": 0.303352952003479
+    },
+    "raw_pnp_z": {
+      "count": 111,
+      "mean": -5.555800244614884,
+      "median": -4.787520408630371,
+      "std_dev": 1.109464803806939,
+      "min": -7.7364583015441895,
+      "max": -4.732714653015137,
+      "p95_abs_deviation_from_median": 2.3442063331604004
+    },
+    "camera_space_cyclopean_x": {
+      "count": 111,
+      "mean": 1.2331327371769123,
+      "median": 1.0983119010925293,
+      "std_dev": 0.1976477266084022,
+      "min": 1.083879828453064,
+      "max": 1.6686619520187378,
+      "p95_abs_deviation_from_median": 0.41909635066986084
+    },
+    "camera_space_cyclopean_y": {
+      "count": 111,
+      "mean": -1.0786686566498902,
+      "median": -0.9714711308479309,
+      "std_dev": 0.1619386741437589,
+      "min": -1.5666142702102661,
+      "max": -0.9521793127059937,
+      "p95_abs_deviation_from_median": 0.3496193289756775
+    },
+    "camera_space_cyclopean_z": {
+      "count": 111,
+      "mean": -5.158655441559113,
+      "median": -4.391587734222412,
+      "std_dev": 1.107862928727942,
+      "min": -7.32004451751709,
+      "max": -4.336442947387695,
+      "p95_abs_deviation_from_median": 2.3370723724365234
+    }
+  },
+  {
+    "id": "depth-600",
+    "target_description": "Approximately 600 mm from the physical screen plane to the midpoint between your eyes; keep that cyclopean eye centered on the display",
+    "elapsed_monotonic_ms": 5000.0984,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.399559176675403,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 1.8295184618660383,
+      "median": 1.522822618484497,
+      "std_dev": 0.5513178702144081,
+      "min": 1.1883442401885986,
+      "max": 3.0143980979919434,
+      "p95_abs_deviation_from_median": 1.2053687572479248
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.343156369669097,
+      "median": 1.5530204772949219,
+      "std_dev": 0.3099334470566693,
+      "min": 0.8874408006668091,
+      "max": 1.5925698280334473,
+      "p95_abs_deviation_from_median": 0.6579462885856628
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.3510682572211539,
+      "median": -1.4972866773605347,
+      "std_dev": 0.22171452523424298,
+      "min": -1.5384234189987183,
+      "max": -1.0201785564422607,
+      "p95_abs_deviation_from_median": 0.46968746185302734
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.318180829286575,
+      "median": -7.048472881317139,
+      "std_dev": 1.074867651792556,
+      "min": -7.186723709106445,
+      "max": -4.747715950012207,
+      "p95_abs_deviation_from_median": 2.2784223556518555
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.481803257550512,
+      "median": 1.6632131338119507,
+      "std_dev": 0.26828417968618024,
+      "min": 1.0895535945892334,
+      "max": 1.698197841644287,
+      "p95_abs_deviation_from_median": 0.5698593854904175
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.275492740528924,
+      "median": -1.4170981645584106,
+      "std_dev": 0.21369796427800192,
+      "min": -1.459710955619812,
+      "max": -0.9634674787521362,
+      "p95_abs_deviation_from_median": 0.45022690296173096
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -5.9034378187997,
+      "median": -6.6236491203308105,
+      "std_dev": 1.0612741127689196,
+      "min": -6.757381439208984,
+      "max": -4.350554466247559,
+      "p95_abs_deviation_from_median": 2.247969627380371
+    }
+  },
+  {
+    "id": "depth-750",
+    "target_description": "Approximately 750 mm from the physical screen plane to the midpoint between your eyes; keep that cyclopean eye centered on the display",
+    "elapsed_monotonic_ms": 5001.4438,
+    "sample_count": 153,
+    "valid_pose_count": 153,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.591166494762973,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 153,
+      "mean": 1.7923634067859524,
+      "median": 1.881964087486267,
+      "std_dev": 0.29331049585286784,
+      "min": 1.1086796522140503,
+      "max": 2.2607359886169434,
+      "p95_abs_deviation_from_median": 0.6508133411407471
+    },
+    "raw_pnp_x": {
+      "count": 153,
+      "mean": 1.5322533051172893,
+      "median": 1.5258088111877441,
+      "std_dev": 0.021817051782787727,
+      "min": 1.5001556873321533,
+      "max": 1.5826566219329834,
+      "p95_abs_deviation_from_median": 0.0459975004196167
+    },
+    "raw_pnp_y": {
+      "count": 153,
+      "mean": -1.5362885707344105,
+      "median": -1.5376789569854736,
+      "std_dev": 0.026658493326556086,
+      "min": -1.595920205116272,
+      "max": -1.4844887256622314,
+      "p95_abs_deviation_from_median": 0.04558706283569336
+    },
+    "raw_pnp_z": {
+      "count": 153,
+      "mean": -9.009657641641455,
+      "median": -9.601154327392578,
+      "std_dev": 1.077473623397074,
+      "min": -9.721736907958984,
+      "max": -7.002161502838135,
+      "p95_abs_deviation_from_median": 2.5373106002807617
+    },
+    "camera_space_cyclopean_x": {
+      "count": 153,
+      "mean": 1.6697563260209327,
+      "median": 1.6682236194610596,
+      "std_dev": 0.011080762785442662,
+      "min": 1.6475203037261963,
+      "max": 1.6992541551589966,
+      "p95_abs_deviation_from_median": 0.02160048484802246
+    },
+    "camera_space_cyclopean_y": {
+      "count": 153,
+      "mean": -1.4611448446909587,
+      "median": -1.4652351140975952,
+      "std_dev": 0.026943053327842765,
+      "min": -1.5170292854309082,
+      "max": -1.395456075668335,
+      "p95_abs_deviation_from_median": 0.05061984062194824
+    },
+    "camera_space_cyclopean_z": {
+      "count": 153,
+      "mean": -8.588466803232828,
+      "median": -9.180721282958984,
+      "std_dev": 1.0782259665721858,
+      "min": -9.304008483886719,
+      "max": -6.579455375671387,
+      "p95_abs_deviation_from_median": 2.539938449859619
+    }
+  },
+  {
+    "id": "horizontal-left",
+    "target_description": "Approximately -150 mm horizontal cyclopean-eye position at 600 mm depth",
+    "elapsed_monotonic_ms": 5002.408899999999,
+    "sample_count": 154,
+    "valid_pose_count": 154,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.78516832160602,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 154,
+      "mean": 2.370687251741236,
+      "median": 2.4289450645446777,
+      "std_dev": 0.24345586426626337,
+      "min": 1.7743587493896484,
+      "max": 2.904398202896118,
+      "p95_abs_deviation_from_median": 0.5598517656326294
+    },
+    "raw_pnp_x": {
+      "count": 154,
+      "mean": 1.4415970669164286,
+      "median": 1.4240925312042236,
+      "std_dev": 0.03664899511041199,
+      "min": 1.4033576250076294,
+      "max": 1.5199346542358398,
+      "p95_abs_deviation_from_median": 0.08577430248260498
+    },
+    "raw_pnp_y": {
+      "count": 154,
+      "mean": -2.2957981004343404,
+      "median": -2.5376570224761963,
+      "std_dev": 0.4389709720287487,
+      "min": -2.5792367458343506,
+      "max": -1.4961546659469604,
+      "p95_abs_deviation_from_median": 1.0294098854064941
+    },
+    "raw_pnp_z": {
+      "count": 154,
+      "mean": -7.587118675182392,
+      "median": -6.964391708374023,
+      "std_dev": 1.1256024963633995,
+      "min": -9.668517112731934,
+      "max": -6.872768878936768,
+      "p95_abs_deviation_from_median": 2.65145206451416
+    },
+    "camera_space_cyclopean_x": {
+      "count": 154,
+      "mean": 1.593266021121632,
+      "median": 1.5749523639678955,
+      "std_dev": 0.03690217039913714,
+      "min": 1.550096869468689,
+      "max": 1.6699378490447998,
+      "p95_abs_deviation_from_median": 0.08734750747680664
+    },
+    "camera_space_cyclopean_y": {
+      "count": 154,
+      "mean": -2.171320519664071,
+      "median": -2.3959362506866455,
+      "std_dev": 0.40842306481079743,
+      "min": -2.439103126525879,
+      "max": -1.42835533618927,
+      "p95_abs_deviation_from_median": 0.9566121101379395
+    },
+    "camera_space_cyclopean_z": {
+      "count": 154,
+      "mean": -7.180833968249234,
+      "median": -6.563055038452148,
+      "std_dev": 1.1179029786785966,
+      "min": -9.251097679138184,
+      "max": -6.4700493812561035,
+      "p95_abs_deviation_from_median": 2.6301794052124023
+    }
+  },
+  {
+    "id": "horizontal-center",
+    "target_description": "Approximately centered cyclopean-eye position at 600 mm depth",
+    "elapsed_monotonic_ms": 5001.0378,
+    "sample_count": 111,
+    "valid_pose_count": 111,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.195393124203143,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 111,
+      "mean": 1.771371179872805,
+      "median": 1.499511957168579,
+      "std_dev": 0.5071226466669909,
+      "min": 1.2140021324157715,
+      "max": 2.7404119968414307,
+      "p95_abs_deviation_from_median": 1.111600637435913
+    },
+    "raw_pnp_x": {
+      "count": 111,
+      "mean": 1.5027404486596048,
+      "median": 1.5362757444381714,
+      "std_dev": 0.05534706510893215,
+      "min": 1.4154469966888428,
+      "max": 1.5676941871643066,
+      "p95_abs_deviation_from_median": 0.11671078205108643
+    },
+    "raw_pnp_y": {
+      "count": 111,
+      "mean": -1.8119322748871538,
+      "median": -1.442838430404663,
+      "std_dev": 0.5301098823340014,
+      "min": -2.593559741973877,
+      "max": -1.4219764471054077,
+      "p95_abs_deviation_from_median": 1.1270523071289062
+    },
+    "raw_pnp_z": {
+      "count": 111,
+      "mean": -6.944731488958135,
+      "median": -6.947031497955322,
+      "std_dev": 0.03421600529760511,
+      "min": -7.02560567855835,
+      "max": -6.8621978759765625,
+      "p95_abs_deviation_from_median": 0.06345176696777344
+    },
+    "camera_space_cyclopean_x": {
+      "count": 111,
+      "mean": 1.6232328769322988,
+      "median": 1.6414023637771606,
+      "std_dev": 0.035572417413369216,
+      "min": 1.564545750617981,
+      "max": 1.66822350025177,
+      "p95_abs_deviation_from_median": 0.07320880889892578
+    },
+    "camera_space_cyclopean_y": {
+      "count": 111,
+      "mean": -1.7095370614850842,
+      "median": -1.360547423362732,
+      "std_dev": 0.5025833281397402,
+      "min": -2.4481446743011475,
+      "max": -1.3370758295059204,
+      "p95_abs_deviation_from_median": 1.06908118724823
+    },
+    "camera_space_cyclopean_z": {
+      "count": 111,
+      "mean": -6.527779549091786,
+      "median": -6.527257919311523,
+      "std_dev": 0.0396747202494822,
+      "min": -6.62675666809082,
+      "max": -6.43774938583374,
+      "p95_abs_deviation_from_median": 0.0679926872253418
+    }
+  },
+  {
+    "id": "horizontal-right",
+    "target_description": "Approximately +150 mm horizontal cyclopean-eye position at 600 mm depth",
+    "elapsed_monotonic_ms": 5000.6043,
+    "sample_count": 154,
+    "valid_pose_count": 154,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.796277961845533,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 154,
+      "mean": 2.3235515239950897,
+      "median": 2.5126898288726807,
+      "std_dev": 0.5666717716741747,
+      "min": 1.2025395631790161,
+      "max": 3.313335418701172,
+      "p95_abs_deviation_from_median": 1.185655117034912
+    },
+    "raw_pnp_x": {
+      "count": 154,
+      "mean": 1.3911779809307743,
+      "median": 1.3467463254928589,
+      "std_dev": 0.08568528114110505,
+      "min": 1.3255723714828491,
+      "max": 1.5614691972732544,
+      "p95_abs_deviation_from_median": 0.20145666599273682
+    },
+    "raw_pnp_y": {
+      "count": 154,
+      "mean": -0.4769245212921849,
+      "median": -0.18337054550647736,
+      "std_dev": 0.5409931486519882,
+      "min": -1.4562069177627563,
+      "max": -0.13587616384029388,
+      "p95_abs_deviation_from_median": 1.2603370398283005
+    },
+    "raw_pnp_z": {
+      "count": 154,
+      "mean": -6.475440242073753,
+      "median": -6.341226577758789,
+      "std_dev": 0.25797574639251425,
+      "min": -6.993135929107666,
+      "max": -6.285213470458984,
+      "p95_abs_deviation_from_median": 0.6136212348937988
+    },
+    "camera_space_cyclopean_x": {
+      "count": 154,
+      "mean": 1.5067589817109046,
+      "median": 1.4641205072402954,
+      "std_dev": 0.08023151891237625,
+      "min": 1.4479458332061768,
+      "max": 1.6673800945281982,
+      "p95_abs_deviation_from_median": 0.18995273113250732
+    },
+    "camera_space_cyclopean_y": {
+      "count": 154,
+      "mean": -0.4046078948908812,
+      "median": -0.11286933720111847,
+      "std_dev": 0.5336249079175651,
+      "min": -1.3732713460922241,
+      "max": -0.07835507392883301,
+      "p95_abs_deviation_from_median": 1.247829481959343
+    },
+    "camera_space_cyclopean_z": {
+      "count": 154,
+      "mean": -6.047112591854938,
+      "median": -5.912431716918945,
+      "std_dev": 0.2604093545556654,
+      "min": -6.57013463973999,
+      "max": -5.855044841766357,
+      "p95_abs_deviation_from_median": 0.6175923347473145
+    }
+  },
+  {
+    "id": "vertical-down",
+    "target_description": "Approximately -100 mm vertical cyclopean-eye position at 600 mm depth",
+    "elapsed_monotonic_ms": 5000.4082,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.39817141328582,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 3.856351833258356,
+      "median": 3.9887306690216064,
+      "std_dev": 0.7987312465251845,
+      "min": 2.2987582683563232,
+      "max": 5.32503080368042,
+      "p95_abs_deviation_from_median": 1.4071269035339355
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 0.4508703240010488,
+      "median": 0.04145662486553192,
+      "std_dev": 0.6193455671166611,
+      "min": -0.03839592635631561,
+      "max": 1.3473751544952393,
+      "p95_abs_deviation_from_median": 1.299575760960579
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -0.9222121345810592,
+      "median": -1.3010170459747314,
+      "std_dev": 0.5537082221529049,
+      "min": -1.341353178024292,
+      "max": -0.12475145608186722,
+      "p95_abs_deviation_from_median": 1.1725973337888718
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.324860104492733,
+      "median": -6.321264743804932,
+      "std_dev": 0.03278121477900192,
+      "min": -6.411717891693115,
+      "max": -6.2703938484191895,
+      "p95_abs_deviation_from_median": 0.05518627166748047
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 0.7441760402704988,
+      "median": 0.411010205745697,
+      "std_dev": 0.5000294305893522,
+      "min": 0.3505147695541382,
+      "max": 1.46803617477417,
+      "p95_abs_deviation_from_median": 1.051158368587494
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -0.8804577577726117,
+      "median": -1.2693907022476196,
+      "std_dev": 0.5681134152612135,
+      "min": -1.3102085590362549,
+      "max": -0.0664556547999382,
+      "p95_abs_deviation_from_median": 1.1996835470199585
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.011398332459586,
+      "median": -6.047917366027832,
+      "std_dev": 0.09631811145431564,
+      "min": -6.159655570983887,
+      "max": -5.839620113372803,
+      "p95_abs_deviation_from_median": 0.1913461685180664
+    }
+  },
+  {
+    "id": "vertical-center",
+    "target_description": "Approximately centered cyclopean-eye position at 600 mm depth",
+    "elapsed_monotonic_ms": 5002.1817,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.390230246934053,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 2.1647683115942136,
+      "median": 1.456947684288025,
+      "std_dev": 1.108186457858782,
+      "min": 1.1516578197479248,
+      "max": 4.09763240814209,
+      "p95_abs_deviation_from_median": 2.394201874732971
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.1384512447818582,
+      "median": 1.6622697114944458,
+      "std_dev": 0.7547294908761368,
+      "min": 0.04155517742037773,
+      "max": 1.6987885236740112,
+      "p95_abs_deviation_from_median": 1.6090336479246616
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.408578373491764,
+      "median": -1.4575928449630737,
+      "std_dev": 0.08103256570690223,
+      "min": -1.491136908531189,
+      "max": -1.2773727178573608,
+      "p95_abs_deviation_from_median": 0.1749405860900879
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.814399152994156,
+      "median": -7.048319339752197,
+      "std_dev": 0.3756115971971923,
+      "min": -7.1862921714782715,
+      "max": -6.235095977783203,
+      "p95_abs_deviation_from_median": 0.8053393363952637
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.33093994643007,
+      "median": 1.7665259838104248,
+      "std_dev": 0.6289266822186488,
+      "min": 0.4158906638622284,
+      "max": 1.7997605800628662,
+      "p95_abs_deviation_from_median": 1.342555433511734
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.3497347799795014,
+      "median": -1.3851958513259888,
+      "std_dev": 0.06456737488298941,
+      "min": -1.4209333658218384,
+      "max": -1.242989182472229,
+      "p95_abs_deviation_from_median": 0.1375882625579834
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.4426679738930295,
+      "median": -6.623751163482666,
+      "std_dev": 0.3004248254532052,
+      "min": -6.760213375091553,
+      "max": -5.970971584320068,
+      "p95_abs_deviation_from_median": 0.646517276763916
+    }
+  },
+  {
+    "id": "vertical-up",
+    "target_description": "Approximately +100 mm vertical cyclopean-eye position at 600 mm depth",
+    "elapsed_monotonic_ms": 5001.5897,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.392880407603204,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 2.619843488293035,
+      "median": 3.0267746448516846,
+      "std_dev": 0.8499478307978577,
+      "min": 1.26980459690094,
+      "max": 3.6546034812927246,
+      "p95_abs_deviation_from_median": 1.7112756967544556
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 2.357241429388523,
+      "median": 2.676910877227783,
+      "std_dev": 0.48775498412715057,
+      "min": 1.6454956531524658,
+      "max": 2.7685325145721436,
+      "p95_abs_deviation_from_median": 1.0198575258255005
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.4303446550454413,
+      "median": -1.4311953783035278,
+      "std_dev": 0.01776799127639907,
+      "min": -1.4684425592422485,
+      "max": -1.3909435272216797,
+      "p95_abs_deviation_from_median": 0.030953168869018555
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.725027429206031,
+      "median": -6.623086929321289,
+      "std_dev": 0.22161545518172174,
+      "min": -7.117670059204102,
+      "max": -6.431382656097412,
+      "p95_abs_deviation_from_median": 0.4392671585083008
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 2.3458116288696016,
+      "median": 2.608478546142578,
+      "std_dev": 0.41025290676181514,
+      "min": 1.7438929080963135,
+      "max": 2.704066038131714,
+      "p95_abs_deviation_from_median": 0.8541936874389648
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.3725196687238557,
+      "median": -1.3711845874786377,
+      "std_dev": 0.01919809955394886,
+      "min": -1.4333672523498535,
+      "max": -1.3287547826766968,
+      "p95_abs_deviation_from_median": 0.03432309627532959
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.293143732207162,
+      "median": -6.188146591186523,
+      "std_dev": 0.225206812066168,
+      "min": -6.69156551361084,
+      "max": -5.999136447906494,
+      "p95_abs_deviation_from_median": 0.44944095611572266
+    }
+  },
+  {
+    "id": "stationary-1",
+    "target_description": "Centered cyclopean eye at 600 mm stationary hold 1",
+    "elapsed_monotonic_ms": 5001.5223000000005,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.393182171755985,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 2.120943639959608,
+      "median": 1.7269299030303955,
+      "std_dev": 0.7000082374606921,
+      "min": 1.3433008193969727,
+      "max": 3.548975706100464,
+      "p95_abs_deviation_from_median": 1.5904803276062012
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 2.000666280942304,
+      "median": 1.6652567386627197,
+      "std_dev": 0.4825715438908423,
+      "min": 1.6453222036361694,
+      "max": 2.7299368381500244,
+      "p95_abs_deviation_from_median": 1.047440528869629
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.526590418602739,
+      "median": -1.5658413171768188,
+      "std_dev": 0.0638346227310879,
+      "min": -1.591300368309021,
+      "max": -1.4115084409713745,
+      "p95_abs_deviation_from_median": 0.13929831981658936
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.876618419374738,
+      "median": -7.0220537185668945,
+      "std_dev": 0.2272141309637238,
+      "min": -7.0904951095581055,
+      "max": -6.437280654907227,
+      "p95_abs_deviation_from_median": 0.5197963714599609
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 2.0492569846766338,
+      "median": 1.7747502326965332,
+      "std_dev": 0.3959575797283761,
+      "min": 1.7568399906158447,
+      "max": 2.6584904193878174,
+      "p95_abs_deviation_from_median": 0.860201358795166
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.452635187123503,
+      "median": -1.4830960035324097,
+      "std_dev": 0.05100193125115232,
+      "min": -1.5063424110412598,
+      "max": -1.348728895187378,
+      "p95_abs_deviation_from_median": 0.11703205108642578
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.448367301906858,
+      "median": -6.594776153564453,
+      "std_dev": 0.23116041906675808,
+      "min": -6.664734363555908,
+      "max": -6.0025410652160645,
+      "p95_abs_deviation_from_median": 0.5293135643005371
+    }
+  },
+  {
+    "id": "stationary-2",
+    "target_description": "Centered cyclopean eye at 600 mm stationary hold 2",
+    "elapsed_monotonic_ms": 5001.5224,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.39318172402867,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 1.6485056025641305,
+      "median": 1.650032639503479,
+      "std_dev": 0.12930548252543264,
+      "min": 1.2682007551193237,
+      "max": 1.932071328163147,
+      "p95_abs_deviation_from_median": 0.24192416667938232
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.6655667094247681,
+      "median": 1.6655300855636597,
+      "std_dev": 0.007749677701217088,
+      "min": 1.6472322940826416,
+      "max": 1.6907243728637695,
+      "p95_abs_deviation_from_median": 0.017209768295288086
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.5315033250621386,
+      "median": -1.5150519609451294,
+      "std_dev": 0.031348551593534786,
+      "min": -1.5905848741531372,
+      "max": -1.4927743673324585,
+      "p95_abs_deviation_from_median": 0.06536388397216797
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -7.007867212806429,
+      "median": -7.005738258361816,
+      "std_dev": 0.03993329051789463,
+      "min": -7.121088027954102,
+      "max": -6.9241156578063965,
+      "p95_abs_deviation_from_median": 0.07142114639282227
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.7708309569529124,
+      "median": 1.7713664770126343,
+      "std_dev": 0.007184923841989516,
+      "min": 1.7502669095993042,
+      "max": 1.7865040302276611,
+      "p95_abs_deviation_from_median": 0.0151137113571167
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.4498245524508613,
+      "median": -1.4369679689407349,
+      "std_dev": 0.028714719113863075,
+      "min": -1.5017272233963013,
+      "max": -1.4100897312164307,
+      "p95_abs_deviation_from_median": 0.05534660816192627
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.582451858690807,
+      "median": -6.581243515014648,
+      "std_dev": 0.03967862674120509,
+      "min": -6.696794033050537,
+      "max": -6.4983744621276855,
+      "p95_abs_deviation_from_median": 0.07165145874023438
+    }
+  },
+  {
+    "id": "stationary-3",
+    "target_description": "Centered cyclopean eye at 600 mm stationary hold 3",
+    "elapsed_monotonic_ms": 5001.5481,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.393066658701134,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 1.5100637056997843,
+      "median": 1.4995988607406616,
+      "std_dev": 0.14055648043651994,
+      "min": 1.1986613273620605,
+      "max": 1.8832899332046509,
+      "p95_abs_deviation_from_median": 0.26225829124450684
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.6833061426877975,
+      "median": 1.682958960533142,
+      "std_dev": 0.014298958665922384,
+      "min": 1.6520966291427612,
+      "max": 1.7162792682647705,
+      "p95_abs_deviation_from_median": 0.026419878005981445
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.4896837355835097,
+      "median": -1.4899747371673584,
+      "std_dev": 0.013915398266279045,
+      "min": -1.5178889036178589,
+      "max": -1.4620323181152344,
+      "p95_abs_deviation_from_median": 0.024269700050354004
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -7.026940294674465,
+      "median": -7.0268120765686035,
+      "std_dev": 0.04888396415724021,
+      "min": -7.137404441833496,
+      "max": -6.904767990112305,
+      "p95_abs_deviation_from_median": 0.08763599395751953
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.7815196035163743,
+      "median": 1.7800114154815674,
+      "std_dev": 0.01311494520677973,
+      "min": 1.7465016841888428,
+      "max": 1.8114179372787476,
+      "p95_abs_deviation_from_median": 0.02408289909362793
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.4139410385063715,
+      "median": -1.4169411659240723,
+      "std_dev": 0.013742003340783905,
+      "min": -1.438224196434021,
+      "max": -1.3852483034133911,
+      "p95_abs_deviation_from_median": 0.025327205657958984
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.600417588438306,
+      "median": -6.598805904388428,
+      "std_dev": 0.0486249373573187,
+      "min": -6.711977481842041,
+      "max": -6.479419231414795,
+      "p95_abs_deviation_from_median": 0.08857488632202148
+    }
+  },
+  {
+    "id": "rotation-neutral",
+    "target_description": "Centered cyclopean eye at 600 mm, neutral orientation",
+    "elapsed_monotonic_ms": 5002.029699999999,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.39091063373734,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 1.9340373373457365,
+      "median": 2.032461643218994,
+      "std_dev": 0.3428293054770901,
+      "min": 1.2684073448181152,
+      "max": 2.467996597290039,
+      "p95_abs_deviation_from_median": 0.6324584484100342
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.830799121941839,
+      "median": 1.8893858194351196,
+      "std_dev": 0.09327918481786503,
+      "min": 1.6816534996032715,
+      "max": 1.9125096797943115,
+      "p95_abs_deviation_from_median": 0.200616717338562
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.3948916484202658,
+      "median": -1.353474497795105,
+      "std_dev": 0.06829026807525818,
+      "min": -1.533090353012085,
+      "max": -1.3309195041656494,
+      "p95_abs_deviation_from_median": 0.14590120315551758
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.933410044227328,
+      "median": -6.881319522857666,
+      "std_dev": 0.1099812353362382,
+      "min": -7.298123836517334,
+      "max": -6.808883190155029,
+      "p95_abs_deviation_from_median": 0.2178788185119629
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.8199023487312453,
+      "median": 1.8265448808670044,
+      "std_dev": 0.020220857663216674,
+      "min": 1.7708688974380493,
+      "max": 1.850800633430481,
+      "p95_abs_deviation_from_median": 0.04220998287200928
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.3108716330357961,
+      "median": -1.2623727321624756,
+      "std_dev": 0.07693864015603145,
+      "min": -1.4769316911697388,
+      "max": -1.2443839311599731,
+      "p95_abs_deviation_from_median": 0.16331863403320312
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.501257219484875,
+      "median": -6.4452080726623535,
+      "std_dev": 0.11350751117711197,
+      "min": -6.871857643127441,
+      "max": -6.376187801361084,
+      "p95_abs_deviation_from_median": 0.22940349578857422
+    }
+  },
+  {
+    "id": "rotation-left",
+    "target_description": "Turn head left while keeping the cyclopean eye approximately stationary",
+    "elapsed_monotonic_ms": 5001.7904,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.39198187912872,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 1.789523292865072,
+      "median": 1.652744174003601,
+      "std_dev": 0.272400955241868,
+      "min": 1.4387205839157104,
+      "max": 2.4362189769744873,
+      "p95_abs_deviation_from_median": 0.6092599630355835
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.7492118637476648,
+      "median": 1.676819086074829,
+      "std_dev": 0.1115339321135639,
+      "min": 1.6558406352996826,
+      "max": 1.9289501905441284,
+      "p95_abs_deviation_from_median": 0.23738300800323486
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.6275557300874166,
+      "median": -1.758164405822754,
+      "std_dev": 0.19043079417482203,
+      "min": -1.7779459953308105,
+      "max": -1.337866187095642,
+      "p95_abs_deviation_from_median": 0.40531790256500244
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.827178746461868,
+      "median": -6.815693378448486,
+      "std_dev": 0.0495041903511835,
+      "min": -6.9591217041015625,
+      "max": -6.7476301193237305,
+      "p95_abs_deviation_from_median": 0.09368038177490234
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.8050217894571168,
+      "median": 1.7964234352111816,
+      "std_dev": 0.026968929674141218,
+      "min": 1.7690383195877075,
+      "max": 1.8682224750518799,
+      "p95_abs_deviation_from_median": 0.052263498306274414
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.4152005538344383,
+      "median": -1.4837212562561035,
+      "std_dev": 0.10525341461170296,
+      "min": -1.5147002935409546,
+      "max": -1.247807502746582,
+      "p95_abs_deviation_from_median": 0.2235802412033081
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.450215241738728,
+      "median": -6.451174259185791,
+      "std_dev": 0.026088062214327613,
+      "min": -6.525644779205322,
+      "max": -6.388294219970703,
+      "p95_abs_deviation_from_median": 0.048473358154296875
+    }
+  },
+  {
+    "id": "rotation-right",
+    "target_description": "Turn head right while keeping the cyclopean eye approximately stationary",
+    "elapsed_monotonic_ms": 5000.1827,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.399181533906752,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 2.3195830626147136,
+      "median": 2.5355536937713623,
+      "std_dev": 0.5661161507271539,
+      "min": 1.4279924631118774,
+      "max": 3.261475086212158,
+      "p95_abs_deviation_from_median": 1.028740406036377
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.6650217367070062,
+      "median": 1.6663312911987305,
+      "std_dev": 0.015610796391139907,
+      "min": 1.6236674785614014,
+      "max": 1.7052326202392578,
+      "p95_abs_deviation_from_median": 0.031528353691101074
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.172545786947012,
+      "median": -0.89054936170578,
+      "std_dev": 0.4135872947095371,
+      "min": -1.7708044052124023,
+      "max": -0.8345173597335815,
+      "p95_abs_deviation_from_median": 0.8755596280097961
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -6.898974772010531,
+      "median": -6.914117813110352,
+      "std_dev": 0.06927433743577505,
+      "min": -7.0398077964782715,
+      "max": -6.765433311462402,
+      "p95_abs_deviation_from_median": 0.12704229354858398
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.7971126160451345,
+      "median": 1.7972139120101929,
+      "std_dev": 0.009145402245872212,
+      "min": 1.7767012119293213,
+      "max": 1.8206754922866821,
+      "p95_abs_deviation_from_median": 0.015463113784790039
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.1725204097373145,
+      "median": -1.021392583847046,
+      "std_dev": 0.22528219188399132,
+      "min": -1.5093283653259277,
+      "max": -0.9932580590248108,
+      "p95_abs_deviation_from_median": 0.4781458377838135
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -6.520788222551346,
+      "median": -6.5242600440979,
+      "std_dev": 0.049682492302113176,
+      "min": -6.63480806350708,
+      "max": -6.419737339019775,
+      "p95_abs_deviation_from_median": 0.09215116500854492
+    }
+  },
+  {
+    "id": "rotation-up",
+    "target_description": "Look slightly up while keeping the cyclopean eye approximately stationary",
+    "elapsed_monotonic_ms": 5001.299,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.3941819915186,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 3.9027386882475446,
+      "median": 4.319831848144531,
+      "std_dev": 0.8535731406117818,
+      "min": 2.423435688018799,
+      "max": 4.974425315856934,
+      "p95_abs_deviation_from_median": 1.7037978172302246
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 2.272611217839377,
+      "median": 2.5608386993408203,
+      "std_dev": 0.43618999239829814,
+      "min": 1.6218681335449219,
+      "max": 2.65724778175354,
+      "p95_abs_deviation_from_median": 0.9223772287368774
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.3682321522917067,
+      "median": -1.5986119508743286,
+      "std_dev": 0.3459489987097198,
+      "min": -1.662964940071106,
+      "max": -0.8513520956039429,
+      "p95_abs_deviation_from_median": 0.7391568422317505
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -7.797805266720908,
+      "median": -8.172042846679688,
+      "std_dev": 0.609363623084465,
+      "min": -8.49060344696045,
+      "max": -6.888982772827148,
+      "p95_abs_deviation_from_median": 1.2623114585876465
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 2.2021224700978825,
+      "median": 2.3759615421295166,
+      "std_dev": 0.2895245045700318,
+      "min": 1.7773646116256714,
+      "max": 2.5249135494232178,
+      "p95_abs_deviation_from_median": 0.5929391384124756
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.438032513750451,
+      "median": -1.6371484994888306,
+      "std_dev": 0.29978992868829246,
+      "min": -1.7066549062728882,
+      "max": -0.9909147620201111,
+      "p95_abs_deviation_from_median": 0.6333847045898438
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -7.404605622802462,
+      "median": -7.775786399841309,
+      "std_dev": 0.6086794676790278,
+      "min": -8.092522621154785,
+      "max": -6.497159957885742,
+      "p95_abs_deviation_from_median": 1.2574996948242188
+    }
+  },
+  {
+    "id": "rotation-down",
+    "target_description": "Look slightly down while keeping the cyclopean eye approximately stationary",
+    "elapsed_monotonic_ms": 5000.5216,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.39766347574621,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 3.6967086664267947,
+      "median": 3.3078129291534424,
+      "std_dev": 0.7537772744707967,
+      "min": 2.6886346340179443,
+      "max": 5.108753204345703,
+      "p95_abs_deviation_from_median": 1.6554458141326904
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.5752236640879087,
+      "median": 1.074055790901184,
+      "std_dev": 0.7258811985630984,
+      "min": 1.039973497390747,
+      "max": 2.6518826484680176,
+      "p95_abs_deviation_from_median": 1.55746591091156
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -1.466884942991393,
+      "median": -1.3928247690200806,
+      "std_dev": 0.1157918771375488,
+      "min": -1.662017822265625,
+      "max": -1.3580337762832642,
+      "p95_abs_deviation_from_median": 0.2550210952758789
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -7.404306458575385,
+      "median": -6.975934982299805,
+      "std_dev": 0.6371050425183202,
+      "min": -8.496512413024902,
+      "max": -6.867125988006592,
+      "p95_abs_deviation_from_median": 1.4049711227416992
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.7584676082645143,
+      "median": 1.4248262643814087,
+      "std_dev": 0.4822052699378922,
+      "min": 1.4003278017044067,
+      "max": 2.4994165897369385,
+      "p95_abs_deviation_from_median": 1.041040062904358
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -1.453888373715537,
+      "median": -1.3531023263931274,
+      "std_dev": 0.1535337156330515,
+      "min": -1.7091172933578491,
+      "max": -1.312461495399475,
+      "p95_abs_deviation_from_median": 0.33553194999694824
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -7.0811595405851095,
+      "median": -6.686997413635254,
+      "std_dev": 0.5908110666801623,
+      "min": -8.10263442993164,
+      "max": -6.5777812004089355,
+      "p95_abs_deviation_from_median": 1.303304672241211
+    }
+  }
+]

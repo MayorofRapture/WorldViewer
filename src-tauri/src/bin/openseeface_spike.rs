@@ -11,7 +11,8 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const VERSION: &str = "v1.20.5";
-const MODEL: i32 = 3;
+const MODEL2_ARTIFACT_SHA256: &str = "16b33ba7d854a0643875ab3da3a620b4b650f2a7f032dd6f634f881cac108304";
+const MODEL3_ARTIFACT_SHA256: &str = "5aa0ab2594acaf2e1d3916a8de592cffeb1f1a7a7f778cad2f37948bff6549d1";
 const POINTS_2D: usize = 68;
 const POINTS_3D: usize = 70;
 const FEATURE_COUNT: usize = 14;
@@ -75,6 +76,7 @@ struct Config {
     output_root: PathBuf,
     camera: CameraConfig,
     port: u16,
+    model: i32,
     settle: Duration,
     capture: Duration,
     interactive: bool,
@@ -177,17 +179,17 @@ fn stats(values: &[f64]) -> AxisStats {
 }
 
 fn config() -> Result<Config, String> {
-    let mut cfg = Config { tracker_dir: PathBuf::from(".spike-tools/Binary"), output_root: PathBuf::from("evidence/spikes/m0d-openseeface-physical-pose/sessions"), camera: CameraConfig { index: 0, width: 640, height: 360, fps: 24 }, port: 11573, settle: Duration::from_secs(2), capture: Duration::from_secs(5), interactive: false };
+    let mut cfg = Config { tracker_dir: PathBuf::from(".spike-tools/Binary"), output_root: PathBuf::from("evidence/spikes/m0d-openseeface-physical-pose/sessions"), camera: CameraConfig { index: 0, width: 640, height: 360, fps: 24 }, port: 11573, model: 3, settle: Duration::from_secs(2), capture: Duration::from_secs(5), interactive: false };
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() { let mut value = || args.next().ok_or_else(|| format!("missing value for {arg}")); match arg.as_str() {
-        "--tracker-dir" => cfg.tracker_dir = PathBuf::from(value()?), "--output" => cfg.output_root = PathBuf::from(value()?), "--camera" => cfg.camera.index = value()?.parse().map_err(|_| "camera must be an integer")?, "--port" => cfg.port = value()?.parse().map_err(|_| "port must be a u16")?, "--settle-seconds" => cfg.settle = Duration::from_secs(value()?.parse().map_err(|_| "settle seconds must be a u64")?), "--capture-seconds" => cfg.capture = Duration::from_secs(value()?.parse().map_err(|_| "capture seconds must be a u64")?), "--interactive" => cfg.interactive = true, "--help" => return Err("usage: openseeface-spike [--interactive] [--tracker-dir PATH] [--output PATH] [--camera INDEX] [--port PORT] [--settle-seconds N] [--capture-seconds N]".into()), _ => return Err(format!("unknown argument: {arg}")), } }
+        "--tracker-dir" => cfg.tracker_dir = PathBuf::from(value()?), "--output" => cfg.output_root = PathBuf::from(value()?), "--camera" => cfg.camera.index = value()?.parse().map_err(|_| "camera must be an integer")?, "--port" => cfg.port = value()?.parse().map_err(|_| "port must be a u16")?, "--model" => { cfg.model = value()?.parse().map_err(|_| "model must be 2 or 3")?; if !matches!(cfg.model, 2 | 3) { return Err("model must be 2 or 3".into()); } }, "--settle-seconds" => cfg.settle = Duration::from_secs(value()?.parse().map_err(|_| "settle seconds must be a u64")?), "--capture-seconds" => cfg.capture = Duration::from_secs(value()?.parse().map_err(|_| "capture seconds must be a u64")?), "--interactive" => cfg.interactive = true, "--help" => return Err("usage: openseeface-spike [--interactive] [--model 2|3] [--tracker-dir PATH] [--output PATH] [--camera INDEX] [--port PORT] [--settle-seconds N] [--capture-seconds N]".into()), _ => return Err(format!("unknown argument: {arg}")), } }
     Ok(cfg)
 }
 
 fn start_tracker(cfg: &Config) -> Result<Child, String> {
     let executable = cfg.tracker_dir.join("facetracker.exe");
     if !executable.is_file() { return Err(format!("missing tracker at {}; run scripts/stage-openseeface-spike.ps1", executable.display())); }
-    Command::new(executable).current_dir(&cfg.tracker_dir).args(["-i", "127.0.0.1", "-p", &cfg.port.to_string(), "-W", &cfg.camera.width.to_string(), "-H", &cfg.camera.height.to_string(), "-F", &cfg.camera.fps.to_string(), "-c", &cfg.camera.index.to_string(), "-v", "0", "-s", "1", "--faces", "1", "--model", "3", "--gaze-tracking", "0", "--max-threads", "1", "--no-3d-adapt", "1"]).spawn().map_err(|e| format!("could not start OpenSeeFace: {e}"))
+    Command::new(executable).current_dir(&cfg.tracker_dir).args(["-i", "127.0.0.1", "-p", &cfg.port.to_string(), "-W", &cfg.camera.width.to_string(), "-H", &cfg.camera.height.to_string(), "-F", &cfg.camera.fps.to_string(), "-c", &cfg.camera.index.to_string(), "-v", "0", "-s", "1", "--faces", "1", "--model", &cfg.model.to_string(), "--gaze-tracking", "0", "--max-threads", "1", "--no-3d-adapt", "1"]).spawn().map_err(|e| format!("could not start OpenSeeFace: {e}"))
 }
 
 fn receive_segment(socket: &UdpSocket, started: Instant, duration: Duration, id: &str, cfg: &Config, writer: &mut BufWriter<File>) -> Result<Vec<Packet>, String> {
@@ -197,7 +199,7 @@ fn receive_segment(socket: &UdpSocket, started: Instant, duration: Duration, id:
             Ok((count, source)) => {
                 if source.ip() != std::net::IpAddr::V4(Ipv4Addr::LOCALHOST) { continue; }
                 for packet in decode_packet(&buffer[..count])? {
-                    let sample = RecordedSample { segment_id: id, host_monotonic_receive_ms: started.elapsed().as_secs_f64() * 1000.0, source_model: MODEL, camera: cfg.camera, openseeface_version: VERSION, candidates: candidates(&packet), packet: &packet };
+                    let sample = RecordedSample { segment_id: id, host_monotonic_receive_ms: started.elapsed().as_secs_f64() * 1000.0, source_model: cfg.model, camera: cfg.camera, openseeface_version: VERSION, candidates: candidates(&packet), packet: &packet };
                     serde_json::to_writer(&mut *writer, &sample).map_err(|e| e.to_string())?; writer.write_all(b"\n").map_err(|e| e.to_string())?; packets.push(packet);
                 }
             }
@@ -216,7 +218,7 @@ fn preflight(socket: &UdpSocket, child: &mut Child, started: Instant, cfg: &Conf
             Ok((count, source)) => {
                 if source.ip() != std::net::IpAddr::V4(Ipv4Addr::LOCALHOST) { continue; }
                 for packet in decode_packet(&buffer[..count])? {
-                    let sample = RecordedSample { segment_id: "preflight", host_monotonic_receive_ms: started.elapsed().as_secs_f64() * 1000.0, source_model: MODEL, camera: cfg.camera, openseeface_version: VERSION, candidates: candidates(&packet), packet: &packet };
+                    let sample = RecordedSample { segment_id: "preflight", host_monotonic_receive_ms: started.elapsed().as_secs_f64() * 1000.0, source_model: cfg.model, camera: cfg.camera, openseeface_version: VERSION, candidates: candidates(&packet), packet: &packet };
                     serde_json::to_writer(&mut *writer, &sample).map_err(|e| e.to_string())?; writer.write_all(b"\n").map_err(|e| e.to_string())?;
                     if camera_space_cyclopean(&packet).is_some() { writer.flush().map_err(|e| e.to_string())?; return Ok(started.elapsed().as_secs_f64() * 1000.0); }
                 }
@@ -252,7 +254,10 @@ fn main() -> Result<(), String> {
     };
     let shutdown_ms = stop_started.elapsed().as_secs_f64() * 1000.0;
     let summaries = result?; serde_json::to_writer_pretty(File::create(session.join("segment-summary.json")).map_err(|e| e.to_string())?, &summaries).map_err(|e| e.to_string())?;
-    let metadata = serde_json::json!({ "schemaVersion": 1, "spikeId": "m0d-openseeface-physical-pose", "physicalMeasurementStatus": "completed-user-run-pending-review", "upstream": { "version": VERSION, "model": MODEL, "releaseAsset": "OpenSeeFace-v1.20.5.zip", "releaseSha256": "c9223f3547dce65b09705bb9ff74439b7d36e1c37bbe9668672711cf5aa31147" }, "tracker": { "path": cfg.tracker_dir.join("facetracker.exe"), "arguments": ["-i", "127.0.0.1", "--faces", "1", "--model", "3", "--gaze-tracking", "0", "-v", "0", "-s", "1"], "camera": cfg.camera, "processSpawnMs": process_spawn_ms, "firstValidPacketMs": first_valid_packet_ms, "shutdownMs": shutdown_ms, "shutdownMethod": shutdown_method, "exitStatus": child_status.code(), "unexpectedExitObserved": exited_before_stop.is_some(), "udp": format!("127.0.0.1:{}", cfg.port), "nonLoopbackPacketsAccepted": false, "cpuMeasurement": "unavailable: no additional process-profiler dependency was introduced" }, "limitations": ["OpenSeeFace has no control-channel shutdown in this pinned UDP mode, so normal harness shutdown terminates its direct child and waits for it; no process supervisor was added.", "Loopback binding rejects non-loopback UDP packets; it does not prove absence of every possible external connection.", "No physical-position conclusion is produced by this runner; raw coordinate units are preserved." ] });
+    let model_artifact = cfg.tracker_dir.parent().unwrap_or(&cfg.tracker_dir).join("models").join(format!("lm_model{}_opt.onnx", cfg.model));
+    if !model_artifact.is_file() { return Err(format!("missing selected pinned model artifact at {}", model_artifact.display())); }
+    let model_artifact_sha256 = match cfg.model { 2 => MODEL2_ARTIFACT_SHA256, 3 => MODEL3_ARTIFACT_SHA256, _ => unreachable!("model selection is bounded") };
+    let metadata = serde_json::json!({ "schemaVersion": 1, "spikeId": "m0d-openseeface-model2-physical-pose", "physicalMeasurementStatus": "completed-user-run-pending-review", "upstream": { "version": VERSION, "model": cfg.model, "releaseAsset": "OpenSeeFace-v1.20.5.zip", "releaseSha256": "c9223f3547dce65b09705bb9ff74439b7d36e1c37bbe9668672711cf5aa31147", "modelArtifact": format!("models/lm_model{}_opt.onnx", cfg.model), "modelArtifactSha256": model_artifact_sha256 }, "tracker": { "path": cfg.tracker_dir.join("facetracker.exe"), "arguments": ["-i", "127.0.0.1", "-p", &cfg.port.to_string(), "-W", &cfg.camera.width.to_string(), "-H", &cfg.camera.height.to_string(), "-F", &cfg.camera.fps.to_string(), "-c", &cfg.camera.index.to_string(), "-v", "0", "-s", "1", "--faces", "1", "--model", &cfg.model.to_string(), "--gaze-tracking", "0", "--max-threads", "1", "--no-3d-adapt", "1"], "camera": cfg.camera, "processSpawnMs": process_spawn_ms, "firstValidPacketMs": first_valid_packet_ms, "shutdownMs": shutdown_ms, "shutdownMethod": shutdown_method, "exitStatus": child_status.code(), "unexpectedExitObserved": exited_before_stop.is_some(), "udp": format!("127.0.0.1:{}", cfg.port), "nonLoopbackPacketsAccepted": false, "cpuMeasurement": "unavailable: no additional process-profiler dependency was introduced" }, "limitations": ["OpenSeeFace has no control-channel shutdown in this pinned UDP mode, so normal harness shutdown terminates its direct child and waits for it; no process supervisor was added.", "Loopback binding rejects non-loopback UDP packets; it does not prove absence of every possible external connection.", "The accepted model-3 transform and coordinate convention are reused unchanged; raw coordinate units are preserved and no physical-position conclusion is produced by this runner." ] });
     serde_json::to_writer_pretty(File::create(session.join("session-metadata.json")).map_err(|e| e.to_string())?, &metadata).map_err(|e| e.to_string())?; println!("Evidence written to {}", session.display()); Ok(())
 }
 
