@@ -22,7 +22,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
   const message = event.data;
   try {
     if (message.kind === "init") {
-      const vision = await FilesetResolver.forVisionTasks(message.wasmRoot);
+      const vision = await FilesetResolver.forVisionTasks(message.wasmRoot, true);
       landmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: {
           delegate: "CPU",
@@ -62,4 +62,3 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     self.postMessage({ kind: "error", message: String(error) });
   }
 };
-

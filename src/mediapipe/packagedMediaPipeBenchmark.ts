@@ -144,7 +144,20 @@ export async function runPackagedMediaPipeBenchmark(mode: MediaPipeBenchmarkMode
   };
 
   try {
-    await event("benchmark-start", { mode });
+    let cameraPermissionState: string | null = null;
+    try {
+      cameraPermissionState = (await navigator.permissions.query({ name: "camera" as PermissionName })).state;
+    } catch {
+      cameraPermissionState = null;
+    }
+    await event("benchmark-start", {
+      mode,
+      pageUrl: location.href,
+      origin: location.origin,
+      isSecureContext: window.isSecureContext,
+      mediaDevicesAvailable: Boolean(navigator.mediaDevices),
+      cameraPermissionState,
+    });
     const cameraStartedAt = performance.now();
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("packaged WebView2 does not expose navigator.mediaDevices.getUserMedia");
     const cameraRequest = navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } }, audio: false });

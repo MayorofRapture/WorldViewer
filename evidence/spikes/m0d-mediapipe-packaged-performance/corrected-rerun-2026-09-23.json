@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "correction": {
+    "webview2PermissionHandler": "installed",
+    "scope": "MediaPipe benchmark modes only",
+    "allowedPermission": "camera",
+    "allowedOrigin": "http://tauri.localhost/",
+    "unrelatedPermissions": "default",
+    "freshTemporaryWebViewProfilePerRun": true,
+    "moduleWorkerResolver": "FilesetResolver.forVisionTasks(wasmRoot, true)"
+  },
+  "observed": {
+    "secureContext": true,
+    "permissionRequestObserved": true,
+    "permissionAllowed": true,
+    "getUserMediaResolved": true,
+    "negotiatedWidth": 640,
+    "negotiatedHeight": 360,
+    "negotiatedFrameRate": 24,
+    "workerInitializationCompleted": true,
+    "usefulFaceResultObserved": false,
+    "formalMeasurementStarted": false
+  },
+  "classification": "Blocked",
+  "reason": "No useful face result arrived during visible retries, so the frozen warm-up and formal windows could not begin.",
+  "artifacts": ["idle-baseline.json", "mediapipe-24hz.json", "mediapipe-20hz.json"]
+}

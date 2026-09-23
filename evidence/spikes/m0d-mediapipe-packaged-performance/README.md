@@ -36,20 +36,33 @@ The requested camera settings were 640x360 at 24 FPS, with the integrated
 camera and no audio. The benchmark has explicit idle, 24 Hz opportunity, and
 20 Hz cap startup modes.
 
-## Execution result
+## Original blocked result and correction
 
-The packaged application started and the benchmark wrote a `benchmark-start`
-event, but WebView2 camera acquisition did not resolve within the bounded
-20-second timeout. A visible-window retry produced the same result and no
-camera permission prompt. Therefore the active MediaPipe conditions were not
-measured; no cadence, inference timing, or active CPU claim is valid.
+The original packaged run was blocked because `getUserMedia()` remained
+pending for 20 seconds and no permission prompt appeared. The correction
+installs a WebView2 `PermissionRequested` handler only for the explicit
+MediaPipe benchmark modes. It allows only camera requests from the packaged
+`http://tauri.localhost/` origin and leaves all other permission kinds at their
+default behavior. Each run uses a fresh temporary WebView2 profile so a prior
+persisted denial cannot bypass the handler.
 
-- 24 Hz opportunity: **Blocked** at camera acquisition; see
-  `mediapipe-24hz.json`.
-- 20 Hz cap: not run after the explicit camera-access stop condition.
-- idle host baseline: captured with a preliminary sampler window, but its
-  formal end event was unavailable in that run; CPU baseline is **Unverified**
-  and must not be used for a comparison claim.
+## Corrected rerun
+
+The corrected runs observed handler installation, an allowed camera permission
+request, `getUserMedia()` resolution, and negotiated settings of 640x360 at 24
+FPS. The page was a secure context. MediaPipe initialization also completed in
+the dedicated module worker after switching the resolver to the official
+module-loader form required by a module worker.
+
+- idle host baseline: **Verified**; clean 60-second formal window with
+  average process-tree CPU 0.2471% and peak 4.5168%.
+- 24 Hz opportunity: **Blocked** after camera and initialization succeeded but
+  no useful face result arrived to begin warm-up; see `mediapipe-24hz.json`.
+- 20 Hz cap: **Blocked** for the same no-valid-face condition; see
+  `mediapipe-20hz.json`.
+
+No cadence, inference timing, or active CPU claim is valid. The required
+10-second warm-up and 60-second formal windows did not begin.
 
 The packaged release executable itself was built successfully with
 `npx.cmd tauri build --no-bundle`. The claim-bearing full bundle build also
@@ -59,7 +72,7 @@ limitation, not a MediaPipe result.
 
 ## Classification
 
-**Blocked** — packaged WebView2 camera access could not be obtained after the
-bounded retry. The spike establishes local asset/package/build plumbing only;
-it does not answer the MediaPipe performance question.
-
+**Blocked** — packaged camera permission/acquisition and MediaPipe worker
+initialization are corrected and verified, but the formal performance
+conditions cannot start without a useful face result. The spike does not answer
+the MediaPipe performance question and does not select a production tracker.

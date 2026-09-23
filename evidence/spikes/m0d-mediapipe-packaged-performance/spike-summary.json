@@ -18,9 +18,9 @@
     "backpressure": { "activeInferenceLimit": 1, "pendingFrameLimit": 1, "unboundedQueue": false }
   },
   "conditions": {
-    "idle": { "status": "unverified", "artifact": "idle-baseline.json", "reason": "formal end event was unavailable in the captured preliminary baseline" },
-    "mediapipe24Hz": { "status": "blocked", "artifact": "mediapipe-24hz.json", "reason": "WebView2 camera acquisition timed out after 20 seconds, including a visible-window retry" },
-    "mediapipe20Hz": { "status": "blocked-not-run", "reason": "explicit camera-access stop condition after the 24 Hz attempt" }
+    "idle": { "status": "verified", "artifact": "idle-baseline.json", "reason": "clean packaged 60-second formal window completed" },
+    "mediapipe24Hz": { "status": "blocked", "artifact": "mediapipe-24hz.json", "reason": "camera and worker initialization completed, but no useful face result arrived to begin warm-up" },
+    "mediapipe20Hz": { "status": "blocked", "artifact": "mediapipe-20hz.json", "reason": "camera and worker initialization completed, but no useful face result arrived to begin warm-up" }
   },
   "comparisonReference": {
     "tracker": "OpenSeeFace v1.20.5 model 3 / 2 threads",
@@ -32,8 +32,8 @@
     "peakTrackingCpuPercent": 24.531794807297874
   },
   "limitations": [
-    "No MediaPipe active cadence, validity, inference timing, or active CPU result was obtained.",
-    "No actual negotiated camera settings were available because getUserMedia did not resolve.",
+    "No MediaPipe active cadence, validity, inference timing, or active CPU result was obtained because no useful face result began warm-up.",
+    "Corrected runs negotiated 640x360 at 24 FPS; formal active metrics remain unavailable.",
     "No GPU delegate was selected; active GPU behavior was not measured.",
     "Physical pose accuracy and production tracker selection remain untested and undecided.",
     "The exact Face Landmarker artifact's redistribution terms were not established by inspected official sources."

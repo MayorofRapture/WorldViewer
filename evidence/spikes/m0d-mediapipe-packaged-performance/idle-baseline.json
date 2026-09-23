@@ -4,27 +4,38 @@
     "processTreeMethod":  "Win32_Process parent-process traversal rooted at packaged WorldViewer PID; TotalProcessorTime and WorkingSet64 summed for the same tree each one-second sample",
     "logicalProcessors":  8,
     "sampleIntervalMs":  1000,
-    "sampleCount":  56,
-    "formalStartEpochMs":  1790131255425.881,
-    "formalEndEpochMs":  null,
-    "formalWindowFallback":  true,
+    "sampleCount":  49,
+    "formalStartEpochMs":  1790135833073.0354,
+    "formalEndEpochMs":  1790135893095.527,
+    "formalWindowFallback":  false,
     "events":  [
                    {
-                       "hostEpochMs":  1790131255422.3523,
+                       "handlerScope":  "mediapipe-benchmark-camera-only",
+                       "hostEpochMs":  1790135832899.0686,
+                       "kind":  "permission-handler-installed",
+                       "permission":  "camera"
+                   },
+                   {
+                       "hostEpochMs":  1790135833066.6365,
                        "kind":  "benchmark-ready",
                        "mode":  "mediapipe-idle"
                    },
                    {
-                       "hostEpochMs":  1790131255425.881,
+                       "hostEpochMs":  1790135833073.0354,
                        "kind":  "formal-start",
+                       "mode":  "mediapipe-idle"
+                   },
+                   {
+                       "hostEpochMs":  1790135893095.527,
+                       "kind":  "formal-end",
                        "mode":  "mediapipe-idle"
                    }
                ],
-    "processTreeCpuAveragePercent":  -0.16584887272859342,
-    "processTreeCpuPeakPercent":  12.964709051724139,
-    "processTreeWorkingSetAverageBytes":  375495387.4285714,
-    "processTreeWorkingSetPeakBytes":  392224768,
+    "processTreeCpuAveragePercent":  0.27140110369168297,
+    "processTreeCpuPeakPercent":  3.9314110305958132,
+    "processTreeWorkingSetAverageBytes":  387829676.40816325,
+    "processTreeWorkingSetPeakBytes":  393891840,
     "metric":  null,
-    "stdout":  "{\"schemaVersion\":1,\"mode\":\"mediapipe-idle\",\"status\":\"pass\",\"checks\":[{\"id\":\"packaged-mediapipe-benchmark\",\"status\":\"pass\",\"detail\":\"{\\\"condition\\\":\\\"idle-packaged-host-baseline\\\",\\\"initializationDurationMs\\\":0,\\\"formalMeasurementDurationMs\\\":60000,\\\"localAssetsOnly\\\":true}\"}],\"durationMs\":60009.5,\"errors\":[]}\n",
-    "stderr":  "[0922/224155.429:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\r\n"
+    "stdout":  "{\"schemaVersion\":1,\"mode\":\"mediapipe-idle\",\"status\":\"pass\",\"checks\":[{\"id\":\"packaged-mediapipe-benchmark\",\"status\":\"pass\",\"detail\":\"{\\\"condition\\\":\\\"idle-packaged-host-baseline\\\",\\\"initializationDurationMs\\\":0,\\\"formalMeasurementDurationMs\\\":60000,\\\"localAssetsOnly\\\":true}\"}],\"durationMs\":60039.09999999404,\"errors\":[]}\n",
+    "stderr":  "[0922/235813.119:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\r\n"
 }

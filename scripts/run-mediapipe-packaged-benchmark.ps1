@@ -45,6 +45,7 @@ function Invoke-BenchmarkRun([string]$Mode, [string]$RunOutput) {
     $eventPath = Join-Path $env:TEMP ("worldviewer-mediapipe-events-" + [guid]::NewGuid() + ".jsonl")
     $stdoutPath = Join-Path $env:TEMP ("worldviewer-mediapipe-stdout-" + [guid]::NewGuid() + ".txt")
     $stderrPath = Join-Path $env:TEMP ("worldviewer-mediapipe-stderr-" + [guid]::NewGuid() + ".txt")
+    $webViewUserDataFolder = Join-Path $env:TEMP ("worldviewer-mediapipe-webview-" + [guid]::NewGuid())
     try {
         $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
         $startInfo.FileName = $resolvedExecutable
@@ -54,6 +55,7 @@ function Invoke-BenchmarkRun([string]$Mode, [string]$RunOutput) {
         $startInfo.CreateNoWindow = -not $Visible
         $startInfo.Environment["WORLD_VIEWER_SMOKE_MODE"] = $Mode
         $startInfo.Environment["WORLD_VIEWER_BENCHMARK_EVENT_PATH"] = $eventPath
+        $startInfo.Environment["WEBVIEW2_USER_DATA_FOLDER"] = $webViewUserDataFolder
         $process = [System.Diagnostics.Process]::new()
         $process.StartInfo = $startInfo
         if (-not $process.Start()) { throw "Could not start packaged WorldViewer for $Mode." }
@@ -87,8 +89,8 @@ function Invoke-BenchmarkRun([string]$Mode, [string]$RunOutput) {
         $intervalRates = [System.Collections.Generic.List[double]]::new()
         for ($i = 1; $i -lt $window.Count; $i++) {
             $deltaCpu = 0.0
-            foreach ($pid in $window[$i].processCpu.PSObject.Properties.Name) {
-                if ($window[$i - 1].processCpu.PSObject.Properties.Name -contains $pid) { $deltaCpu += [double]$window[$i].processCpu.$pid - [double]$window[$i - 1].processCpu.$pid }
+            foreach ($processId in $window[$i].processCpu.Keys) {
+                if ($window[$i - 1].processCpu.ContainsKey($processId)) { $deltaCpu += [double]$window[$i].processCpu[$processId] - [double]$window[$i - 1].processCpu[$processId] }
             }
             $deltaWall = $window[$i].epochMs - $window[$i - 1].epochMs
             if ($deltaWall -gt 0) { $intervalRates.Add((100.0 * $deltaCpu / $deltaWall) / $logicalProcessors) }
@@ -118,6 +120,9 @@ function Invoke-BenchmarkRun([string]$Mode, [string]$RunOutput) {
         } | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $RunOutput -Encoding utf8
     } finally {
         foreach ($path in @($eventPath, $stdoutPath, $stderrPath)) { if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force } }
+        if (Test-Path -LiteralPath $webViewUserDataFolder) {
+            try { Remove-Item -LiteralPath $webViewUserDataFolder -Recurse -Force -ErrorAction Stop } catch { }
+        }
     }
 }
 

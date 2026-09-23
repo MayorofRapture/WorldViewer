@@ -1,5 +1,5 @@
 ﻿{
-    "mode":  "mediapipe-24hz",
+    "mode":  "mediapipe-20hz",
     "status":  "Failed",
     "error":  "timeout",
     "stdout":  "",
@@ -7,24 +7,24 @@
     "events":  [
                    {
                        "handlerScope":  "mediapipe-benchmark-camera-only",
-                       "hostEpochMs":  1790136164844.5408,
+                       "hostEpochMs":  1790136289619.0557,
                        "kind":  "permission-handler-installed",
                        "permission":  "camera"
                    },
                    {
                        "cameraPermissionState":  "prompt",
-                       "hostEpochMs":  1790136164960.4697,
+                       "hostEpochMs":  1790136289739.913,
                        "isSecureContext":  true,
                        "kind":  "benchmark-start",
                        "mediaDevicesAvailable":  true,
-                       "mode":  "mediapipe-24hz",
+                       "mode":  "mediapipe-20hz",
                        "origin":  "http://tauri.localhost",
                        "pageUrl":  "http://tauri.localhost/"
                    },
                    {
                        "allowed":  true,
                        "handlerScope":  "mediapipe-benchmark-camera-only",
-                       "hostEpochMs":  1790136165351.2146,
+                       "hostEpochMs":  1790136290104.8674,
                        "kind":  "permission-request",
                        "permission":  "camera",
                        "permissionKind":  2,
@@ -36,12 +36,12 @@
                                               "brightness":  128,
                                               "colorTemperature":  4600,
                                               "contrast":  32,
-                                              "deviceId":  "54f65b8291daee75fa1d51cfef4a218361984f31c5033ab16940c3439adb6602",
+                                              "deviceId":  "b88bda576e794e6315fa7f31fe036f5a6f9447c945c52ba27641ad307b5958fd",
                                               "exposureMode":  "continuous",
                                               "exposureTime":  156.25,
                                               "facingMode":  "user",
                                               "frameRate":  24,
-                                              "groupId":  "01b4d66979dde775fbc43db47e66055babb7d57663b7c64c836573af7e194795",
+                                              "groupId":  "8d59f3b160ad472eba51158a0320aaed4d76880de51d035727c232c80a0d75d5",
                                               "height":  360,
                                               "resizeMode":  "none",
                                               "saturation":  64,
@@ -49,9 +49,9 @@
                                               "whiteBalanceMode":  "continuous",
                                               "width":  640
                                           },
-                       "hostEpochMs":  1790136165913.0112,
+                       "hostEpochMs":  1790136290628.48,
                        "kind":  "camera-ready",
-                       "mode":  "mediapipe-24hz"
+                       "mode":  "mediapipe-20hz"
                    },
                    {
                        "cameraSettings":  {
@@ -59,12 +59,12 @@
                                               "brightness":  128,
                                               "colorTemperature":  4600,
                                               "contrast":  32,
-                                              "deviceId":  "54f65b8291daee75fa1d51cfef4a218361984f31c5033ab16940c3439adb6602",
+                                              "deviceId":  "b88bda576e794e6315fa7f31fe036f5a6f9447c945c52ba27641ad307b5958fd",
                                               "exposureMode":  "continuous",
                                               "exposureTime":  156.25,
                                               "facingMode":  "user",
                                               "frameRate":  24,
-                                              "groupId":  "01b4d66979dde775fbc43db47e66055babb7d57663b7c64c836573af7e194795",
+                                              "groupId":  "8d59f3b160ad472eba51158a0320aaed4d76880de51d035727c232c80a0d75d5",
                                               "height":  360,
                                               "resizeMode":  "none",
                                               "saturation":  64,
@@ -72,10 +72,10 @@
                                               "whiteBalanceMode":  "continuous",
                                               "width":  640
                                           },
-                       "hostEpochMs":  1790136166447.2087,
-                       "initializationDurationMs":  1494,
+                       "hostEpochMs":  1790136291232.5388,
+                       "initializationDurationMs":  1496.800000011921,
                        "kind":  "benchmark-ready",
-                       "mode":  "mediapipe-24hz"
+                       "mode":  "mediapipe-20hz"
                    }
                ]
 }

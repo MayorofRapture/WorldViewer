@@ -10,6 +10,13 @@ use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
 use tauri_plugin_shell::ShellExt;
 
+#[cfg(windows)]
+use webview2_com::{
+    CoTaskMemPWSTR, Microsoft::Web::WebView2::Win32::*, PermissionRequestedEventHandler,
+};
+#[cfg(windows)]
+use windows::core::PWSTR;
+
 #[derive(Clone)]
 struct StartupMode(Option<SmokeMode>);
 
@@ -57,9 +64,7 @@ fn lifecycle_hold_from_environment() -> bool {
     std::env::var("WORLD_VIEWER_SMOKE_LIFECYCLE_HOLD").ok().as_deref() == Some("1")
 }
 
-#[tauri::command]
-fn record_benchmark_event(event: serde_json::Value) -> Result<(), String> {
-    let mut event = event;
+fn write_benchmark_event(mut event: serde_json::Value) -> Result<(), String> {
     if let serde_json::Value::Object(fields) = &mut event {
         let epoch_ms = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|error| error.to_string())?.as_secs_f64() * 1000.0;
         fields.insert("hostEpochMs".into(), serde_json::json!(epoch_ms));
@@ -73,6 +78,86 @@ fn record_benchmark_event(event: serde_json::Value) -> Result<(), String> {
         println!("{line}");
         std::io::stdout().flush().map_err(|error| error.to_string())?;
     }
+    Ok(())
+}
+
+#[tauri::command]
+fn record_benchmark_event(event: serde_json::Value) -> Result<(), String> {
+    write_benchmark_event(event)
+}
+
+#[cfg(windows)]
+fn media_pipe_benchmark_mode(mode: Option<SmokeMode>) -> bool {
+    matches!(
+        mode,
+        Some(SmokeMode::MediaPipeIdle | SmokeMode::MediaPipe24Hz | SmokeMode::MediaPipe20Hz)
+    )
+}
+
+#[cfg(windows)]
+fn install_mediapipe_camera_permission_handler(app: &tauri::App) -> Result<(), String> {
+    let Some(window) = app.get_webview_window("main") else {
+        return Err("MediaPipe benchmark window was not available".to_owned());
+    };
+
+    window
+        .with_webview(|webview| unsafe {
+            let controller = webview.controller();
+            let result = controller
+                .CoreWebView2()
+                .map_err(|error| format!("could not access WebView2 controller: {error}"))
+                .and_then(|core_webview| {
+                    let handler = PermissionRequestedEventHandler::create(Box::new(|_sender, args| {
+                        let Some(args) = args else {
+                            return Ok(());
+                        };
+
+                        let mut uri = PWSTR::null();
+                        let mut permission_kind = COREWEBVIEW2_PERMISSION_KIND_UNKNOWN_PERMISSION;
+                        args.Uri(&mut uri)?;
+                        args.PermissionKind(&mut permission_kind)?;
+                        let uri = CoTaskMemPWSTR::from(uri).to_string();
+                        let is_packaged_origin = uri == "http://tauri.localhost"
+                            || uri.starts_with("http://tauri.localhost/")
+                            || uri == "https://tauri.localhost"
+                            || uri.starts_with("https://tauri.localhost/");
+                        let is_camera = permission_kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA;
+                        let allowed = is_packaged_origin && is_camera;
+
+                        let _ = write_benchmark_event(serde_json::json!({
+                            "kind": "permission-request",
+                            "permissionKind": permission_kind.0,
+                            "permission": if is_camera { "camera" } else { "other" },
+                            "uri": uri,
+                            "allowed": allowed,
+                            "handlerScope": "mediapipe-benchmark-camera-only",
+                        }));
+
+                        if allowed {
+                            args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                        }
+                        Ok(())
+                    }));
+                    let mut token = 0;
+                    core_webview
+                        .add_PermissionRequested(&handler, &mut token)
+                        .map_err(|error| format!("could not install WebView2 permission handler: {error}"))
+                        .and_then(|_| {
+                            write_benchmark_event(serde_json::json!({
+                                "kind": "permission-handler-installed",
+                                "handlerScope": "mediapipe-benchmark-camera-only",
+                                "permission": "camera",
+                            }))
+                        })
+                });
+            if let Err(error) = result {
+                let _ = write_benchmark_event(serde_json::json!({
+                    "kind": "permission-handler-error",
+                    "error": error,
+                }));
+            }
+        })
+        .map_err(|error| format!("could not access benchmark WebView: {error}"))?;
     Ok(())
 }
 
@@ -296,6 +381,10 @@ pub fn run() {
         .manage(StartupMode(startup_mode_from_environment()))
         .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event])
         .setup(|app| {
+            #[cfg(windows)]
+            if media_pipe_benchmark_mode(startup_mode_from_environment()) {
+                install_mediapipe_camera_permission_handler(app)?;
+            }
             if matches!(startup_mode_from_environment(), Some(SmokeMode::TrackingSidecar | SmokeMode::TrackingSustained)) {
                 let handle = app.handle().clone();
                 let sustained = startup_mode_from_environment() == Some(SmokeMode::TrackingSustained);
