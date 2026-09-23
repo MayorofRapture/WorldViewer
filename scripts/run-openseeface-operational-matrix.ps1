@@ -4,6 +4,8 @@ param(
     [switch]$TestOffline,
     [switch]$OfflineOnly,
     [switch]$HarnessCorrection,
+    [ValidateSet(2, 3)]
+    [int]$Model = 3,
     [ValidateSet(1, 2, 4)]
     [int]$MaxThreads = 1,
     [switch]$SustainedOnly
@@ -13,6 +15,10 @@ $ErrorActionPreference = "Stop"
 $resolvedExecutable = (Resolve-Path -LiteralPath $ExecutablePath).Path
 $resolvedSidecar = Join-Path (Split-Path -Parent $resolvedExecutable) "openseeface-facetracker.exe"
 $runtimeRoot = Split-Path -Parent $resolvedExecutable
+$modelArtifact = "models/lm_model$Model`_opt.onnx"
+$modelArtifactPath = Join-Path $runtimeRoot $modelArtifact
+if (-not (Test-Path -LiteralPath $modelArtifactPath -PathType Leaf)) { throw "Pinned OpenSeeFace runtime is missing the selected model artifact $modelArtifact." }
+$modelArtifactSha256 = (Get-FileHash -LiteralPath $modelArtifactPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $logicalProcessors = [Environment]::ProcessorCount
 
 function Get-ProcessSnapshot([int]$ProcessId) {
@@ -48,6 +54,7 @@ function Start-PackagedMode([string]$Mode, [switch]$LifecycleHold) {
     $startInfo.RedirectStandardError = $true
     $startInfo.CreateNoWindow = $true
     $startInfo.Environment["WORLD_VIEWER_SMOKE_MODE"] = $Mode
+    $startInfo.Environment["WORLD_VIEWER_OPENSEEFACE_MODEL"] = $Model.ToString()
     $startInfo.Environment["WORLD_VIEWER_OPENSEEFACE_MAX_THREADS"] = $MaxThreads.ToString()
     if ($LifecycleHold) { $startInfo.Environment["WORLD_VIEWER_SMOKE_LIFECYCLE_HOLD"] = "1" }
     $process = [System.Diagnostics.Process]::new()
@@ -134,6 +141,7 @@ function Run-SustainedMeasurement {
     }
     $cpuValues = @($cpuSamples | ForEach-Object { $_.percentTotalSystem })
     [pscustomobject]@{
+        model = $Model
         maxThreads = $MaxThreads
         status = if ($completed.result.status -eq "pass") { "Verified" } else { "Failed" }
         sidecarPid = $sidecarPid
@@ -233,7 +241,7 @@ if ($HarnessCorrection) {
         forcedHostTerminationTrials = @(1..3 | ForEach-Object { Run-ReadinessGatedForcedHostTrial $_ })
         duplicateProcess = Run-DuplicateProcess
         missingSidecar = Run-ReversibleAssetFailure "openseeface-facetracker.exe" "missing-sidecar"
-        missingModelRuntime = Run-ReversibleAssetFailure "models/lm_model3_opt.onnx" "missing-required-model"
+        missingModelRuntime = Run-ReversibleAssetFailure $modelArtifact "missing-required-model"
         networkEvidenceSemantics = [pscustomobject]@{
             tcpObservation = "Get-NetTCPConnection can observe TCP connections for the sidecar during its collection interval."
             localUdpObservation = "Get-NetUDPEndpoint can identify local UDP endpoints only."
@@ -250,9 +258,12 @@ if ($HarnessCorrection) {
 $matrix = [ordered]@{
     schemaVersion = 1
     observedAt = [DateTimeOffset]::UtcNow.ToString("o")
+    model = $Model
     maxThreads = $MaxThreads
-    experiment = "model3-max-threads-$MaxThreads"
-    trackerArguments = "-i 127.0.0.1 -p 11573 -W 640 -H 360 -F 24 -c 0 -v 0 -s 1 --faces 1 --model 3 --gaze-tracking 0 --max-threads $MaxThreads --no-3d-adapt 1"
+    experiment = "model$Model-max-threads-$MaxThreads"
+    modelArtifact = $modelArtifact
+    modelArtifactSha256 = $modelArtifactSha256
+    trackerArguments = "-i 127.0.0.1 -p 11573 -W 640 -H 360 -F 24 -c 0 -v 0 -s 1 --faces 1 --model $Model --gaze-tracking 0 --max-threads $MaxThreads --no-3d-adapt 1"
     executable = $resolvedExecutable
     sidecar = $resolvedSidecar
     trackerArgumentsFrozen = $true

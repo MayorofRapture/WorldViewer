@@ -53,6 +53,15 @@ fn lifecycle_hold_from_environment() -> bool {
     std::env::var("WORLD_VIEWER_SMOKE_LIFECYCLE_HOLD").ok().as_deref() == Some("1")
 }
 
+fn parse_model_value(value: &str) -> Result<u8, String> {
+    let parsed = value.parse::<u8>().map_err(|_| format!("WORLD_VIEWER_OPENSEEFACE_MODEL must be 2 or 3; received {value}"))?;
+    matches!(parsed, 2 | 3).then_some(parsed).ok_or_else(|| format!("WORLD_VIEWER_OPENSEEFACE_MODEL must be 2 or 3; received {value}"))
+}
+
+fn model_from_environment() -> Result<u8, String> {
+    parse_model_value(&std::env::var("WORLD_VIEWER_OPENSEEFACE_MODEL").unwrap_or_else(|_| "3".to_owned()))
+}
+
 const OPENSEEFACE_PACKET_BYTES: usize = 1785;
 const OPENSEEFACE_PORT: u16 = 11573;
 
@@ -127,8 +136,8 @@ fn max_threads_from_environment() -> Result<u8, String> {
     matches!(parsed, 1 | 2 | 4).then_some(parsed).ok_or_else(|| format!("WORLD_VIEWER_OPENSEEFACE_MAX_THREADS must be 1, 2, or 4; received {value}"))
 }
 
-fn tracking_args(max_threads: u8) -> Vec<String> {
-    vec!["-i", "127.0.0.1", "-p", "11573", "-W", "640", "-H", "360", "-F", "24", "-c", "0", "-v", "0", "-s", "1", "--faces", "1", "--model", "3", "--gaze-tracking", "0", "--max-threads", &max_threads.to_string(), "--no-3d-adapt", "1"].into_iter().map(str::to_owned).collect()
+fn tracking_args(model: u8, max_threads: u8) -> Vec<String> {
+    vec!["-i", "127.0.0.1", "-p", "11573", "-W", "640", "-H", "360", "-F", "24", "-c", "0", "-v", "0", "-s", "1", "--faces", "1", "--model", &model.to_string(), "--gaze-tracking", "0", "--max-threads", &max_threads.to_string(), "--no-3d-adapt", "1"].into_iter().map(str::to_owned).collect()
 }
 
 fn percentile(sorted_values: &[f64], percentile: f64) -> Option<f64> {
@@ -138,17 +147,18 @@ fn percentile(sorted_values: &[f64], percentile: f64) -> Option<f64> {
 }
 
 async fn run_tracking_sidecar(app: tauri::AppHandle, sustained: bool, lifecycle_hold: bool) -> Result<TrackingEvidence, String> {
+    let model = model_from_environment()?;
     let max_threads = max_threads_from_environment()?;
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, OPENSEEFACE_PORT)).map_err(|error| format!("could not bind loopback UDP receiver 127.0.0.1:{OPENSEEFACE_PORT}: {error}"))?;
     socket.set_nonblocking(true).map_err(|error| error.to_string())?;
     let runtime_root = app.path().resource_dir().map_err(|error| format!("could not resolve packaged resource directory: {error}"))?;
-    let required_runtime_files = ["openseeface-facetracker.exe", "python37.dll", "models/lm_model3_opt.onnx", "models/mnv3_detection_opt.onnx", "models/retinaface_640x640_opt.onnx"];
+    let required_runtime_files = vec!["openseeface-facetracker.exe".to_owned(), "python37.dll".to_owned(), format!("models/lm_model{model}_opt.onnx"), "models/mnv3_detection_opt.onnx".to_owned(), "models/retinaface_640x640_opt.onnx".to_owned()];
     let missing_files: Vec<_> = required_runtime_files.iter().filter(|relative| !runtime_root.join(relative).is_file()).collect();
     if !missing_files.is_empty() || !runtime_root.join("models").is_dir() || !runtime_root.join("Licenses").is_dir() {
         return Err(format!("packaged OpenSeeFace runtime is incomplete at {}; missing files: {:?}, models directory: {}, Licenses directory: {}", runtime_root.display(), missing_files, runtime_root.join("models").is_dir(), runtime_root.join("Licenses").is_dir()));
     }
     let started = Instant::now();
-    let command = app.shell().sidecar("openseeface-facetracker").map_err(|error| format!("could not resolve packaged OpenSeeFace sidecar: {error}"))?.current_dir(&runtime_root).args(tracking_args(max_threads));
+    let command = app.shell().sidecar("openseeface-facetracker").map_err(|error| format!("could not resolve packaged OpenSeeFace sidecar: {error}"))?.current_dir(&runtime_root).args(tracking_args(model, max_threads));
     let (_events, child) = command.spawn().map_err(|error| format!("could not start packaged OpenSeeFace sidecar: {error}"))?;
     let spawn_ms = started.elapsed().as_secs_f64() * 1000.0;
     let sidecar_pid = child.pid();
@@ -223,7 +233,7 @@ async fn run_tracking_sidecar(app: tauri::AppHandle, sustained: bool, lifecycle_
         let mut face_ids_observed: Vec<_> = ids.into_iter().collect(); face_ids_observed.sort_unstable();
         let mut frame_dimensions_reported: Vec<_> = dimensions.into_iter().map(|(w, h)| [w, h]).collect(); frame_dimensions_reported.sort_unstable();
         let measurement_duration_ms = observation_started.elapsed().as_secs_f64() * 1000.0;
-        Ok(TrackingEvidence { sidecar_spawn_ms: spawn_ms, first_valid_pose_ms, sidecar_pid, total_packet_count: total, valid_pose_count: valid, invalid_pose_count: invalid, valid_rate: valid as f64 / total.max(1) as f64, live_pose_cadence_hz: cadence, face_ids_observed, frame_dimensions_reported, pnp_error_mean: (!pnp_errors.is_empty()).then(|| pnp_errors.iter().sum::<f64>() / pnp_errors.len() as f64), observation_duration_ms: measurement_duration_ms, openseeface_version: "v1.20.5", model: 3, max_threads, camera: [0, 640, 360], udp: "127.0.0.1:11573", warm_up_duration_ms: sustained.then(|| warm_up_started.elapsed().as_secs_f64() * 1000.0 - measurement_duration_ms), measurement_duration_ms: sustained.then_some(measurement_duration_ms), measurement_total_packet_count: sustained.then_some(total), measurement_valid_pose_count: sustained.then_some(valid), measurement_invalid_pose_count: sustained.then_some(invalid), measurement_valid_rate: sustained.then_some(valid as f64 / total.max(1) as f64), measurement_live_pose_cadence_hz: sustained.then_some(cadence).flatten(), measurement_inter_pose_interval_ms_median: sustained.then(|| percentile(&intervals_ms, 0.5)).flatten(), measurement_inter_pose_interval_ms_p95: sustained.then(|| percentile(&intervals_ms, 0.95)).flatten(), measurement_inter_pose_interval_ms_min: sustained.then(|| intervals_ms.first().copied()).flatten(), measurement_inter_pose_interval_ms_max: sustained.then(|| intervals_ms.last().copied()).flatten(), measurement_upstream_timestamps_monotonic: sustained.then_some(upstream_monotonic), performance_target_hz: sustained.then_some(15.0), performance_target_met: sustained.then(|| cadence.is_some_and(|value| value >= 15.0)) })
+        Ok(TrackingEvidence { sidecar_spawn_ms: spawn_ms, first_valid_pose_ms, sidecar_pid, total_packet_count: total, valid_pose_count: valid, invalid_pose_count: invalid, valid_rate: valid as f64 / total.max(1) as f64, live_pose_cadence_hz: cadence, face_ids_observed, frame_dimensions_reported, pnp_error_mean: (!pnp_errors.is_empty()).then(|| pnp_errors.iter().sum::<f64>() / pnp_errors.len() as f64), observation_duration_ms: measurement_duration_ms, openseeface_version: "v1.20.5", model, max_threads, camera: [0, 640, 360], udp: "127.0.0.1:11573", warm_up_duration_ms: sustained.then(|| warm_up_started.elapsed().as_secs_f64() * 1000.0 - measurement_duration_ms), measurement_duration_ms: sustained.then_some(measurement_duration_ms), measurement_total_packet_count: sustained.then_some(total), measurement_valid_pose_count: sustained.then_some(valid), measurement_invalid_pose_count: sustained.then_some(invalid), measurement_valid_rate: sustained.then_some(valid as f64 / total.max(1) as f64), measurement_live_pose_cadence_hz: sustained.then_some(cadence).flatten(), measurement_inter_pose_interval_ms_median: sustained.then(|| percentile(&intervals_ms, 0.5)).flatten(), measurement_inter_pose_interval_ms_p95: sustained.then(|| percentile(&intervals_ms, 0.95)).flatten(), measurement_inter_pose_interval_ms_min: sustained.then(|| intervals_ms.first().copied()).flatten(), measurement_inter_pose_interval_ms_max: sustained.then(|| intervals_ms.last().copied()).flatten(), measurement_upstream_timestamps_monotonic: sustained.then_some(upstream_monotonic), performance_target_hz: sustained.then_some(15.0), performance_target_met: sustained.then(|| cadence.is_some_and(|value| value >= 15.0)) })
     })();
     child.kill().map_err(|error| format!("could not terminate test-owned OpenSeeFace sidecar {sidecar_pid}: {error}"))?;
     result
@@ -309,11 +319,25 @@ mod tests {
 
     #[test]
     fn fixed_sidecar_arguments_preserve_the_validated_tracker_configuration() {
-        assert_eq!(tracking_args(1), ["-i", "127.0.0.1", "-p", "11573", "-W", "640", "-H", "360", "-F", "24", "-c", "0", "-v", "0", "-s", "1", "--faces", "1", "--model", "3", "--gaze-tracking", "0", "--max-threads", "1", "--no-3d-adapt", "1"].into_iter().map(str::to_owned).collect::<Vec<_>>());
-        let two_threads = tracking_args(2);
-        assert_eq!(&two_threads[0..22], &tracking_args(1)[0..22]);
+        assert_eq!(tracking_args(3, 1), ["-i", "127.0.0.1", "-p", "11573", "-W", "640", "-H", "360", "-F", "24", "-c", "0", "-v", "0", "-s", "1", "--faces", "1", "--model", "3", "--gaze-tracking", "0", "--max-threads", "1", "--no-3d-adapt", "1"].into_iter().map(str::to_owned).collect::<Vec<_>>());
+        let model_three = tracking_args(3, 1);
+        let model_two = tracking_args(2, 1);
+        assert_eq!(&model_two[0..19], &model_three[0..19]);
+        assert_eq!(model_two[19], "2");
+        assert_eq!(&model_two[20..], &model_three[20..]);
+        let two_threads = tracking_args(3, 2);
+        assert_eq!(&two_threads[0..23], &model_three[0..23]);
         assert_eq!(two_threads[23], "2");
-        assert_eq!(&two_threads[24..], &tracking_args(1)[24..]);
+        assert_eq!(&two_threads[24..], &model_three[24..]);
+    }
+
+    #[test]
+    fn model_selection_is_bounded_and_defaults_to_model_three() {
+        assert_eq!(parse_model_value("2"), Ok(2));
+        assert_eq!(parse_model_value("3"), Ok(3));
+        assert!(parse_model_value("1").is_err());
+        assert!(parse_model_value("4").is_err());
+        assert!(parse_model_value("not-a-model").is_err());
     }
 
     #[test]

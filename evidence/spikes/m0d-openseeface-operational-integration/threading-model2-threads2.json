@@ -1,0 +1,63 @@
+﻿{
+    "schemaVersion":  1,
+    "observedAt":  "2026-09-23T00:02:43.4512096+00:00",
+    "model":  2,
+    "maxThreads":  2,
+    "experiment":  "model2-max-threads-2",
+    "modelArtifact":  "models/lm_model2_opt.onnx",
+    "modelArtifactSha256":  "16b33ba7d854a0643875ab3da3a620b4b650f2a7f032dd6f634f881cac108304",
+    "trackerArguments":  "-i 127.0.0.1 -p 11573 -W 640 -H 360 -F 24 -c 0 -v 0 -s 1 --faces 1 --model 2 --gaze-tracking 0 --max-threads 2 --no-3d-adapt 1",
+    "executable":  "D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release\\worldviewer.exe",
+    "sidecar":  "D:\\00_Software_Projects\\10_Mine\\WorldViewer\\src-tauri\\target\\release\\openseeface-facetracker.exe",
+    "trackerArgumentsFrozen":  true,
+    "offline":  {
+                    "status":  "Blocked",
+                    "reason":  "No external-network isolation method was enabled by this invocation; loopback must remain available and no persistent firewall change is made implicitly."
+                },
+    "sustainedTracking":  {
+                              "model":  2,
+                              "maxThreads":  2,
+                              "status":  "Verified",
+                              "sidecarPid":  3148,
+                              "processIdentity":  "openseeface-facetracker.exe",
+                              "smoke":  {
+                                            "schemaVersion":  1,
+                                            "mode":  "tracking-sustained",
+                                            "status":  "pass",
+                                            "checks":  [
+                                                           {
+                                                               "id":  "packaged-openseeface-sustained-operational-run",
+                                                               "status":  "pass",
+                                                               "detail":  "{\"sidecarSpawnMs\":7.3964,\"firstValidPoseMs\":2344.3136,\"sidecarPid\":3148,\"totalPacketCount\":1414,\"validPoseCount\":1414,\"invalidPoseCount\":0,\"validRate\":1.0,\"livePoseCadenceHz\":23.565253906680063,\"faceIdsObserved\":[0],\"frameDimensionsReported\":[[640,360]],\"pnpErrorMean\":3.293789628202878,\"observationDurationMs\":60001.0293,\"openseefaceVersion\":\"v1.20.5\",\"model\":2,\"maxThreads\":2,\"camera\":[0,640,360],\"udp\":\"127.0.0.1:11573\",\"warmUpDurationMs\":10002.136300000006,\"measurementDurationMs\":60001.0293,\"measurementTotalPacketCount\":1414,\"measurementValidPoseCount\":1414,\"measurementInvalidPoseCount\":0,\"measurementValidRate\":1.0,\"measurementLivePoseCadenceHz\":23.565253906680063,\"measurementInterPoseIntervalMsMedian\":42.407199999999996,\"measurementInterPoseIntervalMsP95\":48.972,\"measurementInterPoseIntervalMsMin\":30.2457,\"measurementInterPoseIntervalMsMax\":67.2649,\"measurementUpstreamTimestampsMonotonic\":true,\"performanceTargetHz\":15.0,\"performanceTargetMet\":true}"
+                                                           }
+                                                       ],
+                                            "durationMs":  72350.8287,
+                                            "errors":  [
+
+                                                       ]
+                                        },
+                              "cpu":  {
+                                          "status":  "Verified",
+                                          "collectionIntervalSeconds":  1,
+                                          "method":  "Get-Process TotalProcessorTime deltas",
+                                          "sampleCount":  60,
+                                          "averagePercentTotalSystem":  19.727190060905766,
+                                          "peakPercentTotalSystem":  22.67610573173414,
+                                          "averagePercentOneLogicalCore":  157.81752048724613,
+                                          "logicalProcessors":  8,
+                                          "limitation":  "Total-system percentage divides one process CPU time by elapsed wall time and logical processor count."
+                                      },
+                              "network":  {
+                                              "status":  "Verified",
+                                              "loopbackUdpExpected":  true,
+                                              "nonLoopbackTcpObserved":  [
+
+                                                                         ],
+                                              "localUdpEndpoints":  [
+                                                                        "0.0.0.0:63762"
+                                                                    ],
+                                              "remoteUdpObservation":  "Unverified: Get-NetUDPEndpoint identifies local UDP endpoints, not remote destinations.",
+                                              "limitation":  "TCP observation covered the sustained run only; absence does not prove future network behavior."
+                                          }
+                          }
+}

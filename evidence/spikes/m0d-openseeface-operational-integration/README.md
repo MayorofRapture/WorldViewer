@@ -81,19 +81,24 @@ and 11.7464% peak of total system capacity, equivalent to 64.5930% average
 of one logical core on an eight-logical-processor machine. This is a process
 CPU measurement, not a render or motion-to-photon metric.
 
-### Controlled model-3 thread experiment
+### Controlled model comparison
 
-The controlled follow-up changed only OpenSeeFace `--max-threads`; model 3,
-one face, camera 0, 640x360, requested 24 FPS, gaze disabled, `--no-3d-adapt
-1`, the packaged path, pose-validity rules, and the 10-second warm-up plus
-60-second measurement procedure remained frozen. The emitted evidence records
-the actual thread count and complete tracker argument string.
+The controlled experiments changed only OpenSeeFace `--model` and
+`--max-threads`; one face, camera 0, 640x360, requested 24 FPS, gaze disabled,
+`--no-3d-adapt 1`, the packaged path, pose-validity rules, and the 10-second
+warm-up plus 60-second measurement procedure remained frozen. The model-2
+conditions used the pinned v1.20.5 artifact `models/lm_model2_opt.onnx`,
+SHA-256 `16b33ba7d854a0643875ab3da3a620b4b650f2a7f032dd6f634f881cac108304`.
+The emitted evidence records the actual model, thread count, and complete
+tracker argument string.
 
-| Max threads | Cadence Hz | Valid rate | Median interval | P95 interval | Avg CPU total | Peak CPU total | >=15 Hz | 20-30 Hz |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: |
-| 1 | 9.519267600510382 | 1.0 | 97.4617 ms | 153.6454 ms | 8.0741% | 11.7464% | Failed | Failed |
-| 2 | 23.287370342081577 | 1.0 | 42.6071 ms | 52.5783 ms | 21.2949% | 24.5318% | Passed | Achieved |
-| 4 | 23.334046590710273 | 1.0 | 42.6840 ms | 49.4378 ms | 44.5826% | 46.8093% | Passed | Achieved |
+| Model | Max threads | Cadence Hz | Valid rate | Median interval | P95 interval | Avg CPU total | Peak CPU total | >=15 Hz | 20-30 Hz |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: |
+| 3 | 1 | 9.519267600510382 | 1.0 | 97.4617 ms | 153.6454 ms | 8.0741% | 11.7464% | Failed | Failed |
+| 3 | 2 | 23.287370342081577 | 1.0 | 42.6071 ms | 52.5783 ms | 21.2949% | 24.5318% | Passed | Achieved |
+| 3 | 4 | 23.334046590710273 | 1.0 | 42.6840 ms | 49.4378 ms | 44.5826% | 46.8093% | Passed | Achieved |
+| 2 | 1 | 23.49345795650698 | 1.0 | 42.5016 ms | 46.5205 ms | 8.2772% | 13.1297% | Passed | Achieved |
+| 2 | 2 | 23.565253906680063 | 1.0 | 42.4072 ms | 48.9720 ms | 19.7272% | 22.6761% | Passed | Achieved |
 
 The new formal thread-2 run used 10.0000 seconds of warm-up and 60.0006
 seconds of measurement, with 1,397 valid poses and zero invalid poses. The
@@ -102,11 +107,25 @@ measurement, with 1,399 valid poses and zero invalid poses. Upstream timestamps
 were monotonic in both runs. CPU samples used the existing one-second process
 `TotalProcessorTime` delta method on the eight-logical-processor machine.
 
-Raw artifacts are `threading-model3-threads2.json` and
-`threading-model3-threads4.json`; the accepted one-thread artifact remains
-`operational-matrix.json`. These are performance measurements only. No
-production adoption decision was made, and remote UDP behavior remains
-Unverified.
+The model-2 / thread-1 run used 10.0005 seconds of warm-up and 60.0023 seconds
+of measurement, with 1,410 valid poses and zero invalid poses. The model-2 /
+thread-2 run used 10.0021 seconds of warm-up and 60.0010 seconds of
+measurement, with 1,414 valid poses and zero invalid poses. Upstream timestamps
+were monotonic in both runs. First valid poses occurred at 1843.3890 ms and
+2344.3136 ms; mean PnP errors were 2.978487776864505 and 3.293789628202878.
+Relative to model 3 / 2 threads, model 2 / 1
+threads measured +0.2061 Hz cadence, -13.0177 percentage points average CPU
+(61.13% lower), and -11.4021 points peak CPU (46.48% lower). Model 2 / 2
+threads measured +0.2779 Hz cadence, -1.5677 points average CPU (7.36% lower),
+and -1.8557 points peak CPU (7.56% lower). These are descriptive deltas only.
+
+Raw artifacts are `threading-model3-threads2.json`,
+`threading-model3-threads4.json`, `threading-model2-threads1.json`, and
+`threading-model2-threads2.json`; the accepted one-thread artifact remains
+`operational-matrix.json`. These measurements do not establish model-2
+physical-pose equivalence for eye position, near/far reconstruction,
+lateral/vertical reconstruction, jitter, or repeatability. No production
+adoption decision was made, and remote UDP behavior remains Unverified.
 
 Network observation was Verified only to the extent supported by the tools:
 expected loopback UDP pose traffic was established by the application

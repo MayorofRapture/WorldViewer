@@ -166,10 +166,14 @@
     "threadingPerformanceExperiment": {
       "status": "Verified",
       "model": 3,
-      "control": "Only --max-threads changed; packaged path, camera 0, 640x360, requested 24 FPS, one face, gaze disabled, --no-3d-adapt 1, pose-validity rules, and 10-second warm-up plus 60-second measurement remained frozen.",
+      "control": "For the model-3 reference rows, only --max-threads changed. For the model-2 rows, only --model and --max-threads changed; packaged path, camera 0, 640x360, requested 24 FPS, one face, gaze disabled, --no-3d-adapt 1, pose-validity rules, and 10-second warm-up plus 60-second measurement remained frozen.",
+      "model2Artifact": "models/lm_model2_opt.onnx",
+      "model2ArtifactSource": "Pinned OpenSeeFace v1.20.5 distribution already used by this spike",
+      "model2ArtifactSha256": "16b33ba7d854a0643875ab3da3a620b4b650f2a7f032dd6f634f881cac108304",
       "baselineArtifact": "evidence/spikes/m0d-openseeface-operational-integration/operational-matrix.json",
       "conditions": [
         {
+          "model": 3,
           "maxThreads": 1,
           "cadenceHz": 9.519267600510382,
           "validRate": 1.0,
@@ -181,6 +185,7 @@
           "preferred20To30Hz": "Failed"
         },
         {
+          "model": 3,
           "maxThreads": 2,
           "artifact": "evidence/spikes/m0d-openseeface-operational-integration/threading-model3-threads2.json",
           "warmUpDurationMs": 10000.048600000002,
@@ -201,6 +206,7 @@
           "preferred20To30Hz": "Achieved"
         },
         {
+          "model": 3,
           "maxThreads": 4,
           "artifact": "evidence/spikes/m0d-openseeface-operational-integration/threading-model3-threads4.json",
           "warmUpDurationMs": 10002.144499999995,
@@ -219,8 +225,55 @@
           "peakPercentTotalSystem": 46.809286174442065,
           "performanceTarget15Hz": "Passed",
           "preferred20To30Hz": "Achieved"
+        },
+        {
+          "model": 2,
+          "maxThreads": 1,
+          "artifact": "evidence/spikes/m0d-openseeface-operational-integration/threading-model2-threads1.json",
+          "firstValidPoseMs": 1843.3890000000001,
+          "warmUpDurationMs": 10000.469900000004,
+          "measurementDurationMs": 60002.3252,
+          "measurementTotalPacketCount": 1410,
+          "measurementValidPoseCount": 1410,
+          "measurementInvalidPoseCount": 0,
+          "validRate": 1.0,
+          "cadenceHz": 23.49345795650698,
+          "medianInterPoseIntervalMs": 42.5016,
+          "p95InterPoseIntervalMs": 46.5205,
+          "minimumInterPoseIntervalMs": 27.5467,
+          "maximumInterPoseIntervalMs": 112.5757,
+          "upstreamTimestampsMonotonic": true,
+          "meanPnpError": 2.978487776864505,
+          "averagePercentTotalSystem": 8.27718669594263,
+          "peakPercentTotalSystem": 13.129725440705013,
+          "performanceTarget15Hz": "Passed",
+          "preferred20To30Hz": "Achieved"
+        },
+        {
+          "model": 2,
+          "maxThreads": 2,
+          "artifact": "evidence/spikes/m0d-openseeface-operational-integration/threading-model2-threads2.json",
+          "firstValidPoseMs": 2344.3136,
+          "warmUpDurationMs": 10002.136300000006,
+          "measurementDurationMs": 60001.0293,
+          "measurementTotalPacketCount": 1414,
+          "measurementValidPoseCount": 1414,
+          "measurementInvalidPoseCount": 0,
+          "validRate": 1.0,
+          "cadenceHz": 23.565253906680063,
+          "medianInterPoseIntervalMs": 42.407199999999996,
+          "p95InterPoseIntervalMs": 48.972,
+          "minimumInterPoseIntervalMs": 30.2457,
+          "maximumInterPoseIntervalMs": 67.2649,
+          "upstreamTimestampsMonotonic": true,
+          "meanPnpError": 3.293789628202878,
+          "averagePercentTotalSystem": 19.727190060905766,
+          "peakPercentTotalSystem": 22.67610573173414,
+          "performanceTarget15Hz": "Passed",
+          "preferred20To30Hz": "Achieved"
         }
       ],
+      "physicalPoseEquivalence": "Unverified; model-2 physical-pose quality was not tested in this benchmark.",
       "remoteUdpBehavior": "Unverified",
       "productionAdoption": "No decision made"
     },
