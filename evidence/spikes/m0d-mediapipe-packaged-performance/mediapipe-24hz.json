@@ -1,0 +1,72 @@
+﻿{
+    "mode":  "mediapipe-24hz",
+    "exitCode":  1,
+    "processTreeMethod":  "Win32_Process parent-process traversal rooted at packaged WorldViewer PID; TotalProcessorTime and WorkingSet64 summed for the same tree each one-second sample",
+    "logicalProcessors":  8,
+    "sampleIntervalMs":  1000,
+    "sampleCount":  20,
+    "formalStartEpochMs":  null,
+    "formalEndEpochMs":  null,
+    "formalWindowFallback":  true,
+    "events":  {
+                   "hostEpochMs":  1790131208838.441,
+                   "kind":  "benchmark-start",
+                   "mode":  "mediapipe-24hz"
+               },
+    "processTreeCpuAveragePercent":  -0.79962856933151183,
+    "processTreeCpuPeakPercent":  17.441554338668912,
+    "processTreeWorkingSetAverageBytes":  457166028.8,
+    "processTreeWorkingSetPeakBytes":  540319744,
+    "metric":  {
+                   "condition":  "24hz-opportunity",
+                   "package":  "@mediapipe/tasks-vision@1.0.1",
+                   "runningMode":  "VIDEO",
+                   "delegate":  "CPU",
+                   "numFaces":  1,
+                   "outputFaceBlendshapes":  false,
+                   "outputFacialTransformationMatrixes":  true,
+                   "confidenceThresholds":  "official defaults: 0.5",
+                   "modelAsset":  "/mediapipe/face_landmarker.task",
+                   "wasmRoot":  "/mediapipe/wasm",
+                   "cameraSettings":  null,
+                   "cameraAcquisitionDurationMs":  0,
+                   "initializationDurationMs":  null,
+                   "firstValidResultMs":  null,
+                   "warmupDurationMs":  10000,
+                   "formalMeasurementDurationMs":  null,
+                   "framesPresented":  0,
+                   "framesSkippedByCap":  0,
+                   "inferenceRunsStarted":  0,
+                   "inferenceRunsCompleted":  0,
+                   "usefulFaceResults":  0,
+                   "noFaceResults":  0,
+                   "usefulResultRate":  0,
+                   "usefulResultCadenceHz":  null,
+                   "interResultIntervalMs":  {
+                                                 "count":  0,
+                                                 "medianMs":  null,
+                                                 "p95Ms":  null,
+                                                 "minMs":  null,
+                                                 "maxMs":  null
+                                             },
+                   "inferenceDurationMs":  {
+                                               "count":  0,
+                                               "medianMs":  null,
+                                               "p95Ms":  null,
+                                               "minMs":  null,
+                                               "maxMs":  null
+                                           },
+                   "framesReplaced":  0,
+                   "maxPendingDepth":  0,
+                   "monotonicTimestampCorrect":  true,
+                   "backpressure":  {
+                                        "activeInferenceLimit":  1,
+                                        "pendingFrameLimit":  1,
+                                        "unboundedQueue":  false
+                                    },
+                   "localAssetsOnly":  true,
+                   "error":  "Error: camera acquisition timed out after 20 seconds"
+               },
+    "stdout":  "{\"schemaVersion\":1,\"mode\":\"mediapipe-24hz\",\"status\":\"fail\",\"checks\":[{\"id\":\"packaged-mediapipe-benchmark\",\"status\":\"fail\",\"detail\":\"{\\\"condition\\\":\\\"24hz-opportunity\\\",\\\"package\\\":\\\"@mediapipe/tasks-vision@1.0.1\\\",\\\"runningMode\\\":\\\"VIDEO\\\",\\\"delegate\\\":\\\"CPU\\\",\\\"numFaces\\\":1,\\\"outputFaceBlendshapes\\\":false,\\\"outputFacialTransformationMatrixes\\\":true,\\\"confidenceThresholds\\\":\\\"official defaults: 0.5\\\",\\\"modelAsset\\\":\\\"/mediapipe/face_landmarker.task\\\",\\\"wasmRoot\\\":\\\"/mediapipe/wasm\\\",\\\"cameraSettings\\\":null,\\\"cameraAcquisitionDurationMs\\\":0,\\\"initializationDurationMs\\\":null,\\\"firstValidResultMs\\\":null,\\\"warmupDurationMs\\\":10000,\\\"formalMeasurementDurationMs\\\":null,\\\"framesPresented\\\":0,\\\"framesSkippedByCap\\\":0,\\\"inferenceRunsStarted\\\":0,\\\"inferenceRunsCompleted\\\":0,\\\"usefulFaceResults\\\":0,\\\"noFaceResults\\\":0,\\\"usefulResultRate\\\":0,\\\"usefulResultCadenceHz\\\":null,\\\"interResultIntervalMs\\\":{\\\"count\\\":0,\\\"medianMs\\\":null,\\\"p95Ms\\\":null,\\\"minMs\\\":null,\\\"maxMs\\\":null},\\\"inferenceDurationMs\\\":{\\\"count\\\":0,\\\"medianMs\\\":null,\\\"p95Ms\\\":null,\\\"minMs\\\":null,\\\"maxMs\\\":null},\\\"framesReplaced\\\":0,\\\"maxPendingDepth\\\":0,\\\"monotonicTimestampCorrect\\\":true,\\\"backpressure\\\":{\\\"activeInferenceLimit\\\":1,\\\"pendingFrameLimit\\\":1,\\\"unboundedQueue\\\":false},\\\"localAssetsOnly\\\":true,\\\"error\\\":\\\"Error: camera acquisition timed out after 20 seconds\\\"}\"}],\"durationMs\":20025.09999999404,\"errors\":[{\"code\":\"MEDIAPIPE_BENCHMARK_FAILED\",\"message\":\"Error: camera acquisition timed out after 20 seconds\"}]}\n",
+    "stderr":  "[0922/224028.865:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\r\n"
+}

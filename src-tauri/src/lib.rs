@@ -1,9 +1,10 @@
 use std::collections::HashSet;
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
 use std::process;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
@@ -14,7 +15,7 @@ struct StartupMode(Option<SmokeMode>);
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained }
+enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -45,12 +46,34 @@ fn startup_mode_from_environment() -> Option<SmokeMode> {
         Some("synthetic") => Some(SmokeMode::Synthetic),
         Some("tracking-sidecar") => Some(SmokeMode::TrackingSidecar),
         Some("tracking-sustained") => Some(SmokeMode::TrackingSustained),
+        Some("mediapipe-idle") => Some(SmokeMode::MediaPipeIdle),
+        Some("mediapipe-24hz") => Some(SmokeMode::MediaPipe24Hz),
+        Some("mediapipe-20hz") => Some(SmokeMode::MediaPipe20Hz),
         _ => None,
     }
 }
 
 fn lifecycle_hold_from_environment() -> bool {
     std::env::var("WORLD_VIEWER_SMOKE_LIFECYCLE_HOLD").ok().as_deref() == Some("1")
+}
+
+#[tauri::command]
+fn record_benchmark_event(event: serde_json::Value) -> Result<(), String> {
+    let mut event = event;
+    if let serde_json::Value::Object(fields) = &mut event {
+        let epoch_ms = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|error| error.to_string())?.as_secs_f64() * 1000.0;
+        fields.insert("hostEpochMs".into(), serde_json::json!(epoch_ms));
+    }
+    let line = serde_json::to_string(&event).map_err(|error| error.to_string())?;
+    if let Ok(path) = std::env::var("WORLD_VIEWER_BENCHMARK_EVENT_PATH") {
+        let mut file = OpenOptions::new().create(true).append(true).open(path).map_err(|error| error.to_string())?;
+        writeln!(file, "{line}").map_err(|error| error.to_string())?;
+        file.flush().map_err(|error| error.to_string())?;
+    } else {
+        println!("{line}");
+        std::io::stdout().flush().map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 fn parse_model_value(value: &str) -> Result<u8, String> {
@@ -271,7 +294,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(StartupMode(startup_mode_from_environment()))
-        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke])
+        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event])
         .setup(|app| {
             if matches!(startup_mode_from_environment(), Some(SmokeMode::TrackingSidecar | SmokeMode::TrackingSustained)) {
                 let handle = app.handle().clone();

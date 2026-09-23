@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "spikeId": "m0d-mediapipe-packaged-performance",
+  "classification": "Blocked",
+  "objective": "Measure packaged MediaPipe Face Landmarker cadence and resource use against the existing OpenSeeFace model-3/two-thread reference.",
+  "configuration": {
+    "package": "@mediapipe/tasks-vision@1.0.1",
+    "runningMode": "VIDEO",
+    "delegate": "CPU",
+    "numFaces": 1,
+    "outputFaceBlendshapes": false,
+    "outputFacialTransformationMatrixes": true,
+    "confidenceThresholds": "official defaults: 0.5",
+    "requestedCamera": { "device": "integrated camera", "width": 640, "height": 360, "fps": 24 },
+    "modelArtifactSha256": "64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF",
+    "localAssets": true,
+    "worker": true,
+    "backpressure": { "activeInferenceLimit": 1, "pendingFrameLimit": 1, "unboundedQueue": false }
+  },
+  "conditions": {
+    "idle": { "status": "unverified", "artifact": "idle-baseline.json", "reason": "formal end event was unavailable in the captured preliminary baseline" },
+    "mediapipe24Hz": { "status": "blocked", "artifact": "mediapipe-24hz.json", "reason": "WebView2 camera acquisition timed out after 20 seconds, including a visible-window retry" },
+    "mediapipe20Hz": { "status": "blocked-not-run", "reason": "explicit camera-access stop condition after the 24 Hz attempt" }
+  },
+  "comparisonReference": {
+    "tracker": "OpenSeeFace v1.20.5 model 3 / 2 threads",
+    "cadenceHz": 23.287370342081577,
+    "validRate": 1.0,
+    "medianIntervalMs": 42.6071,
+    "p95IntervalMs": 52.5783,
+    "averageTrackingCpuPercent": 21.294924209619804,
+    "peakTrackingCpuPercent": 24.531794807297874
+  },
+  "limitations": [
+    "No MediaPipe active cadence, validity, inference timing, or active CPU result was obtained.",
+    "No actual negotiated camera settings were available because getUserMedia did not resolve.",
+    "No GPU delegate was selected; active GPU behavior was not measured.",
+    "Physical pose accuracy and production tracker selection remain untested and undecided.",
+    "The exact Face Landmarker artifact's redistribution terms were not established by inspected official sources."
+  ]
+}

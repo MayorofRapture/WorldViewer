@@ -3,8 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { RendererFoundation } from "../engine/rendering/RendererFoundation";
 import { SYNTHETIC_MOTION_SCRIPTS } from "../engine/pose/syntheticMotionScripts";
 import { SyntheticProjectionRuntime, type SyntheticProjectionRuntimeObservation } from "../world-host/development/syntheticProjectionRuntime";
+import { runPackagedMediaPipeBenchmark, type MediaPipeBenchmarkMode } from "../mediapipe/packagedMediaPipeBenchmark";
 
-type SmokeMode = "launch" | "synthetic" | "tracking-sidecar";
+type SmokeMode = "launch" | "synthetic" | "tracking-sidecar" | "tracking-sustained" | MediaPipeBenchmarkMode;
 type SmokeStatus = "pass" | "fail";
 type SmokeResult = {
   schemaVersion: 1;
@@ -99,7 +100,11 @@ export default function App() {
     void invoke<SmokeMode | null>("get_startup_mode")
       .catch(() => null)
       .then((mode) => {
-        if (cancelled || mode === "launch" || mode === "tracking-sidecar" || !rendererHost.current) return;
+      if (cancelled || mode === "launch" || mode === "tracking-sidecar" || mode === "tracking-sustained" || !rendererHost.current) return;
+      if (mode === "mediapipe-idle" || mode === "mediapipe-24hz" || mode === "mediapipe-20hz") {
+        void runPackagedMediaPipeBenchmark(mode);
+        return;
+      }
         const startedAt = performance.now();
         let completeSynthetic: ((result: SmokeResult) => void) | undefined;
         if (mode === "synthetic") {

@@ -20,6 +20,7 @@
     "tauri:build:package": "tauri build"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.0.1",
     "@tauri-apps/api": "^2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
