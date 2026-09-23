@@ -1,0 +1,659 @@
+[
+  {
+    "id": "trial-1-left",
+    "target_description": "Trial 1 left: use the repeatable -150 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5001.1587,
+    "sample_count": 154,
+    "valid_pose_count": 154,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.792864061682344,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 154,
+      "mean": 2.4369775691589752,
+      "median": 2.5641307830810547,
+      "std_dev": 0.3479342482338794,
+      "min": 1.6202621459960938,
+      "max": 3.003870964050293,
+      "p95_abs_deviation_from_median": 0.7863402366638184
+    },
+    "raw_pnp_x": {
+      "count": 154,
+      "mean": 1.402210465499333,
+      "median": 1.3198223114013672,
+      "std_dev": 0.15426457009284578,
+      "min": 1.2880946397781372,
+      "max": 1.7184631824493408,
+      "p95_abs_deviation_from_median": 0.36833739280700684
+    },
+    "raw_pnp_y": {
+      "count": 154,
+      "mean": -3.3504092608179366,
+      "median": -3.7597055435180664,
+      "std_dev": 0.7452526277852014,
+      "min": -3.8162965774536133,
+      "max": -1.9657353162765503,
+      "p95_abs_deviation_from_median": 1.7464721202850342
+    },
+    "raw_pnp_z": {
+      "count": 154,
+      "mean": -8.472614251173935,
+      "median": -8.18720531463623,
+      "std_dev": 0.5332498128998794,
+      "min": -9.59092903137207,
+      "max": -8.10384750366211,
+      "p95_abs_deviation_from_median": 1.2696046829223633
+    },
+    "camera_space_cyclopean_x": {
+      "count": 154,
+      "mean": 1.5692452919947637,
+      "median": 1.4842021465301514,
+      "std_dev": 0.15665982831648165,
+      "min": 1.4584064483642578,
+      "max": 1.8940019607543945,
+      "p95_abs_deviation_from_median": 0.37427735328674316
+    },
+    "camera_space_cyclopean_y": {
+      "count": 154,
+      "mean": -3.1310583035667223,
+      "median": -3.57064151763916,
+      "std_dev": 0.8022284795518703,
+      "min": -3.627826690673828,
+      "max": -1.6609607934951782,
+      "p95_abs_deviation_from_median": 1.8728266954421997
+    },
+    "camera_space_cyclopean_z": {
+      "count": 154,
+      "mean": -8.119169597501878,
+      "median": -7.803752422332764,
+      "std_dev": 0.5883683183916003,
+      "min": -9.334118843078613,
+      "max": -7.715324878692627,
+      "p95_abs_deviation_from_median": 1.3957915306091309
+    }
+  },
+  {
+    "id": "trial-1-center",
+    "target_description": "Trial 1 center: use the repeatable 0 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5000.4589,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.397944316670618,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 1.9180668890476227,
+      "median": 1.6659846305847168,
+      "std_dev": 0.47812637274796027,
+      "min": 1.351477861404419,
+      "max": 3.002469062805176,
+      "p95_abs_deviation_from_median": 1.054652214050293
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.5753617574061667,
+      "median": 1.6964852809906006,
+      "std_dev": 0.17937155374209846,
+      "min": 1.2947540283203125,
+      "max": 1.7209521532058716,
+      "p95_abs_deviation_from_median": 0.3850339651107788
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -2.370670642171587,
+      "median": -1.6832959651947021,
+      "std_dev": 0.9856306203338604,
+      "min": -3.8122944831848145,
+      "max": -1.6635462045669556,
+      "p95_abs_deviation_from_median": 2.110201835632324
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -7.976619912045343,
+      "median": -7.8878021240234375,
+      "std_dev": 0.15039466248798683,
+      "min": -8.264421463012695,
+      "max": -7.826273441314697,
+      "p95_abs_deviation_from_median": 0.3340883255004883
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.7059036557163512,
+      "median": 1.8091661930084229,
+      "std_dev": 0.15512216181798427,
+      "min": 1.471343994140625,
+      "max": 1.8310869932174683,
+      "p95_abs_deviation_from_median": 0.3314957618713379
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -2.25159067767007,
+      "median": -1.5949126482009888,
+      "std_dev": 0.9418016738627532,
+      "min": -3.636474370956421,
+      "max": -1.5789251327514648,
+      "p95_abs_deviation_from_median": 2.011938214302063
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -7.564711136477334,
+      "median": -7.462416648864746,
+      "std_dev": 0.16839839243356153,
+      "min": -7.87650728225708,
+      "max": -7.400638103485107,
+      "p95_abs_deviation_from_median": 0.36969423294067383
+    }
+  },
+  {
+    "id": "trial-1-right",
+    "target_description": "Trial 1 right: use the repeatable +150 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5001.0471,
+    "sample_count": 153,
+    "valid_pose_count": 153,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.593593089735148,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 153,
+      "mean": 3.4518830511305065,
+      "median": 3.9043216705322266,
+      "std_dev": 1.0213609432652044,
+      "min": 1.4956263303756714,
+      "max": 4.509015083312988,
+      "p95_abs_deviation_from_median": 2.2820664644241333
+    },
+    "raw_pnp_x": {
+      "count": 153,
+      "mean": 1.2728412081213558,
+      "median": 1.1409167051315308,
+      "std_dev": 0.24024328483126653,
+      "min": 1.1175258159637451,
+      "max": 1.7100374698638916,
+      "p95_abs_deviation_from_median": 0.5612850189208984
+    },
+    "raw_pnp_y": {
+      "count": 153,
+      "mean": -0.02501190215154411,
+      "median": 0.48927655816078186,
+      "std_dev": 0.9291451474845204,
+      "min": -1.6807714700698853,
+      "max": 0.5315306186676025,
+      "p95_abs_deviation_from_median": 2.1644378006458282
+    },
+    "raw_pnp_z": {
+      "count": 153,
+      "mean": -7.3163949804368364,
+      "median": -7.150823593139648,
+      "std_dev": 0.31408539454308426,
+      "min": -7.90834379196167,
+      "max": -7.075247287750244,
+      "p95_abs_deviation_from_median": 0.7372632026672363
+    },
+    "camera_space_cyclopean_x": {
+      "count": 153,
+      "mean": 1.4292736723532085,
+      "median": 1.311539888381958,
+      "std_dev": 0.21387342505665632,
+      "min": 1.2850440740585327,
+      "max": 1.8146079778671265,
+      "p95_abs_deviation_from_median": 0.500455379486084
+    },
+    "camera_space_cyclopean_y": {
+      "count": 153,
+      "mean": -0.028623400170818655,
+      "median": 0.4554745554924011,
+      "std_dev": 0.8755712496753733,
+      "min": -1.5867422819137573,
+      "max": 0.49394679069519043,
+      "p95_abs_deviation_from_median": 2.037519872188568
+    },
+    "camera_space_cyclopean_z": {
+      "count": 153,
+      "mean": -6.8938474343493095,
+      "median": -6.728850841522217,
+      "std_dev": 0.3124632185564908,
+      "min": -7.4824652671813965,
+      "max": -6.656443119049072,
+      "p95_abs_deviation_from_median": 0.734065055847168
+    }
+  },
+  {
+    "id": "trial-2-left",
+    "target_description": "Trial 2 left: reuse the -150 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5001.6058,
+    "sample_count": 154,
+    "valid_pose_count": 154,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.790111447807423,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 154,
+      "mean": 3.0024200600463073,
+      "median": 2.73796010017395,
+      "std_dev": 0.5916743330036969,
+      "min": 2.3544833660125732,
+      "max": 4.454897880554199,
+      "p95_abs_deviation_from_median": 1.49495530128479
+    },
+    "raw_pnp_x": {
+      "count": 154,
+      "mean": 1.3224891037135929,
+      "median": 1.378096103668213,
+      "std_dev": 0.10553207284408953,
+      "min": 1.1271467208862305,
+      "max": 1.4101330041885376,
+      "p95_abs_deviation_from_median": 0.24736571311950684
+    },
+    "raw_pnp_y": {
+      "count": 154,
+      "mean": -2.7468945097613644,
+      "median": -3.772536516189575,
+      "std_dev": 1.8418087031483503,
+      "min": -3.8359391689300537,
+      "max": 0.5437119603157043,
+      "p95_abs_deviation_from_median": 4.306639671325684
+    },
+    "raw_pnp_z": {
+      "count": 154,
+      "mean": -7.8199467968631104,
+      "median": -8.010157585144043,
+      "std_dev": 0.37083346645860676,
+      "min": -8.17538833618164,
+      "max": -7.102174282073975,
+      "p95_abs_deviation_from_median": 0.8609194755554199
+    },
+    "camera_space_cyclopean_x": {
+      "count": 154,
+      "mean": 1.4846020944706806,
+      "median": 1.5379416942596436,
+      "std_dev": 0.10292997529696687,
+      "min": 1.292592167854309,
+      "max": 1.5725672245025635,
+      "p95_abs_deviation_from_median": 0.23889422416687012
+    },
+    "camera_space_cyclopean_y": {
+      "count": 154,
+      "mean": -2.6256828219085544,
+      "median": -3.6028079986572266,
+      "std_dev": 1.75418955522895,
+      "min": -3.669498920440674,
+      "max": 0.505506694316864,
+      "p95_abs_deviation_from_median": 4.102457970380783
+    },
+    "camera_space_cyclopean_z": {
+      "count": 154,
+      "mean": -7.419876575469971,
+      "median": -7.618817329406738,
+      "std_dev": 0.3841560631553318,
+      "min": -7.779588222503662,
+      "max": -6.672453880310059,
+      "p95_abs_deviation_from_median": 0.8931436538696289
+    }
+  },
+  {
+    "id": "trial-2-center",
+    "target_description": "Trial 2 center: reuse the 0 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5000.9572,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.395712564786596,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 2.075469065989767,
+      "median": 1.748128056526184,
+      "std_dev": 0.5735846546232249,
+      "min": 1.355499267578125,
+      "max": 3.1538500785827637,
+      "p95_abs_deviation_from_median": 1.2441126108169556
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.597195338990007,
+      "median": 1.7126686573028564,
+      "std_dev": 0.16845112512917434,
+      "min": 1.341781735420227,
+      "max": 1.7233060598373413,
+      "p95_abs_deviation_from_median": 0.36537909507751465
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -2.3599499442747662,
+      "median": -1.6305739879608154,
+      "std_dev": 1.045531655622599,
+      "min": -3.894174814224243,
+      "max": -1.6097034215927124,
+      "p95_abs_deviation_from_median": 2.236874580383301
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -7.692237019538879,
+      "median": -7.568844795227051,
+      "std_dev": 0.200632517139089,
+      "min": -8.039402961730957,
+      "max": -7.495556831359863,
+      "p95_abs_deviation_from_median": 0.44349098205566406
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.721790825682027,
+      "median": 1.8237055540084839,
+      "std_dev": 0.15077418334814197,
+      "min": 1.4838794469833374,
+      "max": 1.8401764631271362,
+      "p95_abs_deviation_from_median": 0.3277705907821655
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -2.245482458599976,
+      "median": -1.5465319156646729,
+      "std_dev": 1.0008385037995058,
+      "min": -3.7168021202087402,
+      "max": -1.5283751487731934,
+      "p95_abs_deviation_from_median": 2.146608829498291
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -7.2758429646492,
+      "median": -7.143486022949219,
+      "std_dev": 0.2143869706949176,
+      "min": -7.644344806671143,
+      "max": -7.069372177124023,
+      "p95_abs_deviation_from_median": 0.4717259407043457
+    }
+  },
+  {
+    "id": "trial-2-right",
+    "target_description": "Trial 2 right: reuse the +150 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5001.5543,
+    "sample_count": 154,
+    "valid_pose_count": 154,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.79042848740041,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 154,
+      "mean": 3.5987912246159146,
+      "median": 4.071399211883545,
+      "std_dev": 1.1240162530357267,
+      "min": 1.3811110258102417,
+      "max": 5.419377326965332,
+      "p95_abs_deviation_from_median": 2.4541289806365967
+    },
+    "raw_pnp_x": {
+      "count": 154,
+      "mean": 1.2778368027179272,
+      "median": 1.144773244857788,
+      "std_dev": 0.24588324062215564,
+      "min": 1.1132638454437256,
+      "max": 1.7271170616149902,
+      "p95_abs_deviation_from_median": 0.5745848417282104
+    },
+    "raw_pnp_y": {
+      "count": 154,
+      "mean": 0.04370372906907812,
+      "median": 0.557013213634491,
+      "std_dev": 0.9384464068470617,
+      "min": -1.6365022659301758,
+      "max": 0.6076779961585999,
+      "p95_abs_deviation_from_median": 2.1852933764457703
+    },
+    "raw_pnp_z": {
+      "count": 154,
+      "mean": -7.006019418889826,
+      "median": -6.841965675354004,
+      "std_dev": 0.31423472427133936,
+      "min": -7.60356330871582,
+      "max": -6.7498016357421875,
+      "p95_abs_deviation_from_median": 0.7332639694213867
+    },
+    "camera_space_cyclopean_x": {
+      "count": 154,
+      "mean": 1.440749720319525,
+      "median": 1.3222028017044067,
+      "std_dev": 0.2183853773784242,
+      "min": 1.2964375019073486,
+      "max": 1.8378342390060425,
+      "p95_abs_deviation_from_median": 0.51045823097229
+    },
+    "camera_space_cyclopean_y": {
+      "count": 154,
+      "mean": 0.02504395896738226,
+      "median": 0.5061586499214172,
+      "std_dev": 0.8815498340782654,
+      "min": -1.552816390991211,
+      "max": 0.5521221160888672,
+      "p95_abs_deviation_from_median": 2.0525158047676086
+    },
+    "camera_space_cyclopean_z": {
+      "count": 154,
+      "mean": -6.58814863105873,
+      "median": -6.428792953491211,
+      "std_dev": 0.3095123353333307,
+      "min": -7.177353858947754,
+      "max": -6.331781387329102,
+      "p95_abs_deviation_from_median": 0.7210116386413574
+    }
+  },
+  {
+    "id": "trial-3-left",
+    "target_description": "Trial 3 left: reuse the -150 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5000.4892,
+    "sample_count": 155,
+    "valid_pose_count": 155,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.996967256723604,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 155,
+      "mean": 3.094890385289346,
+      "median": 2.736764907836914,
+      "std_dev": 0.7290148939096246,
+      "min": 2.4181578159332275,
+      "max": 4.829430103302002,
+      "p95_abs_deviation_from_median": 1.833211898803711
+    },
+    "raw_pnp_x": {
+      "count": 155,
+      "mean": 1.280507476868168,
+      "median": 1.3242287635803223,
+      "std_dev": 0.09114349844882497,
+      "min": 1.0972058773040771,
+      "max": 1.369832992553711,
+      "p95_abs_deviation_from_median": 0.21169066429138184
+    },
+    "raw_pnp_y": {
+      "count": 155,
+      "mean": -2.6336148469678817,
+      "median": -3.64133620262146,
+      "std_dev": 1.8188528144591383,
+      "min": -3.712308883666992,
+      "max": 0.6332054734230042,
+      "p95_abs_deviation_from_median": 4.265624165534973
+    },
+    "raw_pnp_z": {
+      "count": 155,
+      "mean": -7.267909308402769,
+      "median": -7.395017147064209,
+      "std_dev": 0.2557525857616928,
+      "min": -7.542081356048584,
+      "max": -6.739070892333984,
+      "p95_abs_deviation_from_median": 0.6120686531066895
+    },
+    "camera_space_cyclopean_x": {
+      "count": 155,
+      "mean": 1.4569273679487167,
+      "median": 1.4993374347686768,
+      "std_dev": 0.08940789786736582,
+      "min": 1.2794151306152344,
+      "max": 1.5484789609909058,
+      "p95_abs_deviation_from_median": 0.2089320421218872
+    },
+    "camera_space_cyclopean_y": {
+      "count": 155,
+      "mean": -2.4929741051889236,
+      "median": -3.4396893978118896,
+      "std_dev": 1.7098072179389963,
+      "min": -3.502004384994507,
+      "max": 0.5758808851242065,
+      "p95_abs_deviation_from_median": 4.0078651905059814
+    },
+    "camera_space_cyclopean_z": {
+      "count": 155,
+      "mean": -6.889304807109218,
+      "median": -7.026933670043945,
+      "std_dev": 0.27568148699472206,
+      "min": -7.177508354187012,
+      "max": -6.324490547180176,
+      "p95_abs_deviation_from_median": 0.6578607559204102
+    }
+  },
+  {
+    "id": "trial-3-center",
+    "target_description": "Trial 3 center: reuse the 0 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5000.1608,
+    "sample_count": 112,
+    "valid_pose_count": 112,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 22.399279639166807,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 112,
+      "mean": 2.0016861078994617,
+      "median": 1.7308791875839233,
+      "std_dev": 0.5079352364325119,
+      "min": 1.3904895782470703,
+      "max": 2.8952081203460693,
+      "p95_abs_deviation_from_median": 1.082236886024475
+    },
+    "raw_pnp_x": {
+      "count": 112,
+      "mean": 1.5710865738136428,
+      "median": 1.688840389251709,
+      "std_dev": 0.1728161822929726,
+      "min": 1.3030108213424683,
+      "max": 1.7090563774108887,
+      "p95_abs_deviation_from_median": 0.3737894296646118
+    },
+    "raw_pnp_y": {
+      "count": 112,
+      "mean": -2.3025966244084493,
+      "median": -1.6333876848220825,
+      "std_dev": 0.9688060830428737,
+      "min": -3.718986988067627,
+      "max": -1.5956932306289673,
+      "p95_abs_deviation_from_median": 2.068572163581848
+    },
+    "raw_pnp_z": {
+      "count": 112,
+      "mean": -7.433093390294483,
+      "median": -7.439452171325684,
+      "std_dev": 0.029579378681644286,
+      "min": -7.49200439453125,
+      "max": -7.354712009429932,
+      "p95_abs_deviation_from_median": 0.06265783309936523
+    },
+    "camera_space_cyclopean_x": {
+      "count": 112,
+      "mean": 1.7048831582069397,
+      "median": 1.803058385848999,
+      "std_dev": 0.1444996008624955,
+      "min": 1.488187313079834,
+      "max": 1.820003867149353,
+      "p95_abs_deviation_from_median": 0.31054067611694336
+    },
+    "camera_space_cyclopean_y": {
+      "count": 112,
+      "mean": -2.1785805065717017,
+      "median": -1.5444550514221191,
+      "std_dev": 0.9126265574351836,
+      "min": -3.5105984210968018,
+      "max": -1.5171829462051392,
+      "p95_abs_deviation_from_median": 1.9496309757232666
+    },
+    "camera_space_cyclopean_z": {
+      "count": 112,
+      "mean": -7.026465671403067,
+      "median": -7.02255916595459,
+      "std_dev": 0.02597147791804664,
+      "min": -7.098145961761475,
+      "max": -6.953097820281982,
+      "p95_abs_deviation_from_median": 0.05386829376220703
+    }
+  },
+  {
+    "id": "trial-3-right",
+    "target_description": "Trial 3 right: reuse the +150 mm lateral mark at approximately 600 mm depth",
+    "elapsed_monotonic_ms": 5000.110699999999,
+    "sample_count": 154,
+    "valid_pose_count": 154,
+    "invalid_pose_count": 0,
+    "receive_cadence_hz": 30.7993181030972,
+    "success_ratio": 1.0,
+    "valid_pnp_error": {
+      "count": 154,
+      "mean": 3.126745500347831,
+      "median": 3.473444938659668,
+      "std_dev": 0.8694010167886284,
+      "min": 1.4698607921600342,
+      "max": 4.421102523803711,
+      "p95_abs_deviation_from_median": 1.9124774932861328
+    },
+    "raw_pnp_x": {
+      "count": 154,
+      "mean": 1.3160413403015632,
+      "median": 1.2000341415405273,
+      "std_dev": 0.21502399302109215,
+      "min": 1.1701445579528809,
+      "max": 1.7085920572280884,
+      "p95_abs_deviation_from_median": 0.5022332668304443
+    },
+    "raw_pnp_y": {
+      "count": 154,
+      "mean": -0.10387093718949851,
+      "median": 0.3632763624191284,
+      "std_dev": 0.840534864076805,
+      "min": -1.6208993196487427,
+      "max": 0.3941754102706909,
+      "p95_abs_deviation_from_median": 1.9667890071868896
+    },
+    "raw_pnp_z": {
+      "count": 154,
+      "mean": -6.930651420122617,
+      "median": -6.77786922454834,
+      "std_dev": 0.3000554118736057,
+      "min": -7.519092082977295,
+      "max": -6.683647632598877,
+      "p95_abs_deviation_from_median": 0.7037444114685059
+    },
+    "camera_space_cyclopean_x": {
+      "count": 154,
+      "mean": 1.474839875450382,
+      "median": 1.3740856647491455,
+      "std_dev": 0.186747208619473,
+      "min": 1.3497560024261475,
+      "max": 1.818440556526184,
+      "p95_abs_deviation_from_median": 0.43686485290527344
+    },
+    "camera_space_cyclopean_y": {
+      "count": 154,
+      "mean": -0.10868539496675714,
+      "median": 0.3326597809791565,
+      "std_dev": 0.7933765360921277,
+      "min": -1.5332664251327515,
+      "max": 0.3617976903915405,
+      "p95_abs_deviation_from_median": 1.8566593527793884
+    },
+    "camera_space_cyclopean_z": {
+      "count": 154,
+      "mean": -6.510550653779662,
+      "median": -6.357848167419434,
+      "std_dev": 0.2962879305456981,
+      "min": -7.094110012054443,
+      "max": -6.269054412841797,
+      "p95_abs_deviation_from_median": 0.6973438262939453
+    }
+  }
+]

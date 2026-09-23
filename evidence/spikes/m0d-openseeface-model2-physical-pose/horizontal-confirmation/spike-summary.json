@@ -1,0 +1,200 @@
+{
+    "schemaVersion":  1,
+    "spikeId":  "m0d-openseeface-model2-horizontal-confirmation",
+    "classification":  "Failed",
+    "question":  "Whether model 2 produces repeatable, correctly ordered horizontal viewer-position output",
+    "procedure":  {
+                      "trials":  3,
+                      "sequence":  [
+                                       "left",
+                                       "center",
+                                       "right"
+                                   ],
+                      "captureSeconds":  5,
+                      "settleSeconds":  2,
+                      "positioning":  "Reusable visual marks at approximately -150/0/+150 mm relative to display center and approximately 600 mm screen depth",
+                      "session":  "sessions/session-1790124325"
+                  },
+    "configuration":  {
+                          "openseefaceVersion":  "v1.20.5",
+                          "model":  2,
+                          "maxThreads":  1,
+                          "camera":  {
+                                         "index":  0,
+                                         "width":  640,
+                                         "height":  360,
+                                         "requestedFps":  24
+                                     },
+                          "faces":  1,
+                          "gazeTracking":  false,
+                          "no3dAdapt":  true,
+                          "modelArtifact":  "models/lm_model2_opt.onnx",
+                          "modelArtifactSha256":  "16b33ba7d854a0643875ab3da3a620b4b650f2a7f032dd6f634f881cac108304"
+                      },
+    "validity":  {
+                     "segments":  9,
+                     "validSamples":  1260,
+                     "invalidPoseSamples":  0,
+                     "validRate":  1,
+                     "faceIds":  [
+                                     0
+                                 ]
+                 },
+    "reconstructedCyclopeanX":  {
+                                    "trials":  [
+                                                   {
+                                                       "trial":  1,
+                                                       "left":  {
+                                                                    "mean":  1.569245,
+                                                                    "median":  1.484202,
+                                                                    "stdDev":  0.156660
+                                                                },
+                                                       "center":  {
+                                                                      "mean":  1.705904,
+                                                                      "median":  1.809166,
+                                                                      "stdDev":  0.155122
+                                                                  },
+                                                       "right":  {
+                                                                     "mean":  1.429274,
+                                                                     "median":  1.311540,
+                                                                     "stdDev":  0.213873
+                                                                 },
+                                                       "monotonic":  false
+                                                   },
+                                                   {
+                                                       "trial":  2,
+                                                       "left":  {
+                                                                    "mean":  1.484602,
+                                                                    "median":  1.537942,
+                                                                    "stdDev":  0.102930
+                                                                },
+                                                       "center":  {
+                                                                      "mean":  1.721791,
+                                                                      "median":  1.823706,
+                                                                      "stdDev":  0.150774
+                                                                  },
+                                                       "right":  {
+                                                                     "mean":  1.440750,
+                                                                     "median":  1.322203,
+                                                                     "stdDev":  0.218385
+                                                                 },
+                                                       "monotonic":  false
+                                                   },
+                                                   {
+                                                       "trial":  3,
+                                                       "left":  {
+                                                                    "mean":  1.456927,
+                                                                    "median":  1.499337,
+                                                                    "stdDev":  0.089408
+                                                                },
+                                                       "center":  {
+                                                                      "mean":  1.704883,
+                                                                      "median":  1.803058,
+                                                                      "stdDev":  0.144500
+                                                                  },
+                                                       "right":  {
+                                                                     "mean":  1.474840,
+                                                                     "median":  1.374086,
+                                                                     "stdDev":  0.186747
+                                                                 },
+                                                       "monotonic":  false
+                                                   }
+                                               ],
+                                    "crossTrialMeanRanges":  {
+                                                                 "left":  [
+                                                                              1.456927,
+                                                                              1.569245
+                                                                          ],
+                                                                 "center":  [
+                                                                                1.704883,
+                                                                                1.721791
+                                                                            ],
+                                                                 "right":  [
+                                                                               1.429274,
+                                                                               1.474840
+                                                                           ]
+                                                             }
+                                },
+    "rawPnpX":  {
+                    "trials":  [
+                                   {
+                                       "trial":  1,
+                                       "left":  {
+                                                    "mean":  1.402210,
+                                                    "median":  1.319822,
+                                                    "stdDev":  0.154265
+                                                },
+                                       "center":  {
+                                                      "mean":  1.575362,
+                                                      "median":  1.696485,
+                                                      "stdDev":  0.179372
+                                                  },
+                                       "right":  {
+                                                     "mean":  1.272841,
+                                                     "median":  1.140917,
+                                                     "stdDev":  0.240243
+                                                 },
+                                       "monotonic":  false
+                                   },
+                                   {
+                                       "trial":  2,
+                                       "left":  {
+                                                    "mean":  1.322489,
+                                                    "median":  1.378096,
+                                                    "stdDev":  0.105532
+                                                },
+                                       "center":  {
+                                                      "mean":  1.597195,
+                                                      "median":  1.712669,
+                                                      "stdDev":  0.168451
+                                                  },
+                                       "right":  {
+                                                     "mean":  1.277837,
+                                                     "median":  1.144773,
+                                                     "stdDev":  0.245883
+                                                 },
+                                       "monotonic":  false
+                                   },
+                                   {
+                                       "trial":  3,
+                                       "left":  {
+                                                    "mean":  1.280507,
+                                                    "median":  1.324229,
+                                                    "stdDev":  0.091143
+                                                },
+                                       "center":  {
+                                                      "mean":  1.571087,
+                                                      "median":  1.688840,
+                                                      "stdDev":  0.172816
+                                                  },
+                                       "right":  {
+                                                     "mean":  1.316041,
+                                                     "median":  1.200034,
+                                                     "stdDev":  0.215024
+                                                 },
+                                       "monotonic":  false
+                                   }
+                               ],
+                    "crossTrialMeanRanges":  {
+                                                 "left":  [
+                                                              1.280507,
+                                                              1.402210
+                                                          ],
+                                                 "center":  [
+                                                                1.571087,
+                                                                1.597195
+                                                            ],
+                                                 "right":  [
+                                                               1.272841,
+                                                               1.316041
+                                                           ]
+                                             }
+                },
+    "interpretation":  {
+                           "pattern":  "center highest, left intermediate, right lowest in all three trials for both signals",
+                           "distributionOverlap":  "material overlap among left, center, and right populations",
+                           "poseTransform":  "accepted model-3 restoration and camera-space transform reused unchanged",
+                           "units":  "openseeface-model-units; no millimeter calibration"
+                       },
+    "scope":  "Horizontal directionality only; no conclusion about calibration, jitter thresholds, overall physical suitability, production selection, or adoption."
+}
