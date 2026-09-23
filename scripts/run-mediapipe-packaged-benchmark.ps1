@@ -2,7 +2,7 @@ param(
     [string]$ExecutablePath = "src-tauri/target/release/worldviewer.exe",
     [string]$OutputRoot = "evidence/spikes/m0d-mediapipe-packaged-performance",
     [int]$TimeoutSeconds = 100,
-    [ValidateSet("all", "mediapipe-idle", "mediapipe-24hz", "mediapipe-20hz")]
+    [ValidateSet("all", "mediapipe-idle", "mediapipe-24hz", "mediapipe-20hz", "mediapipe-480x270-20hz")]
     [string]$OnlyMode = "all",
     [switch]$Visible
 )
@@ -42,6 +42,7 @@ function Get-TreeSnapshot([int]$RootPid) {
 }
 
 function Invoke-BenchmarkRun([string]$Mode, [string]$RunOutput) {
+    if (Test-Path -LiteralPath $RunOutput) { Remove-Item -LiteralPath $RunOutput -Force }
     $eventPath = Join-Path $env:TEMP ("worldviewer-mediapipe-events-" + [guid]::NewGuid() + ".jsonl")
     $stdoutPath = Join-Path $env:TEMP ("worldviewer-mediapipe-stdout-" + [guid]::NewGuid() + ".txt")
     $stderrPath = Join-Path $env:TEMP ("worldviewer-mediapipe-stderr-" + [guid]::NewGuid() + ".txt")
@@ -129,4 +130,5 @@ function Invoke-BenchmarkRun([string]$Mode, [string]$RunOutput) {
 if ($OnlyMode -in @("all", "mediapipe-idle")) { Invoke-BenchmarkRun "mediapipe-idle" (Join-Path $resolvedOutput "idle-baseline.json") }
 if ($OnlyMode -in @("all", "mediapipe-24hz")) { Invoke-BenchmarkRun "mediapipe-24hz" (Join-Path $resolvedOutput "mediapipe-24hz.json") }
 if ($OnlyMode -in @("all", "mediapipe-20hz")) { Invoke-BenchmarkRun "mediapipe-20hz" (Join-Path $resolvedOutput "mediapipe-20hz.json") }
+if ($OnlyMode -in @("all", "mediapipe-480x270-20hz")) { Invoke-BenchmarkRun "mediapipe-480x270-20hz" (Join-Path $resolvedOutput "mediapipe-480x270-20hz.json") }
 Write-Output "MediaPipe packaged benchmark evidence written to $resolvedOutput"

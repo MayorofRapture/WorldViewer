@@ -101,7 +101,7 @@ export default function App() {
       .catch(() => null)
       .then((mode) => {
       if (cancelled || mode === "launch" || mode === "tracking-sidecar" || mode === "tracking-sustained" || !rendererHost.current) return;
-      if (mode === "mediapipe-idle" || mode === "mediapipe-24hz" || mode === "mediapipe-20hz") {
+      if (mode === "mediapipe-idle" || mode === "mediapipe-24hz" || mode === "mediapipe-20hz" || mode === "mediapipe-480x270-20hz") {
         void runPackagedMediaPipeBenchmark(mode);
         return;
       }

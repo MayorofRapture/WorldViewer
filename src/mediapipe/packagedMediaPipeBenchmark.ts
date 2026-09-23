@@ -1,6 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type MediaPipeBenchmarkMode = "mediapipe-idle" | "mediapipe-24hz" | "mediapipe-20hz";
+export type MediaPipeBenchmarkMode = "mediapipe-idle" | "mediapipe-24hz" | "mediapipe-20hz" | "mediapipe-480x270-20hz";
+
+export type MediaPipeCameraConfig = {
+  width: number;
+  height: number;
+  frameRate: number;
+};
+
+export function getMediaPipeCameraConfig(mode: MediaPipeBenchmarkMode): MediaPipeCameraConfig | null {
+  if (mode === "mediapipe-idle") return null;
+  if (mode === "mediapipe-480x270-20hz") return { width: 480, height: 270, frameRate: 20 };
+  return { width: 640, height: 360, frameRate: 24 };
+}
 
 type SmokeStatus = "pass" | "fail";
 type BenchmarkResult = {
@@ -108,7 +120,7 @@ export async function runPackagedMediaPipeBenchmark(mode: MediaPipeBenchmarkMode
   const inferenceDurations: number[] = [];
 
   const detail = () => ({
-    condition: mode === "mediapipe-24hz" ? "24hz-opportunity" : "20hz-cap",
+    condition: mode === "mediapipe-24hz" ? "24hz-opportunity" : mode === "mediapipe-480x270-20hz" ? "480x270-20hz-opportunity" : "20hz-cap",
     package: "@mediapipe/tasks-vision@1.0.1",
     runningMode: "VIDEO",
     delegate: "CPU",
@@ -171,7 +183,9 @@ export async function runPackagedMediaPipeBenchmark(mode: MediaPipeBenchmarkMode
     });
     const cameraStartedAt = performance.now();
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("packaged WebView2 does not expose navigator.mediaDevices.getUserMedia");
-    const cameraRequest = navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } }, audio: false });
+    const cameraConfig = getMediaPipeCameraConfig(mode);
+    if (!cameraConfig) throw new Error(`Camera configuration is unavailable for ${mode}`);
+    const cameraRequest = navigator.mediaDevices.getUserMedia({ video: { width: { ideal: cameraConfig.width }, height: { ideal: cameraConfig.height }, frameRate: { ideal: cameraConfig.frameRate } }, audio: false });
     stream = await Promise.race([
       cameraRequest,
       new Promise<MediaStream>((_, reject) => window.setTimeout(() => reject(new Error("camera acquisition timed out after 20 seconds")), 20_000)),
