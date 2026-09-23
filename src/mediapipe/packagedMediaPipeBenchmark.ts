@@ -35,6 +35,17 @@ async function event(kind: string, payload: Record<string, unknown> = {}) {
   await invoke("record_benchmark_event", { event: { kind, ...payload } });
 }
 
+function sanitizedCameraSettings(stream: MediaStream | undefined): Record<string, unknown> | null {
+  const settings = stream?.getVideoTracks()[0]?.getSettings();
+  if (!settings) return null;
+  return {
+    deviceIdPresent: Boolean(settings.deviceId),
+    width: settings.width,
+    height: settings.height,
+    frameRate: settings.frameRate,
+  };
+}
+
 function finish(startedAt: number, mode: MediaPipeBenchmarkMode, detail: Record<string, unknown>, error?: unknown): Promise<void> {
   const failed = error !== undefined;
   const result: BenchmarkResult = {
@@ -107,7 +118,7 @@ export async function runPackagedMediaPipeBenchmark(mode: MediaPipeBenchmarkMode
     confidenceThresholds: "official defaults: 0.5",
     modelAsset: "/mediapipe/face_landmarker.task",
     wasmRoot: "/mediapipe/wasm",
-    cameraSettings: stream ? (() => { const settings = stream!.getVideoTracks()[0]?.getSettings(); return { deviceIdPresent: Boolean(settings?.deviceId), width: settings?.width, height: settings?.height, frameRate: settings?.frameRate }; })() : null,
+    cameraSettings: sanitizedCameraSettings(stream),
     cameraAcquisitionDurationMs,
     initializationDurationMs: workerReadyMs === undefined ? null : workerReadyMs - startedAt,
     firstValidResultMs: firstValidResultMs === undefined ? null : firstValidResultMs - startedAt,
@@ -166,7 +177,7 @@ export async function runPackagedMediaPipeBenchmark(mode: MediaPipeBenchmarkMode
       new Promise<MediaStream>((_, reject) => window.setTimeout(() => reject(new Error("camera acquisition timed out after 20 seconds")), 20_000)),
     ]);
     cameraAcquisitionDurationMs = performance.now() - cameraStartedAt;
-    await event("camera-ready", { mode, cameraSettings: stream.getVideoTracks()[0]?.getSettings() });
+    await event("camera-ready", { mode, cameraSettings: sanitizedCameraSettings(stream) });
     video.srcObject = stream;
     await video.play();
     await new Promise<void>((resolve, reject) => {
@@ -177,14 +188,14 @@ export async function runPackagedMediaPipeBenchmark(mode: MediaPipeBenchmarkMode
       worker.onerror = () => reject(new Error("MediaPipe worker failed during initialization"));
       worker.postMessage({ kind: "init", modelAssetPath: "/mediapipe/face_landmarker.task", wasmRoot: "/mediapipe/wasm" });
     });
-    await event("benchmark-ready", { mode, cameraSettings: stream.getVideoTracks()[0]?.getSettings(), initializationDurationMs: workerReadyMs! - startedAt });
+    await event("benchmark-ready", { mode, cameraSettings: sanitizedCameraSettings(stream), initializationDurationMs: workerReadyMs! - startedAt });
 
     const beginFormal = () => {
       if (formalStartMs !== undefined) return;
       formalStartMs = performance.now();
       measurementActive = true;
       framesPresented = 0; framesSkippedByCap = 0; inferenceRunsStarted = 0; inferenceRunsCompleted = 0; usefulFaceResults = 0; noFaceResults = 0; framesReplaced = 0; maxPendingDepth = 0; resultTimes.length = 0; inferenceDurations.length = 0;
-      void event("formal-start", { mode, cameraSettings: stream?.getVideoTracks()[0]?.getSettings() });
+      void event("formal-start", { mode, cameraSettings: sanitizedCameraSettings(stream) });
       formalEndTimer = window.setTimeout(() => { measurementActive = false; void event("formal-end", { mode }); }, FORMAL_MS);
     };
 
