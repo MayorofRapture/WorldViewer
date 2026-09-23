@@ -20,9 +20,9 @@ use windows::core::PWSTR;
 #[derive(Clone)]
 struct StartupMode(Option<SmokeMode>);
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz }
+enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz, #[serde(rename = "mediapipe-480x270-20hz")] MediaPipe480x27020Hz }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -48,7 +48,11 @@ struct SmokeResult {
 }
 
 fn startup_mode_from_environment() -> Option<SmokeMode> {
-    match std::env::var("WORLD_VIEWER_SMOKE_MODE").ok().as_deref() {
+    parse_startup_mode(std::env::var("WORLD_VIEWER_SMOKE_MODE").ok().as_deref())
+}
+
+fn parse_startup_mode(value: Option<&str>) -> Option<SmokeMode> {
+    match value {
         Some("launch") => Some(SmokeMode::Launch),
         Some("synthetic") => Some(SmokeMode::Synthetic),
         Some("tracking-sidecar") => Some(SmokeMode::TrackingSidecar),
@@ -56,6 +60,7 @@ fn startup_mode_from_environment() -> Option<SmokeMode> {
         Some("mediapipe-idle") => Some(SmokeMode::MediaPipeIdle),
         Some("mediapipe-24hz") => Some(SmokeMode::MediaPipe24Hz),
         Some("mediapipe-20hz") => Some(SmokeMode::MediaPipe20Hz),
+        Some("mediapipe-480x270-20hz") => Some(SmokeMode::MediaPipe480x27020Hz),
         _ => None,
     }
 }
@@ -90,7 +95,7 @@ fn record_benchmark_event(event: serde_json::Value) -> Result<(), String> {
 fn media_pipe_benchmark_mode(mode: Option<SmokeMode>) -> bool {
     matches!(
         mode,
-        Some(SmokeMode::MediaPipeIdle | SmokeMode::MediaPipe24Hz | SmokeMode::MediaPipe20Hz)
+        Some(SmokeMode::MediaPipeIdle | SmokeMode::MediaPipe24Hz | SmokeMode::MediaPipe20Hz | SmokeMode::MediaPipe480x27020Hz)
     )
 }
 
@@ -428,6 +433,37 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn startup_mode_parser_recognizes_all_mediapipe_benchmark_modes() {
+        assert_eq!(parse_startup_mode(Some("mediapipe-idle")), Some(SmokeMode::MediaPipeIdle));
+        assert_eq!(parse_startup_mode(Some("mediapipe-24hz")), Some(SmokeMode::MediaPipe24Hz));
+        assert_eq!(parse_startup_mode(Some("mediapipe-20hz")), Some(SmokeMode::MediaPipe20Hz));
+        assert_eq!(parse_startup_mode(Some("mediapipe-480x270-20hz")), Some(SmokeMode::MediaPipe480x27020Hz));
+        assert_eq!(parse_startup_mode(Some("unknown")), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn all_mediapipe_benchmark_modes_install_the_camera_permission_handler() {
+        for mode in [SmokeMode::MediaPipeIdle, SmokeMode::MediaPipe24Hz, SmokeMode::MediaPipe20Hz, SmokeMode::MediaPipe480x27020Hz] {
+            assert!(media_pipe_benchmark_mode(Some(mode)));
+        }
+    }
+
+    #[test]
+    fn new_mediapipe_mode_round_trips_and_validates_as_a_smoke_result() {
+        let result: SmokeResult = serde_json::from_str(r#"{
+            "schemaVersion": 1,
+            "mode": "mediapipe-480x270-20hz",
+            "status": "pass",
+            "checks": [{ "id": "packaged-mediapipe-benchmark", "status": "pass" }],
+            "durationMs": 1.0,
+            "errors": []
+        }"#).unwrap();
+        assert_eq!(result.mode, SmokeMode::MediaPipe480x27020Hz);
+        assert!(validate_result(&result, Some(SmokeMode::MediaPipe480x27020Hz)).is_ok());
+    }
 
     #[test]
     fn fixed_sidecar_arguments_preserve_the_validated_tracker_configuration() {
