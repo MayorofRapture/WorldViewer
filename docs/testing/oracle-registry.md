@@ -24,6 +24,7 @@ The generic packaged-launch Class B oracle was created and frozen through M0A-3 
 | ORC-VIEWER-STATE-001 | Class B | Deterministic ViewerStateController tracking/loss/reacquisition behavior and immutable frame-scoped state | Accepted viewer-state contract, TDS §15, Testing Strategy §9, ADR-018, ADR-019 | `tests/unit/viewerStateController.test.ts` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
 | ORC-PACKAGED-SMOKE-001 | Class B | Packaged `launch` smoke starts the production executable without Vite/localhost, emits one valid result line, and terminates with status-mapped exit code | TDS §37, §40, §42; Interface & Contract Specification packaged smoke contract; Testing Strategy §19; ADR-001; ADR-020 | `scripts/run-packaged-smoke.ps1` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
 | ORC-PACKAGED-SYNTHETIC-001 | Class B | Packaged `synthetic` smoke proves the bounded controller/projection/renderer/diagnostic-world path and fixed synthetic sequence | M0C2 roadmap; TDS M0C packaged synthetic smoke and packaged-smoke architecture; Interface & Contract Specification packaged smoke contract; Testing Strategy §19 | `scripts/run-packaged-smoke.ps1 -Mode synthetic` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
+| ORC-POSE-ESTIMATOR-001 | Class C | M0D estimator-comparison methods, shared observation requirements, metrics, live procedure, evidence validity, rerun rules, and interpretation boundary | Pose Estimator Experiment Specification Draft v0.2 §§6–27; ADR-003; ADR-004; ADR-005; ADR-006; ADR-009; M0D roadmap; Testing Strategy Class C oracle policy | `docs/experiments/pose-estimator-experiment-specification.md` §§6–27; pending review package `docs/handoff/m0d-estimator-class-c-review.md` | pending | draft | Stronger-reasoning Class C review must approve semantic changes and authorize freeze before M0D4–M0D7 consume this oracle |
 
 ## ORC-PACKAGED-SMOKE-001
 
@@ -60,6 +61,24 @@ Change authority: Explicit change to the governing contract, task authority, or 
 Milestone applicability: M0C2
 Handoff references: `docs/handoff/viewer-state.md`; `docs/handoff/projection.md`
 Notes / limitations: This oracle proves only the bounded M0C packaged synthetic path. It does not prove MediaPipe, webcam, production package loading, package-local production assets, complete offline operation, or M0F/M0G behavior.
+
+## ORC-POSE-ESTIMATOR-001
+
+Oracle ID: ORC-POSE-ESTIMATOR-001
+Subsystem: M0D pose-estimator experiment and estimator-comparison evidence
+Governed behavior: The two prescribed estimator methods are compared from the same normalized observations using the specified calibration, metrics, live procedure, evidence-validity rules, and M0D8 interpretation boundary.
+Classification: Class C
+Governing authority: `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.2 §§6–27; `docs/planning/milestone-roadmap.md` M0D; ADR-003; ADR-004; ADR-005; ADR-006; ADR-009; Testing Strategy Class C oracle policy
+Authoritative test / procedure: `docs/experiments/pose-estimator-experiment-specification.md` §§6–27; implementation and evidence procedures are not consumable until this record is approved and frozen
+Supporting fixtures / evidence: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; no estimator-comparison evidence bundle exists
+Review status: pending
+Review owner / result: Pending stronger-reasoning Class C review; no approval result recorded
+Freeze status: draft
+Frozen baseline: Not yet frozen; governing experiment source is Draft v0.2
+Change authority: Stronger-reasoning Class C review must approve semantic changes to methods, formulas, required inputs, coordinate/unit interpretation, calibration, metrics, targets/tolerances, procedure, invalidation/rerun rules, evidence validity, or M0D8 interpretation before freeze
+Milestone applicability: M0D4–M0D8
+Handoff references: `docs/handoff/m0d-estimator-class-c-review.md`
+Notes / limitations: This pending record prepares review navigation only. It does not approve or freeze the experiment and does not authorize M0D4–M0D7 implementation or evidence collection.
 
 ## Canonical record template
 
