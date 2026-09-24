@@ -22,7 +22,7 @@ struct StartupMode(Option<SmokeMode>);
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz, #[serde(rename = "mediapipe-480x270-20hz")] MediaPipe480x27020Hz }
+enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz, #[serde(rename = "mediapipe-480x270-20hz")] MediaPipe480x27020Hz, #[serde(rename = "mediapipe-matrix-diagnostic")] MediaPipeMatrixDiagnostic }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -61,6 +61,7 @@ fn parse_startup_mode(value: Option<&str>) -> Option<SmokeMode> {
         Some("mediapipe-24hz") => Some(SmokeMode::MediaPipe24Hz),
         Some("mediapipe-20hz") => Some(SmokeMode::MediaPipe20Hz),
         Some("mediapipe-480x270-20hz") => Some(SmokeMode::MediaPipe480x27020Hz),
+        Some("mediapipe-matrix-diagnostic") => Some(SmokeMode::MediaPipeMatrixDiagnostic),
         _ => None,
     }
 }
@@ -95,7 +96,7 @@ fn record_benchmark_event(event: serde_json::Value) -> Result<(), String> {
 fn media_pipe_benchmark_mode(mode: Option<SmokeMode>) -> bool {
     matches!(
         mode,
-        Some(SmokeMode::MediaPipeIdle | SmokeMode::MediaPipe24Hz | SmokeMode::MediaPipe20Hz | SmokeMode::MediaPipe480x27020Hz)
+        Some(SmokeMode::MediaPipeIdle | SmokeMode::MediaPipe24Hz | SmokeMode::MediaPipe20Hz | SmokeMode::MediaPipe480x27020Hz | SmokeMode::MediaPipeMatrixDiagnostic)
     )
 }
 
@@ -440,13 +441,14 @@ mod tests {
         assert_eq!(parse_startup_mode(Some("mediapipe-24hz")), Some(SmokeMode::MediaPipe24Hz));
         assert_eq!(parse_startup_mode(Some("mediapipe-20hz")), Some(SmokeMode::MediaPipe20Hz));
         assert_eq!(parse_startup_mode(Some("mediapipe-480x270-20hz")), Some(SmokeMode::MediaPipe480x27020Hz));
+        assert_eq!(parse_startup_mode(Some("mediapipe-matrix-diagnostic")), Some(SmokeMode::MediaPipeMatrixDiagnostic));
         assert_eq!(parse_startup_mode(Some("unknown")), None);
     }
 
     #[cfg(windows)]
     #[test]
     fn all_mediapipe_benchmark_modes_install_the_camera_permission_handler() {
-        for mode in [SmokeMode::MediaPipeIdle, SmokeMode::MediaPipe24Hz, SmokeMode::MediaPipe20Hz, SmokeMode::MediaPipe480x27020Hz] {
+        for mode in [SmokeMode::MediaPipeIdle, SmokeMode::MediaPipe24Hz, SmokeMode::MediaPipe20Hz, SmokeMode::MediaPipe480x27020Hz, SmokeMode::MediaPipeMatrixDiagnostic] {
             assert!(media_pipe_benchmark_mode(Some(mode)));
         }
     }
@@ -463,6 +465,20 @@ mod tests {
         }"#).unwrap();
         assert_eq!(result.mode, SmokeMode::MediaPipe480x27020Hz);
         assert!(validate_result(&result, Some(SmokeMode::MediaPipe480x27020Hz)).is_ok());
+    }
+
+    #[test]
+    fn matrix_diagnostic_mode_round_trips_and_validates_as_a_smoke_result() {
+        let result: SmokeResult = serde_json::from_str(r#"{
+            "schemaVersion": 1,
+            "mode": "mediapipe-matrix-diagnostic",
+            "status": "fail",
+            "checks": [{ "id": "packaged-mediapipe-matrix-diagnostic", "status": "fail" }],
+            "durationMs": 1.0,
+            "errors": [{ "code": "MEDIAPIPE_DIAGNOSTIC_CANCELLED", "message": "operator cancelled capture" }]
+        }"#).unwrap();
+        assert_eq!(result.mode, SmokeMode::MediaPipeMatrixDiagnostic);
+        assert!(validate_result(&result, Some(SmokeMode::MediaPipeMatrixDiagnostic)).is_ok());
     }
 
     #[test]

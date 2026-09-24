@@ -8,6 +8,7 @@
 - Class C remediation commit: `0c3fd8c59279ad0b10fa87b8f4ac0f8e0d94ed89`
 - Cleanup/provenance commit: `afe073c21ef030a6eb463de8b13ed89f5c96bc33`
 - M0D3A implementation commit: this task's final commit; SHA is reported in the completion handoff.
+- M0D3B packaged matrix diagnostic commit: this task's final commit; SHA is reported in the completion handoff.
 - Oracle ID: `ORC-POSE-ESTIMATOR-001`
 - Classification: Class C
 - Review status: pending
@@ -17,12 +18,12 @@
 
 ## Handoff record
 
-- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization is implemented and verified; live tracking-source integration, estimators, replay, and evidence implementation remain out of scope.
+- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization and M0D3B's opt-in packaged matrix diagnostic are implemented and verified; live tracking-source integration, estimators, replay, and formal evidence implementation remain out of scope.
 - Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeBenchmarkWorker.ts` is benchmark-only and is not yet a `TrackingSource` implementation.
 - Oracle IDs: `ORC-POSE-ESTIMATOR-001` (pending/draft).
 - Authoritative tests/oracles: Pending Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
 - M1 oracle freeze status and classification: Not M1-ready; Class C review pending and freeze draft.
-- Known-good reference implementation: Packaged MediaPipe benchmark path in `src/mediapipe/`; no estimator implementation is approved.
+- Known-good reference implementation: Packaged MediaPipe benchmark path in `src/mediapipe/`, with the M0D3B diagnostic reusing its pinned worker configuration; no estimator implementation is approved.
 - REUSE IDs: None applicable to this review-preparation artifact.
 - Approved dependency/reference implementation: MediaPipe package/model provenance is recorded for the spike only; no estimator reference implementation is approved.
 - Authoritative Approval Source: None yet; approval must come from the required final stronger Class C review and governing-source reconciliation.
@@ -30,10 +31,10 @@
 - Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.3, experimentProcedureVersion 2, and future evidence namespace `evidence/m0d/estimator-experiment-v2/` remain navigation facts only.
 - Remaining project-specific custom-code boundary: Future M0D normalization, estimator, replay, and evidence code must consume the frozen contracts and may not author new experiment semantics.
 - Prohibited Reinvention: Do not replace the prescribed methods, invent canonical constants, transpose matrices by appearance, or tune/rerun evidence outside the frozen procedure.
-- Deterministic tests and fixture paths: `src/mediapipe/trackingObservationNormalizer.ts`, `tests/unit/trackingObservationNormalizer.test.ts`, `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; the normalizer is a pure boundary only, not estimator or replay implementation.
+- Deterministic tests and fixture paths: `src/mediapipe/trackingObservationNormalizer.ts`, `src/mediapipe/matrixDiagnosticCapture.ts`, `src/mediapipe/mediapipeProvenance.ts`, `tests/unit/trackingObservationNormalizer.test.ts`, `tests/unit/matrixDiagnosticCapture.test.ts`, `tests/unit/packagedMediaPipeMatrixDiagnostic.test.ts`, `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; the normalizer and diagnostic are bounded boundaries only, not estimator or replay implementation.
 - Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006, ADR-009.
 - Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; neither is a validated estimator-comparison bundle.
-- Known limitations / unsupported behavior: the benchmark worker is not wired to the pure normalizer; no live TrackingSource, production matrix-order proof, camera-origin measurement, estimator, replay, or M0D evidence validator is present.
+- Known limitations / unsupported behavior: M0D3B adds a separate diagnostic-only worker path, but does not create a live TrackingSource or production observation integration. No physical diagnostic was run in this task; no production matrix-order proof, camera-origin measurement, estimator, replay, or M0D evidence validator is present.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`.
 - Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to begin M0D4–M0D7 before oracle freeze returns to stronger review.
 
@@ -106,7 +107,7 @@ Exact-package matrix conclusion: Ordering remains unproven. The installed 1.0.1 
 
 ## Minimum matrix-ordering follow-up
 
-No camera or packaged diagnostic was run in M0D3A. The smallest independent empirical check is one exact-package Face Landmarker run that records an asymmetric 4x4 result (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamp, frame dimensions, and the required indexed landmarks, without storing frames or personal identifiers. The run should include a neutral state and one deliberately asymmetric known-pose state (controlled yaw plus measured lateral/depth displacement). Compare both candidate flattening conventions against the same recorded landmarks and known-pose direction; identity/symmetric matrices are insufficient. This is a future diagnostic, not proof supplied by the fixture and not part of M0D3A.
+No camera or packaged diagnostic was run in M0D3A or M0D3B. M0D3B now provides the standalone visible operator flow and collision-safe runner for the smallest independent empirical check: an exact-package Face Landmarker run that records asymmetric 4x4 results (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamps, frame dimensions, and required indexed landmarks, without storing frames or personal identifiers. The run includes neutral, left-asymmetric, right-asymmetric, and near operator-declared states; it does not compare conventions, reinterpret values, or produce estimator pose. Ordering remains unverified until a human operator returns the local diagnostic output for stronger review.
 
 ## Current provisional MediaPipe baseline
 
@@ -125,6 +126,10 @@ Relevant implementation/provenance paths:
 
 - `src/mediapipe/packagedMediaPipeBenchmark.ts`
 - `src/mediapipe/mediapipeBenchmarkWorker.ts`
+- `src/mediapipe/packagedMediaPipeMatrixDiagnostic.ts`
+- `src/mediapipe/matrixDiagnosticCapture.ts`
+- `src/mediapipe/mediapipeProvenance.ts`
+- `scripts/run-mediapipe-matrix-diagnostic.ps1`
 - `tests/unit/packagedMediaPipeBenchmark.test.ts`
 - `evidence/spikes/m0d-mediapipe-packaged-performance/provenance.json`
 - `evidence/spikes/m0d-mediapipe-packaged-performance/README.md`
@@ -142,6 +147,7 @@ No Estimator A/B implementation, M0D6 replay/metrics tooling, M0D7 evidence coll
 - Verified `ORC-POSE-ESTIMATOR-001` is present as Class C with `Review status: pending` and `Freeze status: draft`.
 - Verified current source contains benchmark-only MediaPipe worker output and no estimator implementation.
 - Initial Sol High review: changes required. Remediation audit: substantive design accepted; freeze deferred for consolidation and exact-package matrix-provenance closure. Current status: awaiting final stronger Class C audit. No production estimator code is introduced here.
+- M0D3B implementation verification: packaged diagnostic wiring, bounded capture state, pinned task/archive provenance verification, and failure/timeout runner behavior were verified by deterministic checks. Physical execution remains intentionally pending operator action; no diagnostic JSON was committed.
 
 ## Escalation conditions
 

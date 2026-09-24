@@ -4,8 +4,9 @@ import { RendererFoundation } from "../engine/rendering/RendererFoundation";
 import { SYNTHETIC_MOTION_SCRIPTS } from "../engine/pose/syntheticMotionScripts";
 import { SyntheticProjectionRuntime, type SyntheticProjectionRuntimeObservation } from "../world-host/development/syntheticProjectionRuntime";
 import { runPackagedMediaPipeBenchmark, type MediaPipeBenchmarkMode } from "../mediapipe/packagedMediaPipeBenchmark";
+import { runPackagedMediaPipeMatrixDiagnostic } from "../mediapipe/packagedMediaPipeMatrixDiagnostic";
 
-type SmokeMode = "launch" | "synthetic" | "tracking-sidecar" | "tracking-sustained" | MediaPipeBenchmarkMode;
+type SmokeMode = "launch" | "synthetic" | "tracking-sidecar" | "tracking-sustained" | "mediapipe-matrix-diagnostic" | MediaPipeBenchmarkMode;
 type SmokeStatus = "pass" | "fail";
 type SmokeResult = {
   schemaVersion: 1;
@@ -101,6 +102,10 @@ export default function App() {
       .catch(() => null)
       .then((mode) => {
       if (cancelled || mode === "launch" || mode === "tracking-sidecar" || mode === "tracking-sustained" || !rendererHost.current) return;
+      if (mode === "mediapipe-matrix-diagnostic") {
+        void runPackagedMediaPipeMatrixDiagnostic(rendererHost.current);
+        return;
+      }
       if (mode === "mediapipe-idle" || mode === "mediapipe-24hz" || mode === "mediapipe-20hz" || mode === "mediapipe-480x270-20hz") {
         void runPackagedMediaPipeBenchmark(mode);
         return;
