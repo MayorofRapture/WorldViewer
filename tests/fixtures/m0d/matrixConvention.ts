@@ -21,6 +21,13 @@ export const zRotationMatrix = [
   0, 0, 0, 1,
 ];
 
+export const asymmetricMatrix = [
+  2, 3, 5, 7,
+  11, 13, 17, 19,
+  23, 29, 31, 37,
+  41, 43, 47, 53,
+];
+
 export function applyColumnMajorMatrix(data: readonly number[], point: readonly [number, number, number]): HomogeneousPoint {
   if (data.length !== 16) throw new RangeError("matrix must contain exactly 16 values");
   const [x, y, z] = point;

@@ -5,7 +5,8 @@
 - Package purpose: navigation for stronger-reasoning review of the M0D estimator-comparison oracle.
 - Prepared against implementation baseline: `5073d1b800bd086db1194437fbba8f1efc1e524c`
 - Review-preparation commit: `f186a55f61291dc14bf684fd5c595f2d53d60e8a`
-- Remediation commit: this final remediation commit; SHA is reported in the completion handoff.
+- Class C remediation commit: `0c3fd8c59279ad0b10fa87b8f4ac0f8e0d94ed89`
+- Cleanup/provenance commit: recorded in the completion handoff after commit creation
 - Oracle ID: `ORC-POSE-ESTIMATOR-001`
 - Classification: Class C
 - Review status: pending
@@ -23,12 +24,12 @@
 - Known-good reference implementation: Packaged MediaPipe benchmark path in `src/mediapipe/`; no estimator implementation is approved.
 - REUSE IDs: None applicable to this review-preparation artifact.
 - Approved dependency/reference implementation: MediaPipe package/model provenance is recorded for the spike only; no estimator reference implementation is approved.
-- Authoritative Approval Source: None yet; approval must come from the required stronger Class C review and governing-source reconciliation.
+- Authoritative Approval Source: None yet; approval must come from the required final stronger Class C review and governing-source reconciliation.
 - Reuse Mode: Not applicable to the pending oracle; no production estimator reuse decision is made.
-- Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, pinned task model/WASM provenance, Draft v0.3, experimentProcedureVersion 2, and future evidence namespace `evidence/m0d/estimator-experiment-v2/` remain navigation facts only.
+- Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.3, experimentProcedureVersion 2, and future evidence namespace `evidence/m0d/estimator-experiment-v2/` remain navigation facts only.
 - Remaining project-specific custom-code boundary: Future M0D normalization, estimator, replay, and evidence code must consume the frozen contracts and may not author new experiment semantics.
 - Prohibited Reinvention: Do not replace the prescribed methods, invent canonical constants, transpose matrices by appearance, or tune/rerun evidence outside the frozen procedure.
-- Deterministic tests and fixture paths: `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; these are provenance/convention fixtures only, not estimator implementation or replay evidence.
+- Deterministic tests and fixture paths: `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; these are provenance/convention fixtures only, not estimator implementation or replay evidence.
 - Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006, ADR-009.
 - Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; neither is a validated estimator-comparison bundle.
 - Known limitations / unsupported behavior: normalized estimator observation stream, production matrix adapter, camera-origin measurement, and M0D evidence validator are not present.
@@ -77,42 +78,29 @@ The requested high-risk review questions are: matrix layout/handedness and canon
 
 ## Prerequisite readiness
 
-Status meanings are limited to this review package: `Ready` means the repository currently provides the required usable source/contract or evidence mechanism; `Missing` means it is not present; `Ambiguous` means a partial or proposed source exists but the required interpretation or implementation is not pinned.
+Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguous`, and `Blocked`.
 
 | Required prerequisite | Status | Current repository basis / gap |
 | --- | --- | --- |
-| Canonical MediaPipe face-model source/provenance | Missing | `evidence/spikes/m0d-mediapipe-packaged-performance/provenance.json` covers the task model/WASM, not the canonical face-model data required by Experiment §6. |
-| Means to derive canonical cyclopean point `CC` | Ready | The dependency-free extractor and deterministic unit test derive `CC` from the pinned task artifact. |
-| Means to derive canonical inter-eye distance `DcanonMm` | Ready | The extractor and test derive `DcanonMm` from the pinned canonical landmark vertices. |
-| Facial transformation matrix dimensions/layout metadata | Missing | The benchmark worker records only `transformationMatrixCount`; no normalized matrix is emitted or adapted. |
-| Matrix handedness/axis interpretation reference | Ambiguous | Experiment §9 and its external references propose an interpretation, but no repository adapter/cross-check freezes it. |
-| Source frame width/height availability | Ambiguous | Camera settings are available in the packaged benchmark, but no `TrackingObservation` implementation carries frame dimensions. |
-| Landmarks 33, 133, 362, 263 availability | Missing | The current worker does not emit landmarks or a normalized observation. |
-| Facial transformation matrix availability | Missing | The current worker emits a matrix count, not the matrix required by Estimator A. |
-| Face-present/no-face state | Ambiguous | The benchmark worker exposes a boolean diagnostic (`usefulFaceResult`), but not the frozen `TrackingObservation.face` contract. |
-| Monotonic observation timestamp | Ambiguous | Frame timestamps and monotonic benchmark timing exist, but no normalized observation stream is implemented. |
-| Inference/worker timing | Ready | `src/mediapipe/mediapipeBenchmarkWorker.ts` measures inference duration; the timing fields still need mapping into the future normalized observation. |
-| Camera configuration identification | Ready | The packaged benchmark records mode and sanitized negotiated camera settings; experiment-manifest capture remains future M0D work. |
-| `cameraOriginScreenMm` representation | Missing | The interface specification describes camera geometry, but no current implementation or persisted M0D measurement fields exist. |
-| Evidence schema/version mechanism | Ambiguous | The experiment defines the required versioned bundle, and spike artifacts have local `schemaVersion` fields, but no M0D evidence-bundle validator/schema is implemented. |
-| `RawViewerPose` canonical coordinate requirements | Ready | Interface Contract §§10–11 and ADR-003 define finite screen-relative millimeter output and the M0D→M0E boundary; estimator implementation is intentionally absent. |
-| Physical target practicality fields | Ambiguous | Experiment §§15–16 specify proposed targets/tolerances, but no E590 practicality record or measured setup artifact is present. |
+| Canonical MediaPipe face-model source/provenance | Ready | Exact task and embedded metadata hashes, extractor, generated artifact, and deterministic test are present. |
+| Canonical cyclopean point `CC` derivation | Ready | `scripts/derive-mediapipe-canonical-face-model.mjs` derives `CC` from the pinned task artifact. |
+| Canonical inter-eye distance `DcanonMm` derivation | Ready | The extractor and deterministic test derive `DcanonMm` from the pinned canonical landmark vertices. |
+| Matrix dimensions | Ready | Installed 1.0.1 `vision.d.ts` exposes rows, columns, and data; the package provenance test checks this exact surface. |
+| Exact matrix packed-order provenance | Ambiguous | The exact 1.0.1 bundle copies decoded field-3 values without transpose/reorder, but the package does not establish whether upstream packed values are row-major or column-major. |
+| Coordinate/handedness convention | Ready | The reviewed fixture and Sections 4/9 define the expected column-vector conversion; this is not independent proof of package packed order. |
+| Source frame width/height in production observation | Missing | The current benchmark worker does not implement normalized `TrackingObservation` frame dimensions. |
+| Required landmarks 33, 133, 362, 263 in production observation | Missing | The current worker does not emit normalized landmarks. |
+| Facial transformation matrix in production observation | Missing | The current worker records only a matrix count. |
+| Face-present/no-face state in production observation | Ambiguous | A benchmark diagnostic exists, but the frozen normalized observation implementation does not. |
+| Monotonic timestamp in production observation | Ambiguous | Benchmark timing exists, but no normalized observation stream is implemented. |
+| Inference/worker timing | Ready | The benchmark worker measures inference duration; future normalization must map it into the evidence envelope, not estimator input. |
+| Camera configuration | Ready | Requested procedure baseline is documented and benchmark configuration is recorded; actual negotiated settings belong in the future manifest. |
+| `cameraOriginScreenMm` | Missing | No current implementation or persisted M0D measurement fields exist. |
+| Evidence schema/validator | Ambiguous | The v2 namespace and required fields are specified; no M0D evidence-bundle validator is implemented. |
+| `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; estimator implementation remains absent. |
+| Physical-target practicality | Ambiguous | E590 operator/setup confirmation is not present. |
 
-## Remediation readiness correction
-
-The following supersedes the earlier readiness rows pending stronger re-review:
-
-| Prerequisite | Current status |
-| --- | --- |
-| Canonical artifact provenance, `CC`, and `DcanonMm` derivation | Ready; exact task/metadata hashes, extractor, artifact, and test are present |
-| Matrix dimensions/layout | Ready / partial; installed 1.0.1 types expose rows/columns/data and the fixture records column-major semantics; production adapter remains absent |
-| Handedness/axis convention | Ready as a reviewed convention fixture; package-specific runtime storage semantics remain limited |
-| Frame dimensions, normalized landmarks, matrix, face state, timestamp in production observation | Missing or ambiguous; current worker is benchmark-only |
-| Inference timing and requested camera configuration | Ready at benchmark/procedure level; actual negotiated settings belong in future manifest |
-| `cameraOriginScreenMm` | Missing |
-| Evidence schema/validator | Ambiguous; v2 namespace and required fields are specified, validator is not implemented |
-| `RawViewerPose` contract | Ready |
-| Physical target practicality | Ambiguous pending E590 operator/setup confirmation |
+Exact-package matrix conclusion: Ordering remains unproven. The installed 1.0.1 bundle copies decoded matrix field-3 values without transpose/reorder, but does not establish the upstream packed-order meaning.
 
 ## Current provisional MediaPipe baseline
 
@@ -147,7 +135,7 @@ No Estimator A/B implementation, M0D6 replay/metrics tooling, M0D7 evidence coll
 - Verified all paths cited above exist.
 - Verified `ORC-POSE-ESTIMATOR-001` is present as Class C with `Review status: pending` and `Freeze status: draft`.
 - Verified current source contains benchmark-only MediaPipe worker output and no estimator implementation.
-- Fresh project checks remain required after this documentation change; no production estimator code is introduced here.
+- Initial Sol High review: changes required. Remediation audit: substantive design accepted; freeze deferred for consolidation and exact-package matrix-provenance closure. Current status: awaiting final stronger Class C audit. No production estimator code is introduced here.
 
 ## Escalation conditions
 

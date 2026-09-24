@@ -78,7 +78,7 @@ Frozen baseline: Not yet frozen; Draft v0.3 / experimentProcedureVersion 2 is aw
 Change authority: Stronger-reasoning Class C review must approve semantic changes to methods, formulas, required inputs, coordinate/unit interpretation, calibration, metrics, targets/tolerances, procedure, invalidation/rerun rules, evidence validity, or M0D8 interpretation before freeze
 Milestone applicability: M0D4–M0D8
 Handoff references: `docs/handoff/m0d-estimator-class-c-review.md`
-Notes / limitations: This pending record prepares review navigation only. Provenance fixture: `scripts/derive-mediapipe-canonical-face-model.mjs` -> `evidence/m0d/estimator-experiment-v2/canonical-face-model.json`; matrix fixture/test: `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`. No estimator implementation or estimator evidence is present. It does not approve or freeze the experiment and does not authorize M0D4–M0D7 implementation or evidence collection.
+Notes / limitations: This pending record prepares review navigation only. Canonical provenance fixture: `scripts/derive-mediapipe-canonical-face-model.mjs` -> `evidence/m0d/estimator-experiment-v2/canonical-face-model.json`; matrix convention fixture/test: `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`; exact package provenance test: `tests/unit/m0dMatrixPackageProvenance.test.ts`. Exact package conversion copies matrix field-3 values without transpose/reorder, but packed-order meaning remains unproven. No estimator implementation or estimator evidence is present. It does not approve or freeze the experiment and does not authorize M0D4–M0D7 implementation or evidence collection.
 
 ## Canonical record template
 

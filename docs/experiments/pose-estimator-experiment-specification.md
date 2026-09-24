@@ -86,6 +86,8 @@ Environment rules:
 
 The experiment manifest must record every configuration value that can affect output.
 
+The requested estimator-comparison capture baseline is 640x360 at 24 FPS, CPU delegate, VIDEO mode, one face, facial transformation matrices enabled, blendshapes disabled, and default confidence thresholds. The run manifest must record the actual negotiated camera settings. A material capture-mode change within a run invalidates the run. The 480x270 at 20 FPS configuration is optimization evidence only and is not part of this estimator procedure.
+
 # 4\. Canonical Coordinate System
 
 The experiment uses the project-wide canonical screen-relative coordinate system:
@@ -117,18 +119,20 @@ The tracking worker remains the owner of MediaPipe Face Landmarker. M0D estimato
 
 For this experiment, TrackingObservation must expose enough data to reconstruct both estimators from the same observation:
 
-Required:  
-• monotonic observation timestamp  
-• source frame width and height  
-• normalized face landmark coordinates needed for indices 33, 133, 362, and 263  
-• facial transformation matrix when MediaPipe provides one  
-• face-present / no-face state  
-• worker/inference timing fields already available to the host  
-• configuration/source identifiers needed to reproduce the run
+Required conceptual TrackingObservation fields include:
+• monotonic observation timestamp
+• source ID
+• source frame width and height
+• tracker confidence when available under the contract
+• face-present/no-face state
+• normalized face landmark coordinates needed for indices 33, 133, 362, and 263
+• facial transformation matrix when MediaPipe provides one
 
-Optional fields may be preserved, but estimator logic must not depend on undocumented fields not frozen by this specification.
+Evidence-only fields such as sequence number, evidence schema version, scenario/segment identifier, experiment run ID, configuration hashes/IDs, worker/inference timing, and diagnostic/performance metadata belong in the saved evidence envelope/trace, not in the estimator input contract. The evidence trace must retain enough information to reproduce both estimators.
 
-The observation adapter is responsible for validating finite values and matrix shape before estimator code receives the sample.
+The observation adapter is responsible for validating finite values and matrix shape before estimator code receives the sample. Sequence number, evidence schema version, scenario/segment identifier, experiment run ID, configuration hashes/IDs, worker/inference timing, and diagnostic/performance metadata are evidence-envelope fields, not estimator input fields.
+
+For both candidate estimators, a valid M0D candidate output emits `confidence = 1.0`; an invalid estimator output is `null`. The value 1.0 is a deterministic contract placeholder, not statistical certainty, and must not be used for confidence weighting.
 
 # 6\. Canonical Face Model Provenance
 
@@ -213,15 +217,22 @@ Input:
 • Estimator-A neutral calibration scale
 
 Matrix handling:  
-The adapter must reconstruct the 4 × 4 matrix using the MediaPipe matrix container’s explicit row/column metadata and a unit test against a known upstream sample. Do not silently transpose the matrix to make results “look right.”
+The matrix dimensions are 4 × 4. The reviewed expected storage interpretation is column-major, applied to a column vector, with `pRuntime = M × pCanonical`, no transpose, and translation at flattened data indices 12, 13, and 14. For flattened `d`:
+
+`x' = d[0] * x + d[4] * y + d[8]  * z + d[12]`
+`y' = d[1] * x + d[5] * y + d[9]  * z + d[13]`
+`z' = d[2] * x + d[6] * y + d[10] * z + d[14]`
+`w' = d[3] * x + d[7] * y + d[11] * z + d[15]`
+
+The adapter must validate dimensions and finite values, and must validate finite nonzero homogeneous `w'` before Cartesian use. It must not silently transpose the matrix to make results look right. Exact package provenance for packed-order semantics is recorded in Section 26; the package conversion itself does not reorder the returned data, but the upstream packed-order meaning remains unproven.
 
 Canonical-to-runtime point:  
 pRuntime \= M × \[CC.x, CC.y, CC.z, 1\]
 
 MediaPipe Face Geometry metric space places the virtual camera at the origin looking toward negative Z. World Viewer screen-relative \+Z points toward the viewer. Therefore the baseline axis conversion is:
 
-rawRelMm.x \= 10 × pRuntime.x  
-rawRelMm.y \= 10 × pRuntime.y  
+rawRelMm.x \= -10 × pRuntime.x
+rawRelMm.y \= +10 × pRuntime.y
 rawRelMm.z \= \-10 × pRuntime.z
 
 Neutral depth calibration:  
@@ -291,7 +302,7 @@ Equivalent depth form:
 ZcamMm \= (dRefPx × ZrefCameraMm) / dPx
 
 Per-frame lateral/vertical position relative to camera:  
-XcamMm \= (Cpx.x \- cx) × ZcamMm / fEffPx  
+XcamMm \= \-(Cpx.x \- cx) × ZcamMm / fEffPx
 YcamMm \= \-(Cpx.y \- cy) × ZcamMm / fEffPx
 
 Screen-relative RawViewerPose:  
@@ -318,7 +329,7 @@ Invalid samples return null with a machine-readable reason. No temporal smoothin
 
 # 11\. Shared-Observation Comparison Requirement
 
-Estimator A and Estimator B must be evaluated from the same captured TrackingObservation records whenever possible.
+For claim-bearing M0D8 evidence, Estimator A and Estimator B MUST be evaluated by deterministic replay from the exact same authoritative normalized TrackingObservation trace. A trace missing information required by either candidate is invalid comparative evidence and must be flagged by the evidence validator.
 
 Preferred flow:  
 camera → MediaPipe worker → normalized TrackingObservation trace → estimator A replay \+ estimator B replay
@@ -333,17 +344,17 @@ If a trace lacks information required by one candidate, the trace is invalid for
 
 The evidence trace should preserve the minimum normalized information required to reproduce both candidates without storing webcam imagery.
 
-Each observation record must include:  
-• schemaVersion  
-• sequence number  
+The core normalized TrackingObservation record must include:
 • timestampMs  
+• sourceId
 • frameWidthPx  
 • frameHeightPx  
+• tracker confidence when available
 • faceDetected  
 • landmarks 33, 133, 362, 263 with normalized x/y/z  
-• 4 × 4 facial transformation matrix or null  
-• available worker/inference timing fields  
-• capture/test segment identifier
+• 4 × 4 facial transformation matrix or null
+
+The saved evidence envelope/trace additionally retains schemaVersion, sequence number, scenario/segment identifier, experiment run ID, configuration hashes/IDs, worker/inference timing, and diagnostic/performance metadata. These fields support replay and validation but are not estimator input fields.
 
 Each replay output record must include:  
 • schemaVersion  
@@ -389,11 +400,16 @@ For lateral/vertical tests, compare the median displacement from the neutral hol
 Cross-axis drift:  
 For a prescribed single-axis target change, report the median change observed on each non-commanded axis relative to the associated neutral hold.
 
+Face-detected rate:
+faceDetectedRate \= faceDetectedObservationSamples / totalObservationSamples
+
 Valid rate:  
 validRate \= validEstimatorSamples / faceDetectedObservationSamples
 
 Null rate:  
 nullRate \= nullEstimatorSamples / faceDetectedObservationSamples
+
+Report all three rates separately; do not combine them into a weighted score. Report source observation cadence, face-detected cadence, and valid RawViewerPose cadence. If source cadence is at least 15 Hz and candidate valid RawViewerPose cadence is below 15 Hz, mark candidate cadence viability as a structural failure. If source cadence is below 15 Hz, estimator cadence viability is insufficient to judge. The 20–30 Hz range is preferred/descriptive context only.
 
 Robust stationary outlier:  
 For each stationary trial/axis:  
@@ -411,7 +427,10 @@ Estimator processing:
 Measure estimator-only duration around estimate() using the same high-resolution monotonic timer. Report median and p95.
 
 Pose update cadence:  
-Report valid pose count divided by test elapsed seconds and also report source observation cadence.
+Report source observation cadence, face-detected cadence, and valid RawViewerPose cadence.
+
+Raw jitter interpretation:
+NFR-VIS-009’s X/Y ≤ 3 mm RMS and Z ≤ 8 mm RMS limits apply to the later calibrated/filtered pipeline. Raw M0D estimator jitter is important comparative evidence but those numbers are not standalone hard rejection thresholds for the raw estimator.
 
 Calibration burden:  
 Record number of manual measurements/inputs, required calibration capture time, and any candidate-specific steps. This is descriptive evidence, not a hidden score.
@@ -423,18 +442,17 @@ The evidence tooling may mark structural failures, but it must not choose a winn
 Hard structural failure conditions:  
 • estimator returns a non-finite position as valid  
 • calibration cannot produce a finite positive required scale/focal value  
-• coordinate direction repeatedly contradicts the canonical convention  
-• near/neutral/far depth ordering is repeatedly reversed under valid captures  
 • candidate cannot be replayed from the frozen TrackingObservation format  
 • implementation requires changing the frozen experiment method to function
+• for a three-cycle directional/depth scenario, at least 2 of 3 evaluable cycles contradict the required ordering
 
-Directional checks:  
-• left target should decrease X relative to neutral  
-• right target should increase X  
-• up target should increase Y  
-• down target should decrease Y  
-• near-screen target (450 mm) should have smaller Z than neutral (600 mm)  
-• far target (750 mm) should have larger Z than neutral
+Directional/depth rules:
+For each evaluable cycle, require:
+• leftMedianX < neutralMedianX < rightMedianX
+• downMedianY < neutralMedianY < upMedianY
+• Z450 < Z600 < Z750
+
+A cycle is evaluable only if every required hold has enough valid data to compute its median. Fewer than 2 evaluable cycles produces Unverified, not a structural failure. A near-zero response that does not reverse ordering remains visible through displacement/error metrics. No deadband is applied.
 
 A single procedural mistake does not create a structural failure. The evidence record must distinguish a procedurally invalid trial from estimator behavior.
 
@@ -799,65 +817,17 @@ https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/cc/visio
 5\. Known JavaScript API limitation: the Face Landmarker public API does not expose the virtual-camera intrinsics used to produce the transformation matrix. This is why Estimator A uses a recorded one-point neutral depth scale instead of assuming exact physical calibration:  
 https://github.com/google-ai-edge/mediapipe/issues/5945
 
+Exact installed-package provenance for the matrix result is also recorded here. The exact package is `node_modules/@mediapipe/tasks-vision/`, package `@mediapipe/tasks-vision@1.0.1`, resolved by `package-lock.json` to `tasks-vision-1.0.1.tgz` with integrity `sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==`. Its `vision.d.ts` defines Matrix rows, columns, and data. Its exact `vision_bundle.mjs.map` conversion attaches the `face_geometry` proto listener and constructs each result as `{rows: ..., columns: ..., data: xd(d,3,cc,wd()).slice()}`; this copies the decoded repeated field-3 values and contains no transpose/reorder operation. This establishes exact package conversion behavior but does not establish whether the upstream packed field-3 values are row-major or column-major. Therefore ordering remains unproven. The asymmetric reviewed fixture is not independent package evidence. The package-specific provenance test is `tests/unit/m0dMatrixPackageProvenance.test.ts`.
+
 These references define the baseline method; implementation should pin exact dependency/model versions and retain relevant source/version provenance in evidence.
-
-# Draft v0.3 binding corrections
-
-This section is authoritative for Draft v0.3 and supersedes conflicting wording above pending stronger review.
-
-## Matrix convention and Estimator A conversion
-
-The pinned `@mediapipe/tasks-vision@1.0.1` type surface exposes `Matrix.rows`, `Matrix.columns`, and `Matrix.data`. The review fixture `tests/fixtures/m0d/matrixConvention.ts` defines a 4x4 column-major matrix applied to a column vector, with no transpose. Translation is at data indices 12, 13, and 14. For data `d` and point `(x,y,z,1)`:
-
-`x' = d0*x + d4*y + d8*z + d12`
-`y' = d1*x + d5*y + d9*z + d13`
-`z' = d2*x + d6*y + d10*z + d14`
-`w' = d3*x + d7*y + d11*z + d15`
-
-The adapter must validate dimensions, finite values, and finite nonzero `w'` before Cartesian use. The reviewed conversion is:
-
-`rawRelMm.x = -10 x pRuntime.x`
-`rawRelMm.y = +10 x pRuntime.y`
-`rawRelMm.z = -10 x pRuntime.z`
-
-## Estimator B camera-relative conversion
-
-`XcamMm = -(Cpx.x - cx) x ZcamMm / fEffPx`
-`YcamMm = -(Cpx.y - cy) x ZcamMm / fEffPx`
-
-The screen-relative position then adds `cameraOriginScreenMm`; no separate camera-origin sign reinterpretation is permitted.
-
-## Observation validity and evidence separation
-
-For both candidates, a face-detected observation that passes required finite/shape checks emits deterministic placeholder `confidence = 1.0`; an invalid observation/result returns null with a machine-readable reason. This is an observation-validity convention, not a statistical certainty claim.
-
-The estimator input is the conceptual `TrackingObservation`: timestamp, source ID, frame width/height, confidence, normalized landmarks, and optional facial transformation matrix. CPU timings, sequence, segment, schema/version, configuration hashes, run IDs, and other provenance belong in the evidence envelope and must not be added to the estimator input contract.
-
-Estimator A and B MUST use the exact same authoritative normalized observation trace for M0D8 comparison. Simultaneous live outputs are diagnostic only. A missing required field makes comparative evidence invalid; “whenever possible” is not an acceptable comparison rule.
-
-## Metrics, cadence, and structural rules
-
-Report `faceDetectedRate = faceDetectedObservationSamples / totalObservationSamples`, in addition to `validRate` and `nullRate`, which remain conditioned on face-detected observations. Do not combine these into a weighted score.
-
-Report source-observation cadence, face-detected cadence, and valid `RawViewerPose` cadence. If source cadence is at least 15 Hz and candidate valid cadence is below 15 Hz, mark candidate cadence viability as a structural failure. If source cadence is below 15 Hz, mark estimator cadence viability insufficient to judge. The 20-30 Hz range is descriptive context, not a hidden threshold.
-
-For each evaluable directional/depth cycle, use medians and require the deterministic ordering: left < neutral < right for X, down < neutral < up for Y, and Z450 < Z600 < Z750. A cycle is evaluable only when every required hold has enough valid data to calculate its median. If at least two of three evaluable cycles contradict an ordering, mark a hard structural failure; with fewer than two evaluable cycles, mark the result Unverified. No deadband is invented.
-
-The NFR-VIS-009 3 mm XY / 8 mm Z jitter limits apply to the later calibrated/filtered pipeline. Raw M0D jitter is comparative evidence and is not a standalone hard rejection against those final-pipeline limits.
-
-## Live configuration and provenance
-
-The live procedure requests 640x360 at 24 FPS, CPU delegate, VIDEO running mode, and one face. The runtime manifest MUST record actual negotiated settings; any material mismatch invalidates the run. The 480x270 optimization is not part of this estimator-comparison procedure.
-
-The package-specific matrix evidence is limited to the installed 1.0.1 type/API surface: it establishes rows, columns, and data access, while the fixture records the reviewed column-major interpretation. It does not by itself establish all runtime storage semantics. Upstream/reference virtual-camera defaults such as top-left image origin, approximately 63 degrees field of view, near 1 cm, and far 10000 cm are supporting assumptions only, not frozen facts of this exact pinned package; no tuning is authorized from them.
 
 # 27\. Draft v0.3 Review / Oracle Freeze Conditions
 
-Draft v0.3 is the governance-reconciled experiment definition. It preserves the prior baseline methods/procedure except where the binding corrections above explicitly say otherwise; it remains pending stronger re-review and is not frozen.
+Draft v0.3 is the governance-reconciled experiment definition. The accepted corrections are consolidated directly into Sections 5, 9, 10, 11, 12, 13, and 14; this draft remains pending stronger re-review and is not frozen.
 
 Before M0D4–M0D7 begin, confirm all technical prerequisites:  
 • landmark indices and canonical-model extraction script produce finite plausible CC and DcanonMm  
-• facial transformation matrix layout/handedness adapter is validated against upstream data  
+• exact installed-package matrix dimensions and conversion behavior are documented; packed-order semantics remain explicitly unproven
 • actual E590 camera capture mode is recorded  
 • cameraOriginScreenMm measurement fields exist  
 • 600/450/750 mm depth targets are practical  

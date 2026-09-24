@@ -3,13 +3,14 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { applyColumnMajorMatrix, identityMatrix, reviewedWorldViewerConversion, translationMatrix, zRotationMatrix } from "../fixtures/m0d/matrixConvention";
+import { applyColumnMajorMatrix, asymmetricMatrix, identityMatrix, reviewedWorldViewerConversion, translationMatrix, zRotationMatrix } from "../fixtures/m0d/matrixConvention";
 
 describe("M0D oracle fixtures", () => {
-  it("locks the reviewed column-major matrix convention and X/Y/Z conversion", () => {
+  it("locks the reviewed expected column-major convention and X/Y/Z conversion", () => {
     expect(applyColumnMajorMatrix(identityMatrix, [1, 2, 3])).toEqual([1, 2, 3, 1]);
     expect(applyColumnMajorMatrix(translationMatrix, [1, 2, 3])).toEqual([11, 22, 33, 1]);
     expect(applyColumnMajorMatrix(zRotationMatrix, [1, 2, 3])).toEqual([-2, 1, 3, 1]);
+    expect(applyColumnMajorMatrix(asymmetricMatrix, [1, 2, 3])).toEqual([134, 159, 179, 209]);
     expect(reviewedWorldViewerConversion([1, 2, 3, 1])).toEqual([-10, 20, -30]);
   });
 
