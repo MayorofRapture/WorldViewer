@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "experimentSpecVersion": "0.3",
+  "experimentProcedureVersion": 2,
+  "taskAsset": {
+    "path": "public/mediapipe/face_landmarker.task",
+    "sha256": "64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF",
+    "bytes": 3758596
+  },
+  "embeddedMetadata": {
+    "archivePath": "geometry_pipeline_metadata_landmarks.binarypb",
+    "sha256": "BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4",
+    "bytes": 19376
+  },
+  "canonicalUnit": {
+    "name": "centimeter",
+    "unitToMm": 10,
+    "provenance": "MediaPipe GeometryPipelineMetadata/Mesh3d schema identifies canonical mesh XYZ coordinates as centimeters; exact package-source revision equivalence remains a review limitation."
+  },
+  "vertices": {
+    "33": [
+      -4.445858955383301,
+      2.6639909744262695,
+      3.17342209815979
+    ],
+    "133": [
+      -1.8564319610595703,
+      2.58524489402771,
+      3.757904052734375
+    ],
+    "263": [
+      4.445858955383301,
+      2.6639909744262695,
+      3.17342209815979
+    ],
+    "362": [
+      1.8564319610595703,
+      2.58524489402771,
+      3.757904052734375
+    ]
+  },
+  "LC": [
+    -3.1511454582214355,
+    2.6246179342269897,
+    3.4656630754470825
+  ],
+  "RC": [
+    3.1511454582214355,
+    2.6246179342269897,
+    3.4656630754470825
+  ],
+  "CC": [
+    0,
+    2.6246179342269897,
+    3.4656630754470825
+  ],
+  "DcanonMm": 63.02290916442871
+}

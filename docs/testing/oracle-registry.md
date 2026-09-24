@@ -24,7 +24,7 @@ The generic packaged-launch Class B oracle was created and frozen through M0A-3 
 | ORC-VIEWER-STATE-001 | Class B | Deterministic ViewerStateController tracking/loss/reacquisition behavior and immutable frame-scoped state | Accepted viewer-state contract, TDS §15, Testing Strategy §9, ADR-018, ADR-019 | `tests/unit/viewerStateController.test.ts` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
 | ORC-PACKAGED-SMOKE-001 | Class B | Packaged `launch` smoke starts the production executable without Vite/localhost, emits one valid result line, and terminates with status-mapped exit code | TDS §37, §40, §42; Interface & Contract Specification packaged smoke contract; Testing Strategy §19; ADR-001; ADR-020 | `scripts/run-packaged-smoke.ps1` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
 | ORC-PACKAGED-SYNTHETIC-001 | Class B | Packaged `synthetic` smoke proves the bounded controller/projection/renderer/diagnostic-world path and fixed synthetic sequence | M0C2 roadmap; TDS M0C packaged synthetic smoke and packaged-smoke architecture; Interface & Contract Specification packaged smoke contract; Testing Strategy §19 | `scripts/run-packaged-smoke.ps1 -Mode synthetic` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
-| ORC-POSE-ESTIMATOR-001 | Class C | M0D estimator-comparison methods, shared observation requirements, metrics, live procedure, evidence validity, rerun rules, and interpretation boundary | Pose Estimator Experiment Specification Draft v0.2 §§6–27; ADR-003; ADR-004; ADR-005; ADR-006; ADR-009; M0D roadmap; Testing Strategy Class C oracle policy | `docs/experiments/pose-estimator-experiment-specification.md` §§6–27; pending review package `docs/handoff/m0d-estimator-class-c-review.md` | pending | draft | Stronger-reasoning Class C review must approve semantic changes and authorize freeze before M0D4–M0D7 consume this oracle |
+| ORC-POSE-ESTIMATOR-001 | Class C | M0D estimator-comparison methods, shared observation requirements, metrics, live procedure, evidence validity, rerun rules, and interpretation boundary | Pose Estimator Experiment Specification Draft v0.3, experimentProcedureVersion 2, §§6–27; ADR-003; ADR-004; ADR-005; ADR-006; ADR-009; M0D roadmap; Testing Strategy Class C oracle policy | `docs/experiments/pose-estimator-experiment-specification.md` §§6–27; pending review package `docs/handoff/m0d-estimator-class-c-review.md` | pending | draft | Stronger-reasoning Class C review must approve semantic changes and authorize freeze before M0D4–M0D7 consume this oracle |
 
 ## ORC-PACKAGED-SMOKE-001
 
@@ -68,17 +68,17 @@ Oracle ID: ORC-POSE-ESTIMATOR-001
 Subsystem: M0D pose-estimator experiment and estimator-comparison evidence
 Governed behavior: The two prescribed estimator methods are compared from the same normalized observations using the specified calibration, metrics, live procedure, evidence-validity rules, and M0D8 interpretation boundary.
 Classification: Class C
-Governing authority: `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.2 §§6–27; `docs/planning/milestone-roadmap.md` M0D; ADR-003; ADR-004; ADR-005; ADR-006; ADR-009; Testing Strategy Class C oracle policy
+Governing authority: `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.3, experimentProcedureVersion 2, §§6–27; `docs/planning/milestone-roadmap.md` M0D; ADR-003; ADR-004; ADR-005; ADR-006; ADR-009; Testing Strategy Class C oracle policy
 Authoritative test / procedure: `docs/experiments/pose-estimator-experiment-specification.md` §§6–27; implementation and evidence procedures are not consumable until this record is approved and frozen
 Supporting fixtures / evidence: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; no estimator-comparison evidence bundle exists
 Review status: pending
-Review owner / result: Pending stronger-reasoning Class C review; no approval result recorded
+Review owner / result: Initial GPT-5.6 Sol High Class C review found material corrections; Draft v0.3 remediation is awaiting stronger-reasoning re-review.
 Freeze status: draft
-Frozen baseline: Not yet frozen; governing experiment source is Draft v0.2
+Frozen baseline: Not yet frozen; Draft v0.3 / experimentProcedureVersion 2 is awaiting stronger-reasoning re-review
 Change authority: Stronger-reasoning Class C review must approve semantic changes to methods, formulas, required inputs, coordinate/unit interpretation, calibration, metrics, targets/tolerances, procedure, invalidation/rerun rules, evidence validity, or M0D8 interpretation before freeze
 Milestone applicability: M0D4–M0D8
 Handoff references: `docs/handoff/m0d-estimator-class-c-review.md`
-Notes / limitations: This pending record prepares review navigation only. It does not approve or freeze the experiment and does not authorize M0D4–M0D7 implementation or evidence collection.
+Notes / limitations: This pending record prepares review navigation only. Provenance fixture: `scripts/derive-mediapipe-canonical-face-model.mjs` -> `evidence/m0d/estimator-experiment-v2/canonical-face-model.json`; matrix fixture/test: `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`. No estimator implementation or estimator evidence is present. It does not approve or freeze the experiment and does not authorize M0D4–M0D7 implementation or evidence collection.
 
 ## Canonical record template
 
