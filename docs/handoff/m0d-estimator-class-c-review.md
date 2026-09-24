@@ -6,7 +6,8 @@
 - Prepared against implementation baseline: `5073d1b800bd086db1194437fbba8f1efc1e524c`
 - Review-preparation commit: `f186a55f61291dc14bf684fd5c595f2d53d60e8a`
 - Class C remediation commit: `0c3fd8c59279ad0b10fa87b8f4ac0f8e0d94ed89`
-- Cleanup/provenance commit: recorded in the completion handoff after commit creation
+- Cleanup/provenance commit: `afe073c21ef030a6eb463de8b13ed89f5c96bc33`
+- M0D3A implementation commit: this task's final commit; SHA is reported in the completion handoff.
 - Oracle ID: `ORC-POSE-ESTIMATOR-001`
 - Classification: Class C
 - Review status: pending
@@ -16,7 +17,7 @@
 
 ## Handoff record
 
-- Subsystem status and supported scope: M0D estimator-comparison review preparation only; no estimator or evidence implementation.
+- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization is implemented and verified; live tracking-source integration, estimators, replay, and evidence implementation remain out of scope.
 - Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeBenchmarkWorker.ts` is benchmark-only and is not yet a `TrackingSource` implementation.
 - Oracle IDs: `ORC-POSE-ESTIMATOR-001` (pending/draft).
 - Authoritative tests/oracles: Pending Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
@@ -29,10 +30,10 @@
 - Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.3, experimentProcedureVersion 2, and future evidence namespace `evidence/m0d/estimator-experiment-v2/` remain navigation facts only.
 - Remaining project-specific custom-code boundary: Future M0D normalization, estimator, replay, and evidence code must consume the frozen contracts and may not author new experiment semantics.
 - Prohibited Reinvention: Do not replace the prescribed methods, invent canonical constants, transpose matrices by appearance, or tune/rerun evidence outside the frozen procedure.
-- Deterministic tests and fixture paths: `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; these are provenance/convention fixtures only, not estimator implementation or replay evidence.
+- Deterministic tests and fixture paths: `src/mediapipe/trackingObservationNormalizer.ts`, `tests/unit/trackingObservationNormalizer.test.ts`, `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; the normalizer is a pure boundary only, not estimator or replay implementation.
 - Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006, ADR-009.
 - Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; neither is a validated estimator-comparison bundle.
-- Known limitations / unsupported behavior: normalized estimator observation stream, production matrix adapter, camera-origin measurement, and M0D evidence validator are not present.
+- Known limitations / unsupported behavior: the benchmark worker is not wired to the pure normalizer; no live TrackingSource, production matrix-order proof, camera-origin measurement, estimator, replay, or M0D evidence validator is present.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`.
 - Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to begin M0D4–M0D7 before oracle freeze returns to stronger review.
 
@@ -88,19 +89,24 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Matrix dimensions | Ready | Installed 1.0.1 `vision.d.ts` exposes rows, columns, and data; the package provenance test checks this exact surface. |
 | Exact matrix packed-order provenance | Ambiguous | The exact 1.0.1 bundle copies decoded field-3 values without transpose/reorder, but the package does not establish whether upstream packed values are row-major or column-major. |
 | Coordinate/handedness convention | Ready | The reviewed fixture and Sections 4/9 define the expected column-vector conversion; this is not independent proof of package packed order. |
-| Source frame width/height in production observation | Missing | The current benchmark worker does not implement normalized `TrackingObservation` frame dimensions. |
-| Required landmarks 33, 133, 362, 263 in production observation | Missing | The current worker does not emit normalized landmarks. |
-| Facial transformation matrix in production observation | Missing | The current worker records only a matrix count. |
-| Face-present/no-face state in production observation | Ambiguous | A benchmark diagnostic exists, but the frozen normalized observation implementation does not. |
-| Monotonic timestamp in production observation | Ambiguous | Benchmark timing exists, but no normalized observation stream is implemented. |
+| Source frame width/height normalization | Ready | Pure normalizer validates and copies contract-shaped frame dimensions; live worker integration remains absent. |
+| Required landmarks 33, 133, 362, 263 normalization | Ready | Pure normalizer preserves the complete indexed landmark array and validates the required index range; the current worker is not wired to it. |
+| Facial transformation matrix normalization | Ready | Pure normalizer validates 4x4/16 finite values and copies data without reordering; the current worker is not wired to it. |
+| Face-present/no-face normalization | Ready | Pure normalizer distinguishes no face, face without matrix, and malformed results; live source integration remains absent. |
+| Monotonic timestamp normalization | Ready | Pure normalizer validates finite non-negative timestamps against optional previous timestamp metadata; live source integration remains absent. |
 | Inference/worker timing | Ready | The benchmark worker measures inference duration; future normalization must map it into the evidence envelope, not estimator input. |
 | Camera configuration | Ready | Requested procedure baseline is documented and benchmark configuration is recorded; actual negotiated settings belong in the future manifest. |
 | `cameraOriginScreenMm` | Missing | No current implementation or persisted M0D measurement fields exist. |
 | Evidence schema/validator | Ambiguous | The v2 namespace and required fields are specified; no M0D evidence-bundle validator is implemented. |
+| Live worker-to-TrackingObservation integration | Missing | `src/mediapipe/mediapipeBenchmarkWorker.ts` still emits benchmark diagnostics only. |
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; estimator implementation remains absent. |
 | Physical-target practicality | Ambiguous | E590 operator/setup confirmation is not present. |
 
 Exact-package matrix conclusion: Ordering remains unproven. The installed 1.0.1 bundle copies decoded matrix field-3 values without transpose/reorder, but does not establish the upstream packed-order meaning.
+
+## Minimum matrix-ordering follow-up
+
+No camera or packaged diagnostic was run in M0D3A. The smallest independent empirical check is one exact-package Face Landmarker run that records an asymmetric 4x4 result (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamp, frame dimensions, and the required indexed landmarks, without storing frames or personal identifiers. The run should include a neutral state and one deliberately asymmetric known-pose state (controlled yaw plus measured lateral/depth displacement). Compare both candidate flattening conventions against the same recorded landmarks and known-pose direction; identity/symmetric matrices are insufficient. This is a future diagnostic, not proof supplied by the fixture and not part of M0D3A.
 
 ## Current provisional MediaPipe baseline
 
