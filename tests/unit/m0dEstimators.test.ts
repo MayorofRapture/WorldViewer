@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createScreenGeometry } from "../../src/engine/geometry/screenGeometry";
 import { createSharedEstimatorCalibration, type CalibrationResult } from "../../src/m0d/estimators/calibration";
@@ -8,12 +9,14 @@ import {
   mediaPipeFacialTransformEstimator,
   transformCanonicalPoint,
   type EstimatorACalibration,
+  validateEstimatorACalibration,
 } from "../../src/m0d/estimators/mediaPipeFacialTransformEstimator";
 import {
   calculateInterocularPixelGeometry,
   calibrateEstimatorB,
   interocularScaleEstimator,
   type EstimatorBCalibration,
+  validateEstimatorBCalibration,
 } from "../../src/m0d/estimators/interocularScaleEstimator";
 import type { PoseEstimationContext } from "../../src/m0d/estimators/estimatorContracts";
 import {
@@ -55,7 +58,7 @@ function estimatorACalibration(): EstimatorACalibration {
     estimatorAObservation({ translationZ: -53.46566307544708 }),
     estimatorAObservation({ translationZ: -63.46566307544708 }),
     estimatorAObservation({ translationZ: -73.46566307544708 }),
-  ], shared, FIXTURE_CANONICAL_POINT_CM));
+  ], shared));
 }
 
 function estimatorBCalibration(): EstimatorBCalibration {
@@ -68,6 +71,12 @@ function estimatorBCalibration(): EstimatorBCalibration {
 }
 
 describe("shared M0D estimator calibration", () => {
+  it("keeps runtime canonical constants in parity with the pinned artifact", () => {
+    const artifact = JSON.parse(readFileSync("evidence/m0d/estimator-experiment-v3/canonical-face-model.json", "utf8")) as { CC: number[]; DcanonMm: number };
+    expect(PINNED_CANONICAL_FACE_MODEL.cyclopeanPointCm).toEqual({ x: artifact.CC[0], y: artifact.CC[1], z: artifact.CC[2] });
+    expect(PINNED_CANONICAL_FACE_MODEL.interocularDistanceMm).toBe(artifact.DcanonMm);
+  });
+
   it("derives one shared positive camera-relative reference depth without fixing camera origin", () => {
     const shared = createSharedEstimatorCalibration({ x: 0, y: 103.188, z: 0 });
     expect(shared).toMatchObject({ ok: true, calibration: { zrefScreenMm: 600, zrefCameraMm: 600 } });
@@ -78,7 +87,7 @@ describe("shared M0D estimator calibration", () => {
   it("uses the same normalized neutral trace to derive both candidate calibrations", () => {
     const shared = unwrap(createSharedEstimatorCalibration(FIXTURE_CAMERA_ORIGIN));
     const trace = [sharedObservation(), { ...sharedObservation(), timestampMs: 1042 }];
-    const calibrationA = calibrateEstimatorA(trace, shared, FIXTURE_CANONICAL_POINT_CM);
+    const calibrationA = calibrateEstimatorA(trace, shared);
     const calibrationB = calibrateEstimatorB(trace, shared);
     expect(calibrationA.ok).toBe(true);
     expect(calibrationB.ok).toBe(true);
@@ -90,7 +99,7 @@ describe("shared M0D estimator calibration", () => {
     const observation = estimatorAObservation();
     const beforeObservation = JSON.stringify(observation);
     const beforeShared = JSON.stringify(shared);
-    calibrateEstimatorA([observation], shared, FIXTURE_CANONICAL_POINT_CM);
+    calibrateEstimatorA([observation], shared);
     calibrateEstimatorB([observation], shared);
     expect(JSON.stringify(observation)).toBe(beforeObservation);
     expect(JSON.stringify(shared)).toBe(beforeShared);
@@ -106,7 +115,9 @@ describe("mediapipe-facial-transform-v1", () => {
   it("uses median neutral depth and uniform XYZ scale", () => {
     const calibration = estimatorACalibration();
     expect(calibration.scaleA).toBeCloseTo(1, 12);
+    expect(calibration.zMedianRaw).toBe(600);
     expect(calibration.canonicalPointCm).toEqual(PINNED_CANONICAL_FACE_MODEL.cyclopeanPointCm);
+    expect(() => validateEstimatorACalibration({ ...calibration, scaleA: calibration.scaleA + 0.1 })).toThrow("scaleA");
   });
 
   it("returns finite canonical pose with frozen confidence and identity", () => {
@@ -139,7 +150,7 @@ describe("mediapipe-facial-transform-v1", () => {
 
   it("fails calibration explicitly and rejects resulting nonpositive depth", () => {
     const shared = unwrap(createSharedEstimatorCalibration(FIXTURE_CAMERA_ORIGIN));
-    expect(calibrateEstimatorA([estimatorAObservation({ missingMatrix: true })], shared, FIXTURE_CANONICAL_POINT_CM)).toMatchObject({ ok: false, reason: "no-valid-calibration-samples" });
+    expect(calibrateEstimatorA([estimatorAObservation({ missingMatrix: true })], shared)).toMatchObject({ ok: false, reason: "no-valid-calibration-samples" });
     const calibration = estimatorACalibration();
     const result = mediaPipeFacialTransformEstimator.estimateWithDiagnostic(estimatorAObservation({ translationZ: -2 }), context(calibration));
     expect(result.invalidReason).toBe("nonpositive-result-depth");
@@ -183,6 +194,8 @@ describe("interocular-scale-v1", () => {
     const shared = unwrap(createSharedEstimatorCalibration(FIXTURE_CAMERA_ORIGIN));
     expect(calibrateEstimatorB([estimatorBObservation({ missingLandmarkIndex: 33 })], shared)).toMatchObject({ ok: false, reason: "no-valid-calibration-samples" });
     expect(() => interocularScaleEstimator.validateCalibration({ ...estimatorBCalibration(), fEffPx: 0 })).toThrow("fEffPx");
+    expect(() => validateEstimatorBCalibration({ ...estimatorBCalibration(), fEffPx: estimatorBCalibration().fEffPx + 0.1 })).toThrow("fEffPx");
+    expect(() => validateEstimatorBCalibration({ ...estimatorBCalibration(), canonicalInterocularDistanceMm: 64 })).toThrow("canonical interocular");
     const negativeOrigin = unwrap(createSharedEstimatorCalibration({ x: 0, y: 103.188, z: -2000 }));
     const calibration = unwrap(calibrateEstimatorB([estimatorBObservation()], negativeOrigin));
     const result = interocularScaleEstimator.estimateWithDiagnostic(estimatorBObservation({ leftCenterPx: [280, 180], rightCenterPx: [360, 180] }), context(calibration));

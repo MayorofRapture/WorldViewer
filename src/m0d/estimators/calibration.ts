@@ -3,6 +3,7 @@ import type { Vec3Mm } from "../../shared/contracts/primitives";
 import { isFiniteCameraOriginScreenMm } from "../evidence/m0dEvidenceContracts";
 
 export const M0D_ZREF_SCREEN_MM = 600;
+export const CALIBRATION_RELATIVE_TOLERANCE = 1e-12;
 
 export interface SharedEstimatorCalibration {
   readonly cameraOriginScreenMm: Vec3Mm;
@@ -32,6 +33,10 @@ export function median(values: readonly number[]): number | null {
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0 ? (sorted[middle - 1]! + sorted[middle]!) / 2 : sorted[middle]!;
+}
+
+export function approximatelyEqual(left: number, right: number): boolean {
+  return finite(left) && finite(right) && Math.abs(left - right) <= CALIBRATION_RELATIVE_TOLERANCE * Math.max(1, Math.abs(left), Math.abs(right));
 }
 
 export function createSharedEstimatorCalibration(

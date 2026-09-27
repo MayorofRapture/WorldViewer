@@ -2,6 +2,7 @@ import type { TrackingObservation } from "../../mediapipe/trackingObservationNor
 import type { Vec3Mm } from "../../shared/contracts/primitives";
 import { PINNED_CANONICAL_FACE_MODEL, type CanonicalPointCm } from "./canonicalFaceModel";
 import {
+  approximatelyEqual,
   calibrationFailure,
   median,
   type CalibrationResult,
@@ -20,6 +21,7 @@ export const HOMOGENEOUS_W_TOLERANCE = 1e-5;
 
 export interface EstimatorACalibration extends SharedEstimatorCalibration {
   readonly canonicalPointCm: CanonicalPointCm;
+  readonly zMedianRaw: number;
   readonly scaleA: number;
 }
 
@@ -59,7 +61,6 @@ function rawRelativeMillimeters(runtimePoint: readonly [number, number, number])
 export function calibrateEstimatorA(
   observations: readonly TrackingObservation[],
   shared: SharedEstimatorCalibration,
-  canonicalPointCm: CanonicalPointCm = PINNED_CANONICAL_FACE_MODEL.cyclopeanPointCm,
 ): CalibrationResult<EstimatorACalibration> {
   let validatedShared: SharedEstimatorCalibration;
   try {
@@ -67,6 +68,8 @@ export function calibrateEstimatorA(
   } catch (error) {
     return calibrationFailure("invalid-calibration-value", error instanceof Error ? error.message : "shared calibration is invalid");
   }
+  const canonicalPointCm = PINNED_CANONICAL_FACE_MODEL.cyclopeanPointCm;
+  if (validatedShared.zrefScreenMm !== 600) return calibrationFailure("invalid-calibration-value", "formal Estimator A calibration requires ZrefScreenMm = 600");
   if (!validCanonicalPoint(canonicalPointCm)) return calibrationFailure("invalid-calibration-value", "canonical cyclopean point must be finite");
   const rawDepths: number[] = [];
   for (const observation of observations) {
@@ -86,6 +89,7 @@ export function calibrateEstimatorA(
       zrefScreenMm: validatedShared.zrefScreenMm,
       zrefCameraMm: validatedShared.zrefCameraMm,
       canonicalPointCm: Object.freeze({ ...canonicalPointCm }),
+      zMedianRaw,
       scaleA,
     }),
   };
@@ -95,9 +99,15 @@ export function validateEstimatorACalibration(value: unknown): EstimatorACalibra
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new RangeError("Estimator A calibration must be an object");
   const candidate = value as Partial<EstimatorACalibration>;
   const shared = validateSharedEstimatorCalibration(candidate);
+  if (shared.zrefScreenMm !== 600) throw new RangeError("formal Estimator A calibration requires ZrefScreenMm = 600");
   if (candidate.canonicalPointCm === undefined || !validCanonicalPoint(candidate.canonicalPointCm)) throw new RangeError("Estimator A canonicalPointCm must be finite");
+  const canonicalPoint = candidate.canonicalPointCm;
+  const pinnedPoint = PINNED_CANONICAL_FACE_MODEL.cyclopeanPointCm;
+  if (canonicalPoint.x !== pinnedPoint.x || canonicalPoint.y !== pinnedPoint.y || canonicalPoint.z !== pinnedPoint.z) throw new RangeError("Estimator A canonicalPointCm does not match the pinned canonical artifact");
+  if (!finite(candidate.zMedianRaw) || !(candidate.zMedianRaw > 0)) throw new RangeError("Estimator A zMedianRaw must be finite and greater than zero");
   if (!finite(candidate.scaleA) || !(candidate.scaleA > 0)) throw new RangeError("Estimator A scaleA must be finite and greater than zero");
-  return Object.freeze({ ...shared, canonicalPointCm: Object.freeze({ ...candidate.canonicalPointCm }), scaleA: candidate.scaleA });
+  if (!approximatelyEqual(candidate.scaleA, shared.zrefCameraMm / candidate.zMedianRaw)) throw new RangeError("Estimator A scaleA does not match zrefCameraMm / zMedianRaw");
+  return Object.freeze({ ...shared, canonicalPointCm: Object.freeze({ ...canonicalPoint }), zMedianRaw: candidate.zMedianRaw, scaleA: candidate.scaleA });
 }
 
 function evaluateEstimatorA(

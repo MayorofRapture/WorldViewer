@@ -6,13 +6,26 @@ import {
   M0D_REQUIRED_LANDMARK_INDICES,
   type M0DJsonValue,
 } from "./m0dEvidenceContracts";
+import { stableM0DJsonStringify } from "./m0dSerialization";
+import { calculateCandidateMetricSummary, type M0DCandidateMetricInput } from "../metrics/m0dMetrics";
+import { M0D_PROCEDURAL_INVALIDATION_REASONS, getM0DScenario } from "../scenarios/m0dScenarioModel";
 
 export interface M0DEvidenceBundleInput {
   readonly manifest: unknown;
   readonly observationTrace?: readonly unknown[];
   readonly replayOutputs?: readonly unknown[];
+  readonly calibrationTrace?: readonly unknown[];
+  readonly environment?: unknown;
+  readonly camera?: unknown;
+  readonly configuration?: unknown;
   readonly filesIncluded?: readonly string[];
   readonly trialsIncluded?: readonly string[];
+  readonly requiredScenarioIds?: readonly string[];
+  readonly requiredTrialIds?: readonly string[];
+  readonly proceduralInvalidations?: readonly unknown[];
+  readonly anomalies?: readonly unknown[];
+  readonly storedMetrics?: unknown;
+  readonly metricInput?: M0DCandidateMetricInput;
 }
 
 export interface M0DEvidenceValidationFailure {
@@ -52,6 +65,12 @@ const CHECKS_PERFORMED = [
   "replay-output-validity-coherence",
   "candidate-configuration-identity",
   "shared-observation-trace-identity",
+  "required-bundle-files-and-context",
+  "calibration-trace",
+  "configuration-consistency",
+  "required-scenario-and-trial-coverage",
+  "procedural-invalidation-and-anomaly-records",
+  "metric-regeneration",
 ] as const;
 
 function finite(value: unknown): value is number {
@@ -226,13 +245,14 @@ function validateManifest(
 function validateObservationTrace(
   values: readonly unknown[],
   failures: M0DEvidenceValidationFailure[],
+  label = "observationTrace",
 ): Set<string> {
   const traceIds = new Set<string>();
   let previousSequence: number | null = null;
   let previousTimestamp: number | null = null;
 
   values.forEach((value, index) => {
-    const path = `observationTrace[${index}]`;
+    const path = `${label}[${index}]`;
     if (!plainRecord(value) || !plainRecord(value.observation) || !plainRecord(value.envelope)) {
       addFailure(failures, "malformed-observation-record", path, "observation trace entry must contain plain observation and envelope objects");
       return;
@@ -294,6 +314,67 @@ function validateObservationTrace(
   return traceIds;
 }
 
+function validateConfigurationConsistency(
+  values: readonly unknown[],
+  label: string,
+  failures: M0DEvidenceValidationFailure[],
+): void {
+  let firstIds: string | null = null;
+  let firstHashes: string | null = null;
+  let firstFrame: string | null = null;
+  values.forEach((value, index) => {
+    if (!plainRecord(value) || !plainRecord(value.envelope)) return;
+    const ids = value.envelope.configurationIds;
+    const hashes = value.envelope.configurationHashes;
+    if (!Array.isArray(ids) || !Array.isArray(hashes)) return;
+    const idsKey = stableM0DJsonStringify(ids);
+    const hashesKey = stableM0DJsonStringify(hashes);
+    const frameKey = plainRecord(value.observation) && finite(value.observation.frameWidthPx) && finite(value.observation.frameHeightPx) ? stableM0DJsonStringify({ widthPx: value.observation.frameWidthPx, heightPx: value.observation.frameHeightPx }) : null;
+    if (firstIds === null) {
+      firstIds = idsKey;
+      firstHashes = hashesKey;
+      firstFrame = frameKey;
+    } else if (firstIds !== idsKey || firstHashes !== hashesKey || firstFrame !== frameKey) {
+      addFailure(failures, "configuration-change-within-run", `${label}[${index}]`, "configuration IDs, hashes, and frame dimensions must remain constant within an authoritative trace");
+    }
+  });
+}
+
+function validateContext(value: unknown, path: string, failures: M0DEvidenceValidationFailure[]): void {
+  if (!plainRecord(value)) addFailure(failures, "missing-required-context", path, "M0D6 evidence requires a plain environment, camera, and configuration object");
+  else validateJsonValue(value, path, failures);
+}
+
+function validateProceduralRecords(
+  values: readonly unknown[] | undefined,
+  anomalies: readonly unknown[] | undefined,
+  failures: M0DEvidenceValidationFailure[],
+): void {
+  const invalidationIds = new Set<string>();
+  values?.forEach((value, index) => {
+    const path = `proceduralInvalidations[${index}]`;
+    if (!plainRecord(value) || value.schemaVersion !== 1 || !nonEmptyString(value.invalidationId) || !nonEmptyString(value.experimentRunId) || !nonEmptyString(value.scenarioId) || !nonEmptyString(value.attemptId) || !nonEmptyString(value.reason) || !M0D_PROCEDURAL_INVALIDATION_REASONS.includes(value.reason as typeof M0D_PROCEDURAL_INVALIDATION_REASONS[number]) || !nonEmptyString(value.detail) || getM0DScenario(value.scenarioId as string) === null) {
+      addFailure(failures, "invalid-procedural-invalidation", path, "procedural invalidation must use the frozen Section 19 reason set and required identifiers");
+    }
+    if (plainRecord(value) && nonEmptyString(value.invalidationId)) {
+      if (invalidationIds.has(value.invalidationId)) addFailure(failures, "invalid-procedural-invalidation", `${path}.invalidationId`, "invalidation IDs must be unique");
+      invalidationIds.add(value.invalidationId);
+    }
+    if (plainRecord(value) && value.originalAttemptId !== null && value.originalAttemptId !== undefined && (!nonEmptyString(value.originalAttemptId) || value.originalAttemptId === value.attemptId)) addFailure(failures, "invalid-procedural-invalidation", `${path}.originalAttemptId`, "original attempt reference must be null or a distinct non-empty attempt ID");
+    if (plainRecord(value) && value.replacementAttemptId !== null && value.replacementAttemptId !== undefined && value.replacementAttemptId === value.attemptId) addFailure(failures, "invalid-procedural-invalidation", `${path}.replacementAttemptId`, "replacement attempt must differ from invalidated attempt");
+    if (plainRecord(value) && value.triggersRerun !== undefined) addFailure(failures, "invalid-procedural-invalidation", `${path}.triggersRerun`, "procedural invalidations are records of discard, not automatic rerun commands");
+  });
+  const anomalyIds = new Set<string>();
+  anomalies?.forEach((value, index) => {
+    const path = `anomalies[${index}]`;
+    if (!plainRecord(value) || value.schemaVersion !== 1 || !nonEmptyString(value.anomalyId) || !nonEmptyString(value.experimentRunId) || !nonEmptyString(value.scenarioId) || !nonEmptyString(value.attemptId) || !nonEmptyString(value.kind) || !nonEmptyString(value.detail) || value.triggersRerun !== false || getM0DScenario(value.scenarioId as string) === null || (value.sequenceNumber !== null && value.sequenceNumber !== undefined && (typeof value.sequenceNumber !== "number" || !Number.isInteger(value.sequenceNumber) || value.sequenceNumber < 0)) || (value.estimatorId !== null && value.estimatorId !== undefined && !nonEmptyString(value.estimatorId))) addFailure(failures, "invalid-anomaly-record", path, "anomalies must be explicit non-rerun records with internally consistent references");
+    if (plainRecord(value) && nonEmptyString(value.anomalyId)) {
+      if (anomalyIds.has(value.anomalyId)) addFailure(failures, "invalid-anomaly-record", `${path}.anomalyId`, "anomaly IDs must be unique");
+      anomalyIds.add(value.anomalyId);
+    }
+  });
+}
+
 function validateReplayOutputs(
   values: readonly unknown[],
   manifest: unknown,
@@ -302,6 +383,7 @@ function validateReplayOutputs(
 ): Set<string> {
   const outputTraceIds = new Set<string>();
   const knownIdentities = new Map<string, string>();
+  const outputTimestamps = new Map<string, Set<number>>();
   if (plainRecord(manifest)) {
     for (const field of ["estimatorA", "estimatorB"] as const) {
       const identity = manifest[field];
@@ -322,6 +404,11 @@ function validateReplayOutputs(
       if (traceIds.size > 0 && !traceIds.has(value.observationTraceId)) addFailure(failures, "unknown-observation-trace", `${path}.observationTraceId`, "replay output references an observation trace not present in the bundle");
     }
     if (!nonEmptyString(value.estimatorId)) addFailure(failures, "invalid-estimator-identity", `${path}.estimatorId`, "estimator ID must be a non-empty string");
+    else {
+      const timestamps = outputTimestamps.get(value.estimatorId) ?? new Set<number>();
+      if (finite(value.timestampMs)) timestamps.add(value.timestampMs);
+      outputTimestamps.set(value.estimatorId, timestamps);
+    }
     if (!nonEmptyString(value.estimatorConfigHash)) addFailure(failures, "invalid-estimator-identity", `${path}.estimatorConfigHash`, "estimator config hash must be a non-empty string");
     if (!finite(value.estimatorProcessingMs) || value.estimatorProcessingMs < 0) addFailure(failures, "invalid-timing", `${path}.estimatorProcessingMs`, "estimator processing time must be finite and non-negative");
     if (typeof value.valid !== "boolean") addFailure(failures, "invalid-replay-output", `${path}.valid`, "valid must be boolean");
@@ -338,6 +425,8 @@ function validateReplayOutputs(
       else if (expectedHash !== value.estimatorConfigHash) addFailure(failures, "estimator-config-mismatch", `${path}.estimatorConfigHash`, "replay output config hash does not match the manifest identity");
     }
   });
+  const timestampSets = [...outputTimestamps.values()].map((timestamps) => stableM0DJsonStringify([...timestamps].sort((left, right) => left - right)));
+  if (timestampSets.length >= 2 && timestampSets.some((value) => value !== timestampSets[0])) addFailure(failures, "candidate-observation-set-mismatch", "replayOutputs", "candidate outputs must cover the same replay observation timestamps");
   return outputTraceIds;
 }
 
@@ -355,18 +444,73 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
     ? new Set<string>()
     : Array.isArray(replayOutputs) ? validateReplayOutputs(replayOutputs, bundle.manifest, traceIds, failures) : (addFailure(failures, "malformed-replay-outputs", "replayOutputs", "replayOutputs must be an array when present"), new Set<string>());
 
+  const strictM0D6 = bundle.calibrationTrace !== undefined || bundle.requiredScenarioIds !== undefined || bundle.requiredTrialIds !== undefined || bundle.storedMetrics !== undefined || bundle.metricInput !== undefined;
+  const filesIncluded = Array.isArray(bundle.filesIncluded) && bundle.filesIncluded.every((file): file is string => typeof file === "string") ? [...bundle.filesIncluded] : [];
+  const trialsIncluded = Array.isArray(bundle.trialsIncluded) && bundle.trialsIncluded.every((trial): trial is string => typeof trial === "string") ? [...bundle.trialsIncluded] : [];
+  const invalidations = Array.isArray(bundle.proceduralInvalidations) ? bundle.proceduralInvalidations : [];
+  const requiredScenarioIds = Array.isArray(bundle.requiredScenarioIds) && bundle.requiredScenarioIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredScenarioIds] : [];
+  const requiredTrialIds = Array.isArray(bundle.requiredTrialIds) && bundle.requiredTrialIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredTrialIds] : [];
+
+  if (strictM0D6) {
+    validateContext(bundle.environment, "environment", failures);
+    validateContext(bundle.camera, "camera", failures);
+    validateContext(bundle.configuration, "configuration", failures);
+    const requiredFiles = ["manifest.json", "environment.json", "camera.json", "configuration.json", "calibration/observation-trace.jsonl"];
+    for (const file of requiredFiles) if (!filesIncluded.includes(file)) addFailure(failures, "missing-required-evidence-file", "filesIncluded", `required M0D6 evidence file is missing: ${file}`);
+    if (!Array.isArray(bundle.calibrationTrace)) addFailure(failures, "missing-calibration-trace", "calibrationTrace", "M0D6 requires a calibration observation trace");
+    else {
+      validateObservationTrace(bundle.calibrationTrace, failures, "calibrationTrace");
+      validateConfigurationConsistency(bundle.calibrationTrace, "calibrationTrace", failures);
+    }
+    if (Array.isArray(observationTrace)) validateConfigurationConsistency(observationTrace, "observationTrace", failures);
+    if (Array.isArray(replayOutputs) && replayOutputs.length > 0) {
+      const outputEstimatorIds = new Set(replayOutputs.filter(plainRecord).map((output) => output.estimatorId).filter(nonEmptyString));
+      for (const field of ["estimatorA", "estimatorB"] as const) {
+        if (plainRecord(bundle.manifest) && plainRecord(bundle.manifest[field]) && nonEmptyString(bundle.manifest[field].estimatorId) && !outputEstimatorIds.has(bundle.manifest[field].estimatorId)) addFailure(failures, "missing-candidate-replay", `replayOutputs.${field}`, "strict M0D6 evidence must contain replay outputs for both manifest candidates");
+      }
+    }
+  }
+
+  validateProceduralRecords(
+    Array.isArray(bundle.proceduralInvalidations) ? bundle.proceduralInvalidations : undefined,
+    Array.isArray(bundle.anomalies) ? bundle.anomalies : undefined,
+    failures,
+  );
+
+  if (requiredScenarioIds.length > 0) {
+    const presentScenarios = new Set((Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.scenarioId : null).filter(nonEmptyString));
+    const invalidatedScenarios = new Set(invalidations.filter(plainRecord).map((entry) => entry.scenarioId).filter(nonEmptyString));
+    for (const scenarioId of requiredScenarioIds) {
+      if (getM0DScenario(scenarioId) === null) addFailure(failures, "unsupported-scenario", "requiredScenarioIds", `unknown scenario ${scenarioId}`);
+      else if (!presentScenarios.has(scenarioId) && !invalidatedScenarios.has(scenarioId)) addFailure(failures, "missing-required-scenario", "observationTrace", `required scenario is absent and not explicitly invalidated: ${scenarioId}`);
+    }
+  }
+  if (requiredTrialIds.length > 0) {
+    for (const trialId of requiredTrialIds) if (!trialsIncluded.includes(trialId) && !invalidations.some((value) => plainRecord(value) && value.trialId === trialId)) addFailure(failures, "missing-required-trial", "trialsIncluded", `required trial is absent and not explicitly invalidated: ${trialId}`);
+  }
+
+  if (bundle.storedMetrics !== undefined || bundle.metricInput !== undefined) {
+    if (bundle.storedMetrics === undefined || bundle.metricInput === undefined) addFailure(failures, "metric-regeneration-unavailable", "storedMetrics", "stored metrics and metric input are both required for deterministic regeneration");
+    else {
+      try {
+        const regenerated = calculateCandidateMetricSummary(bundle.metricInput as M0DCandidateMetricInput);
+        if (stableM0DJsonStringify(regenerated) !== stableM0DJsonStringify(bundle.storedMetrics)) addFailure(failures, "metric-regeneration-mismatch", "storedMetrics", "stored metrics do not match deterministic regeneration from the authoritative trace");
+      } catch (error) {
+        addFailure(failures, "metric-regeneration-failed", "storedMetrics", error instanceof Error ? error.message : "metric regeneration failed");
+      }
+    }
+  }
+
   if (observationTrace === undefined) addWarning(warnings, "m0d6-completeness-deferred", "observationTrace", "trace completeness and required scenario/trial coverage are deferred to M0D6");
   if (replayOutputs === undefined) addWarning(warnings, "m0d6-completeness-deferred", "replayOutputs", "replay completeness and metric regeneration are deferred to M0D6");
   if (outputTraceIds.size > 1 && replayOutputs !== undefined) {
     const estimatorIds = Array.isArray(replayOutputs)
       ? new Set(replayOutputs.filter(plainRecord).map((output) => output.estimatorId).filter(nonEmptyString))
       : new Set<string>();
-    if (estimatorIds.size >= 2) addFailure(failures, "different-authoritative-traces", "replayOutputs", "candidate outputs must reference the same authoritative observation trace");
+    if (estimatorIds.size >= 1) addFailure(failures, "different-authoritative-traces", "replayOutputs", "candidate outputs must reference the same authoritative observation trace");
   }
   if (traceIds.size > 1) addWarning(warnings, "multiple-trace-segments", "observationTrace", "multiple trace IDs are present; M0D6 must validate segment/trial grouping");
 
-  const filesIncluded = Array.isArray(bundle.filesIncluded) && bundle.filesIncluded.every((file): file is string => typeof file === "string") ? [...bundle.filesIncluded] : [];
-  const trialsIncluded = Array.isArray(bundle.trialsIncluded) && bundle.trialsIncluded.every((trial): trial is string => typeof trial === "string") ? [...bundle.trialsIncluded] : [];
   return {
     validatorVersion: M0D_VALIDATOR_VERSION,
     evidenceSchemaVersion,

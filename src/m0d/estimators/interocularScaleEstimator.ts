@@ -3,6 +3,7 @@ import type { Vec3Mm } from "../../shared/contracts/primitives";
 import { PINNED_CANONICAL_FACE_MODEL } from "./canonicalFaceModel";
 import {
   calibrationFailure,
+  approximatelyEqual,
   median,
   type CalibrationResult,
   type SharedEstimatorCalibration,
@@ -67,7 +68,6 @@ export function calculateInterocularPixelGeometry(observation: TrackingObservati
 export function calibrateEstimatorB(
   observations: readonly TrackingObservation[],
   shared: SharedEstimatorCalibration,
-  canonicalInterocularDistanceMm = PINNED_CANONICAL_FACE_MODEL.interocularDistanceMm,
 ): CalibrationResult<EstimatorBCalibration> {
   let validatedShared: SharedEstimatorCalibration;
   try {
@@ -75,6 +75,8 @@ export function calibrateEstimatorB(
   } catch (error) {
     return calibrationFailure("invalid-calibration-value", error instanceof Error ? error.message : "shared calibration is invalid");
   }
+  const canonicalInterocularDistanceMm = PINNED_CANONICAL_FACE_MODEL.interocularDistanceMm;
+  if (validatedShared.zrefScreenMm !== 600) return calibrationFailure("invalid-calibration-value", "formal Estimator B calibration requires ZrefScreenMm = 600");
   if (!finite(canonicalInterocularDistanceMm) || !(canonicalInterocularDistanceMm > 0)) return calibrationFailure("invalid-calibration-value", "canonical interocular distance must be finite and greater than zero");
   const distances: number[] = [];
   for (const observation of observations) {
@@ -102,9 +104,13 @@ export function validateEstimatorBCalibration(value: unknown): EstimatorBCalibra
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new RangeError("Estimator B calibration must be an object");
   const candidate = value as Partial<EstimatorBCalibration>;
   const shared = validateSharedEstimatorCalibration(candidate);
+  if (shared.zrefScreenMm !== 600) throw new RangeError("formal Estimator B calibration requires ZrefScreenMm = 600");
   if (!finite(candidate.dRefPx) || !(candidate.dRefPx > 0)) throw new RangeError("Estimator B dRefPx must be finite and greater than zero");
   if (!finite(candidate.fEffPx) || !(candidate.fEffPx > 0)) throw new RangeError("Estimator B fEffPx must be finite and greater than zero");
   if (!finite(candidate.canonicalInterocularDistanceMm) || !(candidate.canonicalInterocularDistanceMm > 0)) throw new RangeError("Estimator B canonical interocular distance must be finite and greater than zero");
+  if (candidate.canonicalInterocularDistanceMm !== PINNED_CANONICAL_FACE_MODEL.interocularDistanceMm) throw new RangeError("Estimator B canonical interocular distance does not match the pinned canonical artifact");
+  const expectedFocalLength = (candidate.dRefPx * shared.zrefCameraMm) / candidate.canonicalInterocularDistanceMm;
+  if (!approximatelyEqual(candidate.fEffPx, expectedFocalLength)) throw new RangeError("Estimator B fEffPx does not match dRefPx * zrefCameraMm / DcanonMm");
   return Object.freeze({ ...shared, dRefPx: candidate.dRefPx, fEffPx: candidate.fEffPx, canonicalInterocularDistanceMm: candidate.canonicalInterocularDistanceMm });
 }
 
