@@ -7,8 +7,10 @@
 - Review-preparation commit: `f186a55f61291dc14bf684fd5c595f2d53d60e8a`
 - Class C remediation commit: `0c3fd8c59279ad0b10fa87b8f4ac0f8e0d94ed89`
 - Cleanup/provenance commit: `afe073c21ef030a6eb463de8b13ed89f5c96bc33`
-- M0D3A implementation commit: this task's final commit; SHA is reported in the completion handoff.
-- M0D3B packaged matrix diagnostic commit: this task's final commit; SHA is reported in the completion handoff.
+- M0D3A implementation commit: `cc3e428ce043b11f46b6163b8d3bd33e3d1c08ad`
+- M0D3B packaged matrix diagnostic commit: `2f41d8358d7225eb72a690a2ef36e4811177c37d`
+- M0D3B CSP correction commit: `ff285467382c4723a614419990f3d58ed1d37c85`
+- Class C reconciliation commit: `ccb9e6eb369cf59b01c61babb957cd03ec41d400`
 - M0D3B physical matrix-diagnostic review: completed by the operator against build `ff285467382c4723a614419990f3d58ed1d37c85`; raw output remains local and uncommitted.
 - Oracle ID: `ORC-POSE-ESTIMATOR-001`
 - Classification: Class C
@@ -99,7 +101,7 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Inference/worker timing | Ready | The benchmark worker measures inference duration; future normalization must map it into the evidence envelope, not estimator input. |
 | Camera configuration | Ready | The operator diagnostic negotiated 640 × 360 at 24 FPS; this is diagnostic confirmation, not formal M0D7 evidence. |
 | `cameraOriginScreenMm` | Missing | No current implementation or persisted M0D measurement fields exist. |
-| Evidence schema/validator | Ambiguous | The v2 namespace and required fields are specified; no M0D evidence-bundle validator is implemented. |
+| Evidence schema/validator | Ambiguous | The v3 namespace and required fields are specified; no M0D evidence-bundle validator is implemented. Historical v2 artifacts remain unchanged. |
 | Live worker-to-TrackingObservation integration | Missing | `src/mediapipe/mediapipeBenchmarkWorker.ts` still emits benchmark diagnostics only. |
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; estimator implementation remains absent. |
 | Physical-target practicality | Ambiguous | E590 operator/setup confirmation is not present. |

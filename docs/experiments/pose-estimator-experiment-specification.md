@@ -4,9 +4,9 @@
 
 # Document Status
 
-Draft version: 0.3
+Draft version: 0.4
 Date: September 23, 2026
-Experiment procedure version: 2
+Experiment procedure version: 3
 Project: Portal Sim  
 Product / application: World Viewer  
 Artifact: Pose Estimator Experiment Specification  

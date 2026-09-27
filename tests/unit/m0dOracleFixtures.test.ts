@@ -22,6 +22,8 @@ describe("M0D oracle fixtures", () => {
     try {
       execFileSync("node", ["scripts/derive-mediapipe-canonical-face-model.mjs", "--output", output], { stdio: "pipe" });
       const derived = JSON.parse(readFileSync(output, "utf8"));
+      expect(derived.experimentSpecVersion).toBe("0.4");
+      expect(derived.experimentProcedureVersion).toBe(3);
       expect(derived.taskAsset.sha256).toBe("64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF");
       expect(derived.embeddedMetadata.sha256).toBe("BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4");
       expect(derived.vertices[33]).toHaveLength(3);
@@ -30,6 +32,7 @@ describe("M0D oracle fixtures", () => {
       expect(derived.vertices[263]).toHaveLength(3);
       expect(derived.CC).toEqual([0, 2.6246179342269897, 3.4656630754470825]);
       expect(derived.DcanonMm).toBeCloseTo(63.02290916442871, 12);
+      expect(JSON.parse(readFileSync("evidence/m0d/estimator-experiment-v3/canonical-face-model.json", "utf8"))).toEqual(derived);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
