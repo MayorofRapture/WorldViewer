@@ -47,7 +47,11 @@ export interface M0DEvidenceEnvelope {
   readonly traceId: string;
   readonly scenarioId: string;
   readonly segmentId: string;
+  readonly unitId?: string;
   readonly trialId?: string;
+  readonly cycleId?: string;
+  readonly holdId?: string;
+  readonly stepKind?: "settle" | "capture" | "transition" | "hold";
   readonly attemptId?: string;
   readonly experimentRunId: string;
   readonly configurationIds: readonly string[];
@@ -74,9 +78,9 @@ export interface M0DReplayOutputRecord {
 }
 
 export interface M0DCameraConfiguration {
-  readonly widthPx: number;
-  readonly heightPx: number;
-  readonly fps: number;
+  readonly widthPx: number | null;
+  readonly heightPx: number | null;
+  readonly fps: number | null;
 }
 
 export interface M0DDisplayReference {

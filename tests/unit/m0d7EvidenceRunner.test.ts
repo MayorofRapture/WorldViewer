@@ -34,6 +34,8 @@ describe("M0D7 evidence runner orchestration", () => {
     const written: M0D7EvidenceFile[][] = [];
     const runner = new M0D7EvidenceRunner({ source, runId: "run-fixture", cameraOriginScreenMm: { x: 0, y: 103.188, z: 0 }, clock: { now: () => 100 }, provenance: async () => provenance, writer: { write: async (files) => { written.push([...files]); return "fixture-output"; } }, steps: buildM0D7ProcedureSteps().slice(0, 2) });
     await runner.start();
+    expect(runner.getState().status).toBe("ready");
+    runner.beginProcedure(100);
     source.emit(100);
     const result = await runner.cancel("fixture cancellation");
     expect(source.started).toBe(true);

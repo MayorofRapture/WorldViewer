@@ -141,6 +141,30 @@ export interface M0DCandidateMetricSummary {
   readonly calibrationBurden: M0DCalibrationBurdenSummary;
 }
 
+export interface M0DScenarioStationaryMetric {
+  readonly scenarioId: string;
+  readonly trialId: string;
+  readonly trialMedianPoseMm: Vec3Mm | null;
+  readonly stationaryAxisRmsMm: M0DAxisMetricSummary | null;
+  readonly robustOutliers: M0DStationaryOutlierSummary | null;
+}
+
+export interface M0DScenarioMovementMetric {
+  readonly scenarioId: string;
+  readonly cycleId: string;
+  readonly holdMedians: readonly (Vec3Mm | null)[];
+  readonly orderingCycle: M0DOrderingCycle;
+  readonly relativeMovementError: M0DRelativeMovementErrorSummary;
+  readonly crossAxisDrift: M0DCrossAxisDriftSummary | null;
+}
+
+export interface M0DScenarioMetricSummary {
+  readonly overall: M0DCandidateMetricSummary;
+  readonly stationary: readonly M0DScenarioStationaryMetric[];
+  readonly movement: readonly M0DScenarioMovementMetric[];
+  readonly other: readonly { readonly scenarioId: string; readonly sampleCount: number }[];
+}
+
 export interface M0DOrderingCycle {
   readonly first: number | null;
   readonly neutral: number | null;
@@ -469,4 +493,52 @@ export function regenerateM0DMetricsFromEvidence(
   estimatorId: string,
 ): M0DCandidateMetricSummary {
   return calculateCandidateMetricSummary(deriveM0DMetricInputFromEvidence(evidence, estimatorId));
+}
+
+function medianVector(values: readonly Vec3Mm[]): Vec3Mm | null {
+  if (values.length === 0) return null;
+  return { x: median(values.map((value) => value.x))!, y: median(values.map((value) => value.y))!, z: median(values.map((value) => value.z))! };
+}
+
+export function deriveM0DScenarioMetricSummary(evidence: M0DAuthoritativeMetricEvidence, estimatorId: string): M0DScenarioMetricSummary {
+  const outputs = new Map(evidence.replayOutputs.filter((output) => output.estimatorId === estimatorId).map((output) => [output.timestampMs, output]));
+  const byUnit = (records: readonly M0DObservationTraceRecord[]): Vec3Mm[] => records.map((record) => outputs.get(record.observation.timestampMs)?.positionMm).filter((value): value is Vec3Mm => validVector(value));
+  const stationary: M0DScenarioStationaryMetric[] = [];
+  const stationaryRecords = new Map<string, M0DObservationTraceRecord[]>();
+  for (const record of evidence.observationTrace) {
+    if (!["neutral-stationary", "near-stationary-450", "far-stationary-750"].includes(record.envelope.scenarioId) || record.envelope.stepKind !== "capture" || typeof record.envelope.trialId !== "string") continue;
+    const key = `${record.envelope.scenarioId}|${record.envelope.trialId}`;
+    stationaryRecords.set(key, [...(stationaryRecords.get(key) ?? []), record]);
+  }
+  for (const [key, records] of stationaryRecords) {
+    const [scenarioId, trialId] = key.split("|");
+    const positions = byUnit(records);
+    stationary.push({ scenarioId: scenarioId!, trialId: trialId!, trialMedianPoseMm: medianVector(positions), stationaryAxisRmsMm: stationaryAxisRms(positions), robustOutliers: robustStationaryOutlierSummary(positions) });
+  }
+  const movementRecords = new Map<string, M0DObservationTraceRecord[]>();
+  for (const record of evidence.observationTrace) {
+    if (!["lateral-movement", "vertical-movement", "approach-retreat"].includes(record.envelope.scenarioId) || record.envelope.stepKind !== "hold" || typeof record.envelope.cycleId !== "string" || typeof record.envelope.holdId !== "string") continue;
+    const key = `${record.envelope.scenarioId}|${record.envelope.cycleId}|${record.envelope.holdId}`;
+    movementRecords.set(key, [...(movementRecords.get(key) ?? []), record]);
+  }
+  const cycles = new Map<string, { scenarioId: string; cycleId: string; holds: Map<string, Vec3Mm | null>; targets: Map<string, number> }>();
+  for (const [key, records] of movementRecords) {
+    const [scenarioId, cycleId, holdId] = key.split("|"); const first = records[0]!; const position = medianVector(byUnit(records));
+    const target = first.envelope.diagnostics.targetMm;
+    const groupKey = `${scenarioId}|${cycleId}`; const group = cycles.get(groupKey) ?? { scenarioId: scenarioId!, cycleId: cycleId!, holds: new Map(), targets: new Map() };
+    group.holds.set(holdId!, position); if (typeof target === "number") group.targets.set(holdId!, target); cycles.set(groupKey, group);
+  }
+  const movement: M0DScenarioMovementMetric[] = [];
+  for (const group of cycles.values()) {
+    const ordered = [...group.holds.entries()]; const values = ordered.map(([, value]) => value);
+    const numbers = ordered.map(([holdId]) => group.targets.get(holdId) ?? null);
+    const axis = group.scenarioId === "lateral-movement" ? "x" : group.scenarioId === "vertical-movement" ? "y" : "z";
+    const axisValue = (value: Vec3Mm | null): number | null => value === null ? null : value[axis];
+    const orderingCycle = { first: axisValue(values[0] ?? null), neutral: axisValue(values[Math.floor(values.length / 2)] ?? null), last: axisValue(values.at(-1) ?? null) };
+    const positions = values.filter((value): value is Vec3Mm => validVector(value));
+    movement.push({ scenarioId: group.scenarioId, cycleId: group.cycleId, holdMedians: values, orderingCycle, relativeMovementError: relativeMovementError(positions.at(-1) ?? null, positions.at(0) ?? null, values[Math.floor(values.length / 2)] ?? null, numbers.at(-1) === null || numbers[0] === null ? null : Math.abs(numbers.at(-1)! - numbers[0]!)), crossAxisDrift: positions.length === 0 ? null : crossAxisDrift(positions, values[Math.floor(values.length / 2)] ?? null, axis) });
+  }
+  const otherCounts = new Map<string, number>();
+  for (const record of evidence.observationTrace) if (!["neutral-stationary", "near-stationary-450", "far-stationary-750", "lateral-movement", "vertical-movement", "approach-retreat"].includes(record.envelope.scenarioId)) otherCounts.set(record.envelope.scenarioId, (otherCounts.get(record.envelope.scenarioId) ?? 0) + 1);
+  return { overall: regenerateM0DMetricsFromEvidence(evidence, estimatorId), stationary, movement, other: [...otherCounts].map(([scenarioId, sampleCount]) => ({ scenarioId, sampleCount })) };
 }

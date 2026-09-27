@@ -9,6 +9,7 @@ import { serializeM0DJson, serializeM0DJsonLines } from "../evidence/m0dSerializ
 import { validateM0DEvidenceBundle, type M0DEvidenceValidationResult } from "../evidence/m0dEvidenceValidator";
 import {
   deriveM0DMetricInputFromEvidence,
+  deriveM0DScenarioMetricSummary,
   calculateStructuralFailureSummary,
   regenerateM0DMetricsFromEvidence,
   type M0DAuthoritativeMetricEvidence,
@@ -24,6 +25,7 @@ import {
 import { M0D_SCENARIO_IDS, createAnomaly, createProceduralInvalidation, type M0DAnomalyRecord, type M0DProceduralInvalidationReason } from "../scenarios/m0dScenarioModel";
 import {
   advanceM0D7Runner,
+  beginM0D7Initialization,
   beginM0D7ReplacementAttempt,
   cancelM0D7Runner,
   createM0D7Runner,
@@ -31,6 +33,8 @@ import {
   failM0D7Runner,
   recordM0D7Anomaly,
   invalidateM0D7Attempt,
+  markM0D7Ready,
+  confirmM0D7TargetReached,
   type M0D7RunnerState,
   startM0D7Runner,
 } from "./m0d7Procedure";
@@ -105,7 +109,9 @@ function allEvidencePaths(): string[] {
   return [
     "manifest.json", "environment.json", "camera.json", "configuration.json",
     "calibration/observation-trace.jsonl", "calibration/candidate-a.json", "calibration/candidate-b.json",
+    "calibration/retained-invalid.jsonl",
     "observations/trace.jsonl", "estimator-a/outputs/replay.jsonl", "estimator-a/summary.json",
+    "observations/retained-invalid.jsonl",
     "estimator-b/outputs/replay.jsonl", "estimator-b/summary.json", "metrics/comparison-inputs.json",
     "metrics/scenario-summary.json", "anomalies.json", "procedural-invalidations.json", "validation.json", "m0d8-review.json",
   ];
@@ -139,7 +145,11 @@ function envelopeFor(state: M0D7RunnerState, event: TrackingObservationEvent, se
     traceId: state.runId,
     scenarioId: current.scenarioId,
     segmentId: current.stepId,
+    unitId: current.unitId,
     ...(current.trialNumber === null ? {} : { trialId: `${current.scenarioId}-trial-${current.trialNumber}` }),
+    ...(current.cycleId === null ? {} : { cycleId: current.cycleId }),
+    ...(current.holdId === null ? {} : { holdId: current.holdId }),
+    stepKind: current.kind,
     attemptId: state.attemptId,
     experimentRunId: state.runId,
     configurationIds: ["mediapipe-640x360-24hz"],
@@ -173,6 +183,8 @@ export class M0D7EvidenceRunner {
   private readonly writer: M0D7EvidenceWriter;
   private readonly calibrationTrace: M0DObservationTraceRecord[] = [];
   private readonly observationTrace: M0DObservationTraceRecord[] = [];
+  private authoritativeCalibrationTrace: readonly M0DObservationTraceRecord[] = [];
+  private authoritativeObservationTrace: readonly M0DObservationTraceRecord[] = [];
   private unsubscribe: (() => void) | undefined;
   private state: M0D7RunnerState;
   private sequenceNumber = 0;
@@ -191,20 +203,24 @@ export class M0D7EvidenceRunner {
   public getState(): M0D7RunnerState { return this.state; }
 
   public async start(): Promise<void> {
+    this.state = beginM0D7Initialization(this.state);
     await this.provenanceProvider();
-    this.state = startM0D7Runner(this.state, this.clock.now());
-    this.unsubscribe = this.source.subscribeDetailed((event) => this.acceptObservation(event));
     try {
       await this.source.start();
       const actual = this.source.getCameraConfiguration();
-      const wrongCameraConfiguration = (actual.widthPx !== null && actual.widthPx !== MEDIAPIPE_TRACKING_CAMERA_CONFIG.widthPx)
-        || (actual.heightPx !== null && actual.heightPx !== MEDIAPIPE_TRACKING_CAMERA_CONFIG.heightPx)
-        || (actual.frameRate !== null && Math.abs(actual.frameRate - MEDIAPIPE_TRACKING_CAMERA_CONFIG.frameRate) > 0.01);
+      this.state = markM0D7Ready(this.state, actual);
+      const wrongCameraConfiguration = !finitePositive(actual.widthPx) || !finitePositive(actual.heightPx) || !finitePositive(actual.frameRate)
+        || actual.widthPx !== MEDIAPIPE_TRACKING_CAMERA_CONFIG.widthPx
+        || actual.heightPx !== MEDIAPIPE_TRACKING_CAMERA_CONFIG.heightPx
+        || Math.abs(actual.frameRate - MEDIAPIPE_TRACKING_CAMERA_CONFIG.frameRate) > 0.01;
       if (wrongCameraConfiguration) {
         this.invalidateCurrentAttempt("wrong-camera-capture-mode", `Actual camera configuration was ${actual.widthPx}×${actual.heightPx} @ ${actual.frameRate} FPS; requested 640×360 @ 24 FPS.`);
+        this.state = failM0D7Runner(this.state, "actual camera configuration is unavailable or does not match the requested capture mode");
         this.unsubscribe?.();
         this.unsubscribe = undefined;
         await this.source.stop();
+      } else {
+        this.unsubscribe = this.source.subscribeDetailed((event) => this.acceptObservation(event));
       }
     } catch (error) {
       this.unsubscribe?.();
@@ -212,6 +228,16 @@ export class M0D7EvidenceRunner {
       this.state = failM0D7Runner(this.state, error instanceof Error ? error.message : String(error));
       throw error;
     }
+  }
+
+  public beginProcedure(nowMs = this.clock.now()): M0D7RunnerState {
+    this.state = startM0D7Runner(this.state, nowMs);
+    return this.state;
+  }
+
+  public confirmTargetReached(nowMs = this.clock.now()): M0D7RunnerState {
+    this.state = confirmM0D7TargetReached(this.state, nowMs);
+    return this.state;
   }
 
   public tick(nowMs = this.clock.now()): M0D7RunnerState {
@@ -262,24 +288,31 @@ export class M0D7EvidenceRunner {
     this.unsubscribe = undefined;
     await this.source.stop();
     const actualCamera = this.source.getCameraConfiguration();
-    const cameraConfiguration = { widthPx: finitePositive(actualCamera.widthPx) ? actualCamera.widthPx : MEDIAPIPE_TRACKING_CAMERA_CONFIG.widthPx, heightPx: finitePositive(actualCamera.heightPx) ? actualCamera.heightPx : MEDIAPIPE_TRACKING_CAMERA_CONFIG.heightPx, fps: finitePositive(actualCamera.frameRate) ? actualCamera.frameRate : MEDIAPIPE_TRACKING_CAMERA_CONFIG.frameRate };
-    const identities = manifestIdentities(this.calibrationTrace, this.origin);
+    const invalidAttemptIds = new Set(this.state.proceduralInvalidations.map((record) => record.attemptId));
+    this.authoritativeCalibrationTrace = this.calibrationTrace.filter((record) => !invalidAttemptIds.has(record.envelope.attemptId ?? ""));
+    this.authoritativeObservationTrace = this.observationTrace.filter((record) => !invalidAttemptIds.has(record.envelope.attemptId ?? ""));
+    const cameraConfiguration = { widthPx: actualCamera.widthPx, heightPx: actualCamera.heightPx, fps: actualCamera.frameRate };
+    const identities = manifestIdentities(this.authoritativeCalibrationTrace, this.origin);
     const manifest: M0DRunManifest = {
-      schemaVersion: 1, experimentSpecVersion: "0.4", experimentProcedureVersion: 3, applicationBuildCommit: __WORLDVIEWER_BUILD_SHA__, mediaPipePackageVersion: MEDIAPIPE_PACKAGE_VERSION, mediaPipeModelVersion: "face_landmarker.task", canonicalModelSource: "evidence/m0d/estimator-experiment-v3/canonical-face-model.json", canonicalModelHash: `${MEDIAPIPE_TASK_ASSET_SHA256}:${MEDIAPIPE_CANONICAL_METADATA_SHA256}`, cameraConfiguration, display: { profileId: "operator-supplied-display", reference: "screen-relative-millimeter-frame" }, cameraOriginScreenMm: this.origin, estimatorA: identities.manifestA, estimatorB: identities.manifestB, runStartTimestampMs: this.observationTrace[0]?.observation.timestampMs ?? 0, runEndTimestampMs: this.observationTrace.at(-1)?.observation.timestampMs ?? 0,
+      schemaVersion: 1, experimentSpecVersion: "0.4", experimentProcedureVersion: 3, applicationBuildCommit: __WORLDVIEWER_BUILD_SHA__, mediaPipePackageVersion: MEDIAPIPE_PACKAGE_VERSION, mediaPipeModelVersion: "face_landmarker.task", canonicalModelSource: "evidence/m0d/estimator-experiment-v3/canonical-face-model.json", canonicalModelHash: `${MEDIAPIPE_TASK_ASSET_SHA256}:${MEDIAPIPE_CANONICAL_METADATA_SHA256}`, cameraConfiguration, display: { profileId: "operator-supplied-display", reference: "screen-relative-millimeter-frame" }, cameraOriginScreenMm: this.origin, estimatorA: identities.manifestA, estimatorB: identities.manifestB, runStartTimestampMs: this.calibrationTrace.concat(this.observationTrace).map((record) => record.observation.timestampMs).sort((a, b) => a - b)[0] ?? 0, runEndTimestampMs: this.calibrationTrace.concat(this.observationTrace).map((record) => record.observation.timestampMs).sort((a, b) => a - b).at(-1) ?? 0,
     };
     const filesIncluded = allEvidencePaths();
     const environment = { application: "WorldViewer", runnerVersion: "m0d7-v1", buildSha: __WORLDVIEWER_BUILD_SHA__, mediaPipePackageVersion: MEDIAPIPE_PACKAGE_VERSION };
     const camera = { requested: MEDIAPIPE_TRACKING_CAMERA_CONFIG, actual: actualCamera, droppedFrameCount: this.source.getDroppedFrameCount(), cameraOriginScreenMm: this.origin };
     const configuration = { delegate: "CPU", runningMode: "VIDEO", numFaces: 1, outputFaceBlendshapes: false, outputFacialTransformationMatrixes: true, calibrationBurden: calibrationBurden() };
-    const replay = replayM0DRun({ manifest, calibrationTrace: this.calibrationTrace, observationTrace: this.observationTrace, environment, camera, configuration, filesIncluded, trialsIncluded: this.state.steps.map((step) => step.stepId) }, { now: () => performance.now() });
+    const acceptedTrialIds = [...new Set(this.authoritativeObservationTrace.map((record) => record.envelope.trialId).filter((value): value is string => typeof value === "string"))];
+    const replay = replayM0DRun({ manifest, calibrationTrace: this.authoritativeCalibrationTrace, observationTrace: this.authoritativeObservationTrace, environment, camera, configuration, filesIncluded, trialsIncluded: acceptedTrialIds }, { now: () => performance.now() });
     const outputsA = replay.estimatorAOutputs;
     const outputsB = replay.estimatorBOutputs;
-    const metrics = metricEvidence(this.observationTrace, outputsA, outputsB);
+    const metrics = metricEvidence(this.authoritativeObservationTrace, outputsA, outputsB);
     const anomalies: M0DAnomalyRecord[] = this.state.anomalies.map((anomaly, index) => createAnomaly({ anomalyId: anomaly.anomalyId || `${this.runId}-anomaly-${index + 1}`, experimentRunId: this.runId, scenarioId: anomaly.scenarioId, trialId: null, attemptId: anomaly.attemptId, sequenceNumber: null, estimatorId: null, kind: "runner-anomaly", detail: anomaly.detail }));
-    const validation = validateM0DEvidenceBundle({ manifest, environment, camera, configuration, calibrationTrace: this.calibrationTrace, observationTrace: this.observationTrace, replayOutputs: [...outputsA, ...outputsB], filesIncluded, trialsIncluded: this.state.steps.map((step) => step.stepId), requiredScenarioIds: [...M0D_SCENARIO_IDS], requiredTrialIds: this.state.steps.map((step) => step.stepId), storedMetrics: { [mediaPipeFacialTransformEstimator.id]: metrics.summaryA, [interocularScaleEstimator.id]: metrics.summaryB }, proceduralInvalidations: this.state.proceduralInvalidations, anomalies });
-    const structuralA = calculateStructuralFailureSummary({ replayOutputs: outputsA, calibrationValid: replay.calibration !== null, replayable: replay.ok });
-    const structuralB = calculateStructuralFailureSummary({ replayOutputs: outputsB, calibrationValid: replay.calibration !== null, replayable: replay.ok });
-    const files = this.buildFiles(manifest, environment, camera, configuration, replay.calibration, outputsA, outputsB, metrics.summaryA, metrics.summaryB, structuralA, structuralB, validation, anomalies);
+    const validation = validateM0DEvidenceBundle({ manifest, environment, camera, configuration, calibrationTrace: this.authoritativeCalibrationTrace, observationTrace: this.authoritativeObservationTrace, replayOutputs: [...outputsA, ...outputsB], filesIncluded, trialsIncluded: acceptedTrialIds, requiredScenarioIds: [...M0D_SCENARIO_IDS], requiredTrialIds: [...new Set(this.state.steps.map((step) => step.trialId).filter((value): value is string => value !== null))], storedMetrics: { [mediaPipeFacialTransformEstimator.id]: metrics.summaryA, [interocularScaleEstimator.id]: metrics.summaryB }, proceduralInvalidations: this.state.proceduralInvalidations, anomalies, procedureMarkers: this.state.markers, requiredCycleIds: [...new Set(this.state.steps.map((step) => step.cycleId).filter((value): value is string => value !== null))], requiredHoldIds: [...new Set(this.state.steps.map((step) => step.holdId).filter((value): value is string => value !== null))] });
+    const scenarioA = deriveM0DScenarioMetricSummary({ observationTrace: this.authoritativeObservationTrace, replayOutputs: outputsA, calibrationBurden: calibrationBurden() }, mediaPipeFacialTransformEstimator.id);
+    const scenarioB = deriveM0DScenarioMetricSummary({ observationTrace: this.authoritativeObservationTrace, replayOutputs: outputsB, calibrationBurden: calibrationBurden() }, interocularScaleEstimator.id);
+    const cycles = (scenario: typeof scenarioA, scenarioId: string) => scenario.movement.filter((value) => value.scenarioId === scenarioId).map((value) => value.orderingCycle);
+    const structuralA = calculateStructuralFailureSummary({ replayOutputs: outputsA, calibrationValid: replay.calibration !== null, replayable: replay.ok, xCycles: cycles(scenarioA, "lateral-movement"), yCycles: cycles(scenarioA, "vertical-movement"), zCycles: cycles(scenarioA, "approach-retreat") });
+    const structuralB = calculateStructuralFailureSummary({ replayOutputs: outputsB, calibrationValid: replay.calibration !== null, replayable: replay.ok, xCycles: cycles(scenarioB, "lateral-movement"), yCycles: cycles(scenarioB, "vertical-movement"), zCycles: cycles(scenarioB, "approach-retreat") });
+    const files = this.buildFiles(manifest, environment, camera, configuration, replay.calibration, outputsA, outputsB, metrics.summaryA, metrics.summaryB, { ...scenarioA, structural: structuralA }, { ...scenarioB, structural: structuralB }, validation, anomalies);
     const outputRoot = await this.writer.write(files);
     return { files, manifest, validation, replayCalibration: replay.calibration, estimatorAOutputs: outputsA, estimatorBOutputs: outputsB, outputRoot };
   }
@@ -288,13 +321,15 @@ export class M0D7EvidenceRunner {
     const json = (relativePath: string, value: unknown): M0D7EvidenceFile => ({ relativePath, contents: serializeM0DJson(value) });
     return Object.freeze([
       json("manifest.json", manifest), json("environment.json", environment), json("camera.json", camera), json("configuration.json", configuration),
-      { relativePath: "calibration/observation-trace.jsonl", contents: serializeM0DJsonLines(this.calibrationTrace) },
+      { relativePath: "calibration/observation-trace.jsonl", contents: serializeM0DJsonLines(this.authoritativeCalibrationTrace) },
+      { relativePath: "calibration/retained-invalid.jsonl", contents: serializeM0DJsonLines(this.calibrationTrace.filter((record) => !this.authoritativeCalibrationTrace.includes(record))) },
       json("calibration/candidate-a.json", calibration?.candidateA ?? { status: "calibration-unavailable" }), json("calibration/candidate-b.json", calibration?.candidateB ?? { status: "calibration-unavailable" }),
-      { relativePath: "observations/trace.jsonl", contents: serializeM0DJsonLines(this.observationTrace) },
+      { relativePath: "observations/trace.jsonl", contents: serializeM0DJsonLines(this.authoritativeObservationTrace) },
+      { relativePath: "observations/retained-invalid.jsonl", contents: serializeM0DJsonLines(this.observationTrace.filter((record) => !this.authoritativeObservationTrace.includes(record))) },
       { relativePath: "estimator-a/outputs/replay.jsonl", contents: serializeM0DJsonLines(outputsA) }, json("estimator-a/summary.json", summaryA),
       { relativePath: "estimator-b/outputs/replay.jsonl", contents: serializeM0DJsonLines(outputsB) }, json("estimator-b/summary.json", summaryB),
-      json("metrics/comparison-inputs.json", { estimatorA: deriveM0DMetricInputFromEvidence({ observationTrace: this.observationTrace, replayOutputs: outputsA, calibrationBurden: calibrationBurden() }, mediaPipeFacialTransformEstimator.id), estimatorB: deriveM0DMetricInputFromEvidence({ observationTrace: this.observationTrace, replayOutputs: outputsB, calibrationBurden: calibrationBurden() }, interocularScaleEstimator.id) }),
-      json("metrics/scenario-summary.json", { scenarios: M0D_SCENARIO_IDS, markers: this.state.markers, structural: { estimatorA: structuralA, estimatorB: structuralB }, status: validation.passed ? "validated" : "validation-failed" }), json("anomalies.json", anomalies), json("procedural-invalidations.json", this.state.proceduralInvalidations), json("validation.json", validation), json("m0d8-review.json", { status: "not-started", message: "M0D8 interpretation and candidate selection have not occurred." }),
+      json("metrics/comparison-inputs.json", { estimatorA: deriveM0DMetricInputFromEvidence({ observationTrace: this.authoritativeObservationTrace, replayOutputs: outputsA, calibrationBurden: calibrationBurden() }, mediaPipeFacialTransformEstimator.id), estimatorB: deriveM0DMetricInputFromEvidence({ observationTrace: this.authoritativeObservationTrace, replayOutputs: outputsB, calibrationBurden: calibrationBurden() }, interocularScaleEstimator.id) }),
+      json("metrics/scenario-summary.json", { scenarios: M0D_SCENARIO_IDS, markers: this.state.markers, estimatorA: structuralA, estimatorB: structuralB, status: validation.passed ? "validated" : "validation-failed" }), json("anomalies.json", anomalies), json("procedural-invalidations.json", this.state.proceduralInvalidations), json("validation.json", validation), json("m0d8-review.json", { status: "not-started", message: "M0D8 interpretation and candidate selection have not occurred." }),
     ]);
   }
 }

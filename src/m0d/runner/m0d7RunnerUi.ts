@@ -27,6 +27,9 @@ export function runM0D7Runner(host: HTMLElement, options: M0D7RunnerUiOptions): 
   const controls = document.createElement("div");
   const startButton = document.createElement("button");
   startButton.textContent = "Start physical evidence collection";
+  const readyButton = document.createElement("button");
+  readyButton.textContent = "Press Ready when positioned";
+  readyButton.disabled = true;
   const cancelButton = document.createElement("button");
   cancelButton.textContent = "Cancel and retain evidence";
   cancelButton.disabled = true;
@@ -50,7 +53,7 @@ export function runM0D7Runner(host: HTMLElement, options: M0D7RunnerUiOptions): 
   const replacementButton = document.createElement("button");
   replacementButton.textContent = "Begin replacement attempt";
   replacementButton.disabled = true;
-  controls.append(startButton, cancelButton, reason, phase, invalidateButton, replacementButton);
+  controls.append(startButton, readyButton, cancelButton, reason, phase, invalidateButton, replacementButton);
   root.append(title, status, controls, details);
   host.replaceChildren(root);
 
@@ -65,17 +68,20 @@ export function runM0D7Runner(host: HTMLElement, options: M0D7RunnerUiOptions): 
     const state = runner.getState();
     const current = state.steps[state.stepIndex];
     status.textContent = `Status: ${state.status}${state.proceduralError === null ? "" : ` — ${state.proceduralError}`}`;
-    startButton.disabled = state.status !== "idle";
-    cancelButton.disabled = !(state.status === "running" || state.status === "invalidated");
+    startButton.disabled = !(state.status === "idle" || state.status === "ready");
+    startButton.textContent = state.status === "ready" ? "Begin calibration" : "Initialize camera";
+    readyButton.disabled = !(state.status === "running" && current?.kind === "transition");
+    cancelButton.disabled = !(state.status === "initializing" || state.status === "ready" || state.status === "running" || state.status === "invalidated");
     invalidateButton.disabled = state.status !== "running";
     replacementButton.disabled = state.status !== "invalidated";
     phase.disabled = current?.kind !== "capture" || (current?.scenarioId !== "neutral-stationary" && current?.scenarioId !== "near-stationary-450" && current?.scenarioId !== "far-stationary-750");
     details.textContent = [
       `Scenario: ${text(current?.scenarioId)}`,
       `Instruction: ${text(current?.instruction)}`,
+      `Phase: ${state.status === "ready" ? "Ready" : current?.kind === "transition" ? "Move next target / Press Ready" : current?.kind === "hold" ? "Holding" : current?.kind === "settle" ? "Settling" : current?.kind === "capture" ? "Capturing" : "Complete"}`,
       `Trial: ${text(current?.trialNumber)}    Cycle: ${text(current?.cycleNumber)}    Hold/phase: ${text(current?.kind)}`,
       `Target: ${text(current?.targetMm)} mm ${text(current?.targetAxis)}`,
-      `Countdown: ${current ? countdown(state.stepStartedAtMs, current.durationMs) : "—"}`,
+      `Countdown: ${current && current.durationMs !== null ? countdown(state.stepStartedAtMs, current.durationMs) : "—"}`,
       "Camera request: 640×360 @ 24 FPS; CPU; VIDEO; faces=1; blendshapes=false; facial matrix=true",
       `Camera actual: ${text(source.getCameraConfiguration().widthPx)}×${text(source.getCameraConfiguration().heightPx)} @ ${text(source.getCameraConfiguration().frameRate)} FPS`,
       `MediaPipe package: ${MEDIAPIPE_PACKAGE_VERSION}`,
@@ -102,11 +108,13 @@ export function runM0D7Runner(host: HTMLElement, options: M0D7RunnerUiOptions): 
   }, 100);
 
   startButton.addEventListener("click", () => {
-    void runner.start().then(render).catch((error: unknown) => {
+    const operation = runner.getState().status === "ready" ? Promise.resolve(runner.beginProcedure()) : runner.start();
+    void operation.then(render).catch((error: unknown) => {
       status.textContent = `Status: failed — ${String(error)}`;
       render();
     });
   });
+  readyButton.addEventListener("click", () => { runner.confirmTargetReached(); render(); });
   cancelButton.addEventListener("click", () => {
     void runner.cancel().then((result) => {
       finalResultShown = true;

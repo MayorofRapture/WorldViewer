@@ -24,6 +24,9 @@ export interface M0DEvidenceBundleInput {
   readonly trialsIncluded?: readonly string[];
   readonly requiredScenarioIds?: readonly string[];
   readonly requiredTrialIds?: readonly string[];
+  readonly requiredCycleIds?: readonly string[];
+  readonly requiredHoldIds?: readonly string[];
+  readonly procedureMarkers?: readonly unknown[];
   readonly proceduralInvalidations?: readonly unknown[];
   readonly anomalies?: readonly unknown[];
   readonly storedMetrics?: unknown;
@@ -287,6 +290,8 @@ function validateObservationTrace(
     if (!nonEmptyString(envelope.scenarioId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.scenarioId`, "scenario ID must be a non-empty string");
     if (!nonEmptyString(envelope.segmentId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.segmentId`, "segment ID must be a non-empty string");
     if (envelope.trialId !== undefined && !nonEmptyString(envelope.trialId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.trialId`, "trial ID must be a non-empty string when present");
+    for (const field of ["unitId", "cycleId", "holdId"] as const) if (envelope[field] !== undefined && !nonEmptyString(envelope[field])) addFailure(failures, "invalid-envelope-field", `${path}.envelope.${field}`, `${field} must be a non-empty string when present`);
+    if (envelope.stepKind !== undefined && !["settle", "capture", "transition", "hold"].includes(envelope.stepKind as string)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.stepKind`, "stepKind must identify a frozen procedure step kind");
     if (envelope.attemptId !== undefined && !nonEmptyString(envelope.attemptId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.attemptId`, "attempt ID must be a non-empty string when present");
     if (!nonEmptyString(envelope.experimentRunId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.experimentRunId`, "experiment run ID must be a non-empty string");
     if (!Array.isArray(envelope.configurationIds) || envelope.configurationIds.some((id) => !nonEmptyString(id))) addFailure(failures, "invalid-envelope-field", `${path}.envelope.configurationIds`, "configuration IDs must be an array of non-empty strings");
@@ -455,6 +460,8 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
   const invalidations = Array.isArray(bundle.proceduralInvalidations) ? bundle.proceduralInvalidations : [];
   const requiredScenarioIds = Array.isArray(bundle.requiredScenarioIds) && bundle.requiredScenarioIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredScenarioIds] : [];
   const requiredTrialIds = Array.isArray(bundle.requiredTrialIds) && bundle.requiredTrialIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredTrialIds] : [];
+  const requiredCycleIds = Array.isArray(bundle.requiredCycleIds) && bundle.requiredCycleIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredCycleIds] : [];
+  const requiredHoldIds = Array.isArray(bundle.requiredHoldIds) && bundle.requiredHoldIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredHoldIds] : [];
 
   if (strictM0D6) {
     validateContext(bundle.environment, "environment", failures);
@@ -483,7 +490,7 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
   );
 
   if (requiredScenarioIds.length > 0) {
-    const presentScenarios = new Set((Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.scenarioId : null).filter(nonEmptyString));
+    const presentScenarios = new Set([...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.scenarioId : null).filter(nonEmptyString));
     const invalidatedScenarios = new Set(invalidations.filter(plainRecord).map((entry) => entry.scenarioId).filter(nonEmptyString));
     for (const scenarioId of requiredScenarioIds) {
       if (getM0DScenario(scenarioId) === null) addFailure(failures, "unsupported-scenario", "requiredScenarioIds", `unknown scenario ${scenarioId}`);
@@ -491,7 +498,28 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
     }
   }
   if (requiredTrialIds.length > 0) {
-    for (const trialId of requiredTrialIds) if (!trialsIncluded.includes(trialId) && !invalidations.some((value) => plainRecord(value) && value.trialId === trialId)) addFailure(failures, "missing-required-trial", "trialsIncluded", `required trial is absent and not explicitly invalidated: ${trialId}`);
+    const presentTrialIds = new Set([...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.trialId : null).filter(nonEmptyString));
+    for (const trialId of requiredTrialIds) if (!presentTrialIds.has(trialId) && !invalidations.some((value) => plainRecord(value) && value.trialId === trialId && value.replacementAttemptId !== null && value.replacementAttemptId !== undefined)) addFailure(failures, "missing-required-trial", "observationTrace", `required trial is absent from accepted evidence and has no replacement: ${trialId}`);
+  }
+  const presentCycleIds = new Set((Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.cycleId : null).filter(nonEmptyString));
+  const presentHoldIds = new Set([...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.holdId : null).filter(nonEmptyString));
+  for (const cycleId of requiredCycleIds) if (!presentCycleIds.has(cycleId)) addFailure(failures, "missing-required-cycle", "observationTrace", `required cycle is absent from accepted evidence: ${cycleId}`);
+  for (const holdId of requiredHoldIds) if (!presentHoldIds.has(holdId)) addFailure(failures, "missing-required-hold", "observationTrace", `required hold is absent from accepted evidence: ${holdId}`);
+  if (Array.isArray(bundle.procedureMarkers)) {
+    const invalidAttemptIds = new Set(invalidations.filter(plainRecord).map((value) => value.attemptId).filter(nonEmptyString));
+    const acceptedAttemptIds = new Set((Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.attemptId : null).filter(nonEmptyString));
+    bundle.procedureMarkers.forEach((marker, index) => {
+      if (!plainRecord(marker) || !nonEmptyString(marker.attemptId) || !nonEmptyString(marker.stepId) || !nonEmptyString(marker.unitId) || !nonEmptyString(marker.marker)) addFailure(failures, "invalid-procedure-marker", `procedureMarkers[${index}]`, "procedure markers require marker, stepId, unitId, and attemptId");
+      if (plainRecord(marker) && invalidAttemptIds.has(marker.attemptId as string) && acceptedAttemptIds.has(marker.attemptId as string)) addFailure(failures, "invalid-procedure-marker", `procedureMarkers[${index}].attemptId`, "an invalidated attempt cannot be accepted in the authoritative trace");
+    });
+    for (const entry of (Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord)) {
+      const envelope = plainRecord(entry.envelope) ? entry.envelope : null;
+      if (envelope !== null && typeof envelope.attemptId === "string" && invalidAttemptIds.has(envelope.attemptId)) addFailure(failures, "invalid-authoritative-attempt", "observationTrace", "authoritative trace contains an invalidated attempt");
+    }
+    for (const holdId of requiredHoldIds) {
+      const holdMarkers = bundle.procedureMarkers.filter((marker) => plainRecord(marker) && marker.holdId === holdId && !invalidAttemptIds.has(marker.attemptId as string));
+      if (!holdMarkers.some((marker) => plainRecord(marker) && marker.marker === "start") || !holdMarkers.some((marker) => plainRecord(marker) && marker.marker === "end")) addFailure(failures, "missing-hold-markers", "procedureMarkers", `required hold lacks accepted start/end markers: ${holdId}`);
+    }
   }
 
   if (bundle.storedMetrics !== undefined || bundle.metricInput !== undefined) {
