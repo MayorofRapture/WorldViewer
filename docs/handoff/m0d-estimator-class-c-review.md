@@ -22,8 +22,8 @@
 
 ## Handoff record
 
-- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization and M0D3B's opt-in packaged matrix diagnostic are implemented and verified; live tracking-source integration, estimators, replay, and formal evidence implementation remain out of scope.
-- Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeBenchmarkWorker.ts` is benchmark-only and is not yet a `TrackingSource` implementation.
+- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization, M0D3B's opt-in packaged matrix diagnostic, and the M0D3 production MediaPipe TrackingObservation path are implemented and verified; estimators, replay, and formal evidence implementation remain out of scope.
+- Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeTrackingSource.ts` is the host-private `TrackingSource`, `src/mediapipe/mediapipeTrackingWorker.ts` owns MediaPipe inference, and `src/mediapipe/mediapipeBenchmarkWorker.ts` remains benchmark/diagnostic-only.
 - Oracle IDs: `ORC-POSE-ESTIMATOR-001` (approved/frozen).
 - Authoritative tests/oracles: The approved and frozen Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
 - M1 oracle freeze status and classification: Not M1-ready; the Class C oracle is approved/frozen, but M0D4–M0D7 technical readiness is not established.
@@ -35,11 +35,11 @@
 - Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.4, experimentProcedureVersion 3, and future evidence namespace `evidence/m0d/estimator-experiment-v3/` remain navigation facts only. The earlier v2 artifact/directory is historical and is not renamed or rewritten.
 - Remaining project-specific custom-code boundary: Future M0D normalization, estimator, replay, and evidence code must consume the frozen contracts and may not author new experiment semantics.
 - Prohibited Reinvention: Do not replace the prescribed methods, invent canonical constants, transpose matrices by appearance, or tune/rerun evidence outside the frozen procedure.
-- Deterministic tests and fixture paths: `src/mediapipe/trackingObservationNormalizer.ts`, `src/mediapipe/matrixDiagnosticCapture.ts`, `src/mediapipe/mediapipeProvenance.ts`, `tests/unit/trackingObservationNormalizer.test.ts`, `tests/unit/matrixDiagnosticCapture.test.ts`, `tests/unit/packagedMediaPipeMatrixDiagnostic.test.ts`, `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; the normalizer and diagnostic are bounded boundaries only, not estimator or replay implementation.
+- Deterministic tests and fixture paths: `src/mediapipe/trackingObservationNormalizer.ts`, `src/mediapipe/trackingWorkerProtocol.ts`, `src/mediapipe/trackingWorkerNormalizer.ts`, `src/mediapipe/latestFrameBackpressure.ts`, `src/mediapipe/mediapipeTrackingWorker.ts`, `src/mediapipe/mediapipeTrackingSource.ts`, `src/mediapipe/matrixDiagnosticCapture.ts`, `src/mediapipe/mediapipeProvenance.ts`, `tests/unit/trackingObservationNormalizer.test.ts`, `tests/unit/trackingWorkerProtocol.test.ts`, `tests/unit/trackingWorkerNormalizer.test.ts`, `tests/unit/latestFrameBackpressure.test.ts`, `tests/unit/mediapipeTrackingSource.test.ts`, `tests/unit/matrixDiagnosticCapture.test.ts`, `tests/unit/packagedMediaPipeMatrixDiagnostic.test.ts`, `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; no estimator or replay implementation is introduced.
 - Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006, ADR-009.
 - Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; the local M0D3B diagnostic output is intentionally not referenced or committed, and none of these is a validated estimator-comparison bundle.
-- Known limitations / unsupported behavior: M0D3B adds a separate diagnostic-only worker path, but does not create a live TrackingSource or production observation integration. The completed physical diagnostic supports the reviewed matrix consumption but is not formal M0D7 evidence; no camera-origin measurement, estimator, replay, or M0D evidence validator is present.
-- Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`.
+- Known limitations / unsupported behavior: The production path emits normalized observations but does not create pose estimates or formal evidence. M0D3B remains a separate diagnostic-only worker path. The completed physical diagnostic supports the reviewed matrix consumption but is not formal M0D7 evidence; no camera-origin measurement, estimator, replay, or M0D evidence validator is present.
+- Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`. Rust formatting remains unverified because `cargo-fmt.exe` is unavailable in the installed toolchain.
 - Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to alter the frozen oracle returns to stronger review; unresolved Section 27 technical prerequisites remain implementation gates for M0D4–M0D7.
 
 ## Governing sources
@@ -92,18 +92,18 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Canonical cyclopean point `CC` derivation | Ready | `scripts/derive-mediapipe-canonical-face-model.mjs` derives `CC` from the pinned task artifact. |
 | Canonical inter-eye distance `DcanonMm` derivation | Ready | The extractor and deterministic test derive `DcanonMm` from the pinned canonical landmark vertices. |
 | Matrix dimensions | Ready | Installed 1.0.1 `vision.d.ts` exposes rows, columns, and data; the package provenance test checks this exact surface. |
-| Exact matrix packed-order provenance | Ready | The exact 1.0.1 bundle copies decoded field-3 values without transpose/reorder; the completed physical diagnostic and stronger review support WorldViewer's existing column-major/column-vector consumption with translation at indices 12, 13, and 14. This does not freeze the oracle. |
+| Exact matrix packed-order provenance | Ready | The exact 1.0.1 bundle copies decoded field-3 values without transpose/reorder; the completed physical diagnostic and stronger review support WorldViewer's existing column-major/column-vector consumption with translation at indices 12, 13, and 14. |
 | Coordinate/handedness convention | Ready | The reviewed fixture and Sections 4/9 define the expected column-vector conversion; this is not independent proof of package packed order. |
-| Source frame width/height normalization | Ready | Pure normalizer validates and copies contract-shaped frame dimensions; live worker integration remains absent. |
-| Required landmarks 33, 133, 362, 263 normalization | Ready | Pure normalizer preserves the complete indexed landmark array and validates the required index range; the current worker is not wired to it. |
-| Facial transformation matrix normalization | Ready | Pure normalizer validates 4x4/16 finite values and copies data without reordering; the current worker is not wired to it. |
-| Face-present/no-face normalization | Ready | Pure normalizer distinguishes no face, face without matrix, and malformed results; live source integration remains absent. |
-| Monotonic timestamp normalization | Ready | Pure normalizer validates finite non-negative timestamps against optional previous timestamp metadata; live source integration remains absent. |
-| Inference/worker timing | Ready | The benchmark worker measures inference duration; future normalization must map it into the evidence envelope, not estimator input. |
+| Source frame width/height normalization | Ready | Production `MediaPipeTrackingSource` passes capture dimensions to the worker and the normalizer validates them before publication. |
+| Required landmarks 33, 133, 362, 263 normalization | Ready | Production worker routes complete indexed MediaPipe landmarks through the frozen normalizer before emitting an observation. |
+| Facial transformation matrix normalization | Ready | Production worker routes optional 4x4/16 finite matrix data through the frozen normalizer without reordering. |
+| Face-present/no-face normalization | Ready | Production worker emits both no-face observations and face-without-matrix observations as valid normalized messages; malformed results become structured errors. |
+| Monotonic timestamp normalization | Ready | Production worker uses `VideoFrameCallbackMetadata.mediaTime`, preserves equal timestamps, rejects stale timestamps, and never substitutes wall-clock time. |
+| Inference/worker timing | Ready | Production observation messages carry inference timing as protocol metadata outside the core `TrackingObservation`; benchmark timing remains unchanged. |
 | Camera configuration | Ready | The operator diagnostic negotiated 640 × 360 at 24 FPS; this is diagnostic confirmation, not formal M0D7 evidence. |
 | `cameraOriginScreenMm` | Missing | No current implementation or persisted M0D measurement fields exist. |
 | Evidence schema/validator | Ambiguous | The v3 namespace and required fields are specified; no M0D evidence-bundle validator is implemented. Historical v2 artifacts remain unchanged. |
-| Live worker-to-TrackingObservation integration | Missing | `src/mediapipe/mediapipeBenchmarkWorker.ts` still emits benchmark diagnostics only. |
+| Live worker-to-TrackingObservation integration | Ready | `MediaPipeTrackingSource` owns camera/frame lifecycle and consumes protocol-versioned observations from `mediapipeTrackingWorker.ts`; deterministic lifecycle, normalization, timestamp, and boundary tests pass. |
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; estimator implementation remains absent. |
 | Physical-target practicality | Ambiguous | E590 operator/setup confirmation is not present. |
 
@@ -153,9 +153,9 @@ No Estimator A/B implementation, M0D6 replay/metrics tooling, M0D7 evidence coll
 
 - Verified all paths cited above exist.
 - Verified `ORC-POSE-ESTIMATOR-001` is present as Class C with `Review status: approved` and `Freeze status: frozen` against reviewed baseline `aef3e7c8280784db3e878757338c073cbce45a81`.
-- Verified current source contains benchmark-only MediaPipe worker output and no estimator implementation.
+- Verified current source contains the production normalized-observation worker/source path, benchmark/diagnostic worker output remains separate, and no estimator implementation.
 - Initial Sol High review: changes required. Remediation audit: substantive design accepted; final GPT-5.6 Sol High Class C review approved and froze the reconciled Draft v0.4 / procedure 3 baseline. No production estimator code is introduced here.
-- M0D3B implementation verification: packaged diagnostic wiring, bounded capture state, pinned task/archive provenance verification, failure/timeout runner behavior, and the operator's completed physical diagnostic summary were reviewed. Raw diagnostic JSON remains local and uncommitted; no formal estimator-comparison evidence was created.
+- M0D3 implementation verification: production protocol/versioning, worker normalization, monotonic timestamp rejection, latest-frame backpressure, lifecycle cleanup, and host consumption boundary pass deterministic tests; packaged diagnostic wiring and pinned task/archive provenance remain verified. Raw diagnostic JSON remains local and uncommitted; no formal estimator-comparison evidence was created.
 
 ## Escalation conditions
 

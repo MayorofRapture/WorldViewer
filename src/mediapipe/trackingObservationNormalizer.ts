@@ -96,6 +96,10 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+export function freezeTrackingObservation(observation: TrackingObservation): TrackingObservation {
+  return deepFreeze(observation);
+}
+
 function isFailure(value: TrackingObservationFailureResult | readonly unknown[]): value is TrackingObservationFailureResult {
   return typeof value === "object" && value !== null && "ok" in value && value.ok === false;
 }
