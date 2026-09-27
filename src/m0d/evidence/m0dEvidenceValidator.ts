@@ -499,7 +499,10 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
   }
   if (requiredTrialIds.length > 0) {
     const presentTrialIds = new Set([...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.trialId : null).filter(nonEmptyString));
-    for (const trialId of requiredTrialIds) if (!presentTrialIds.has(trialId) && !invalidations.some((value) => plainRecord(value) && value.trialId === trialId && value.replacementAttemptId !== null && value.replacementAttemptId !== undefined)) addFailure(failures, "missing-required-trial", "observationTrace", `required trial is absent from accepted evidence and has no replacement: ${trialId}`);
+    for (const trialId of requiredTrialIds) {
+      const hasAcceptedReplacement = invalidations.some((value) => plainRecord(value) && value.trialId === trialId && typeof value.replacementAttemptId === "string" && [...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].some((entry) => plainRecord(entry) && plainRecord(entry.envelope) && entry.envelope.trialId === trialId && entry.envelope.attemptId === value.replacementAttemptId));
+      if (!presentTrialIds.has(trialId) && !hasAcceptedReplacement) addFailure(failures, "missing-required-trial", "observationTrace", `required trial is absent from accepted evidence and has no replacement: ${trialId}`);
+    }
   }
   const presentCycleIds = new Set((Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.cycleId : null).filter(nonEmptyString));
   const presentHoldIds = new Set([...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.holdId : null).filter(nonEmptyString));
