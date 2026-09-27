@@ -9,6 +9,7 @@
 - Cleanup/provenance commit: `afe073c21ef030a6eb463de8b13ed89f5c96bc33`
 - M0D3A implementation commit: this task's final commit; SHA is reported in the completion handoff.
 - M0D3B packaged matrix diagnostic commit: this task's final commit; SHA is reported in the completion handoff.
+- M0D3B physical matrix-diagnostic review: completed by the operator against build `ff285467382c4723a614419990f3d58ed1d37c85`; raw output remains local and uncommitted.
 - Oracle ID: `ORC-POSE-ESTIMATOR-001`
 - Classification: Class C
 - Review status: pending
@@ -28,19 +29,19 @@
 - Approved dependency/reference implementation: MediaPipe package/model provenance is recorded for the spike only; no estimator reference implementation is approved.
 - Authoritative Approval Source: None yet; approval must come from the required final stronger Class C review and governing-source reconciliation.
 - Reuse Mode: Not applicable to the pending oracle; no production estimator reuse decision is made.
-- Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.3, experimentProcedureVersion 2, and future evidence namespace `evidence/m0d/estimator-experiment-v2/` remain navigation facts only.
+- Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.4, experimentProcedureVersion 3, and future evidence namespace `evidence/m0d/estimator-experiment-v3/` remain navigation facts only. The earlier v2 artifact/directory is historical and is not renamed or rewritten.
 - Remaining project-specific custom-code boundary: Future M0D normalization, estimator, replay, and evidence code must consume the frozen contracts and may not author new experiment semantics.
 - Prohibited Reinvention: Do not replace the prescribed methods, invent canonical constants, transpose matrices by appearance, or tune/rerun evidence outside the frozen procedure.
 - Deterministic tests and fixture paths: `src/mediapipe/trackingObservationNormalizer.ts`, `src/mediapipe/matrixDiagnosticCapture.ts`, `src/mediapipe/mediapipeProvenance.ts`, `tests/unit/trackingObservationNormalizer.test.ts`, `tests/unit/matrixDiagnosticCapture.test.ts`, `tests/unit/packagedMediaPipeMatrixDiagnostic.test.ts`, `tests/fixtures/m0d/matrixConvention.ts`, `tests/unit/m0dOracleFixtures.test.ts`, `tests/unit/m0dMatrixPackageProvenance.test.ts`, and `scripts/derive-mediapipe-canonical-face-model.mjs`; the normalizer and diagnostic are bounded boundaries only, not estimator or replay implementation.
 - Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006, ADR-009.
-- Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; neither is a validated estimator-comparison bundle.
-- Known limitations / unsupported behavior: M0D3B adds a separate diagnostic-only worker path, but does not create a live TrackingSource or production observation integration. No physical diagnostic was run in this task; no production matrix-order proof, camera-origin measurement, estimator, replay, or M0D evidence validator is present.
+- Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; the local M0D3B diagnostic output is intentionally not referenced or committed, and none of these is a validated estimator-comparison bundle.
+- Known limitations / unsupported behavior: M0D3B adds a separate diagnostic-only worker path, but does not create a live TrackingSource or production observation integration. The completed physical diagnostic supports the reviewed matrix consumption but is not formal M0D7 evidence; no camera-origin measurement, estimator, replay, or M0D evidence validator is present.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`.
 - Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to begin M0D4–M0D7 before oracle freeze returns to stronger review.
 
 ## Governing sources
 
-- `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.3 / experimentProcedureVersion 2, especially §§4–24 for experiment semantics and §§25–27 for Class C review/freeze conditions.
+- `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.4 / experimentProcedureVersion 3, especially §§4–24 for experiment semantics and §§25–27 for Class C review/freeze conditions.
 - `docs/planning/milestone-roadmap.md`, M0D and the Class C oracle timing rule.
 - `docs/testing/testing-strategy.md`, Class C review/freeze and verification-readiness policy.
 - `docs/testing/oracle-registry.md`, `ORC-POSE-ESTIMATOR-001` pending/draft record.
@@ -88,7 +89,7 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Canonical cyclopean point `CC` derivation | Ready | `scripts/derive-mediapipe-canonical-face-model.mjs` derives `CC` from the pinned task artifact. |
 | Canonical inter-eye distance `DcanonMm` derivation | Ready | The extractor and deterministic test derive `DcanonMm` from the pinned canonical landmark vertices. |
 | Matrix dimensions | Ready | Installed 1.0.1 `vision.d.ts` exposes rows, columns, and data; the package provenance test checks this exact surface. |
-| Exact matrix packed-order provenance | Ambiguous | The exact 1.0.1 bundle copies decoded field-3 values without transpose/reorder, but the package does not establish whether upstream packed values are row-major or column-major. |
+| Exact matrix packed-order provenance | Ready | The exact 1.0.1 bundle copies decoded field-3 values without transpose/reorder; the completed physical diagnostic and stronger review support WorldViewer's existing column-major/column-vector consumption with translation at indices 12, 13, and 14. This does not freeze the oracle. |
 | Coordinate/handedness convention | Ready | The reviewed fixture and Sections 4/9 define the expected column-vector conversion; this is not independent proof of package packed order. |
 | Source frame width/height normalization | Ready | Pure normalizer validates and copies contract-shaped frame dimensions; live worker integration remains absent. |
 | Required landmarks 33, 133, 362, 263 normalization | Ready | Pure normalizer preserves the complete indexed landmark array and validates the required index range; the current worker is not wired to it. |
@@ -96,18 +97,22 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Face-present/no-face normalization | Ready | Pure normalizer distinguishes no face, face without matrix, and malformed results; live source integration remains absent. |
 | Monotonic timestamp normalization | Ready | Pure normalizer validates finite non-negative timestamps against optional previous timestamp metadata; live source integration remains absent. |
 | Inference/worker timing | Ready | The benchmark worker measures inference duration; future normalization must map it into the evidence envelope, not estimator input. |
-| Camera configuration | Ready | Requested procedure baseline is documented and benchmark configuration is recorded; actual negotiated settings belong in the future manifest. |
+| Camera configuration | Ready | The operator diagnostic negotiated 640 × 360 at 24 FPS; this is diagnostic confirmation, not formal M0D7 evidence. |
 | `cameraOriginScreenMm` | Missing | No current implementation or persisted M0D measurement fields exist. |
 | Evidence schema/validator | Ambiguous | The v2 namespace and required fields are specified; no M0D evidence-bundle validator is implemented. |
 | Live worker-to-TrackingObservation integration | Missing | `src/mediapipe/mediapipeBenchmarkWorker.ts` still emits benchmark diagnostics only. |
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; estimator implementation remains absent. |
 | Physical-target practicality | Ambiguous | E590 operator/setup confirmation is not present. |
 
-Exact-package matrix conclusion: Ordering remains unproven. The installed 1.0.1 bundle copies decoded matrix field-3 values without transpose/reorder, but does not establish the upstream packed-order meaning.
+Exact-package matrix conclusion: The completed physical diagnostic supports the existing WorldViewer column-major/column-vector consumption of the exact returned array, with translation at indices 12, 13, and 14 and no transpose/reorder. This stronger-review finding does not approve or freeze the Class C oracle.
+
+## Completed physical matrix-diagnostic review
+
+The operator completed the visible packaged diagnostic using build `ff285467382c4723a614419990f3d58ed1d37c85`, `@mediapipe/tasks-vision@1.0.1`, task SHA-256 `64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF`, and embedded canonical metadata SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`. The negotiated camera was 640 × 360 at 24 FPS. Neutral, left-asymmetric, right-asymmetric, and near phases each completed three qualifying observations; missing-face, missing-matrix, invalid-observation, and validation-failure counts were all zero. The stronger review concluded that physical left movement decreases WorldViewer X, physical right movement increases X, and moving closer decreases Z, validating the existing column-major 4 × 4 column-vector consumption with translation at flattened indices 12–14 and no transpose/reorder. The raw diagnostic JSON and numerical landmark/matrix data remain local and uncommitted.
 
 ## Minimum matrix-ordering follow-up
 
-No camera or packaged diagnostic was run in M0D3A or M0D3B. M0D3B now provides the standalone visible operator flow and collision-safe runner for the smallest independent empirical check: an exact-package Face Landmarker run that records asymmetric 4x4 results (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamps, frame dimensions, and required indexed landmarks, without storing frames or personal identifiers. The run includes neutral, left-asymmetric, right-asymmetric, and near operator-declared states; it does not compare conventions, reinterpret values, or produce estimator pose. Ordering remains unverified until a human operator returns the local diagnostic output for stronger review.
+The physical diagnostic review is complete, but its output is diagnostic evidence only and is not formal M0D7 estimator-comparison evidence. M0D3B's standalone visible operator flow remains the bounded collection mechanism; it records asymmetric 4 × 4 results (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamps, frame dimensions, and required indexed landmarks without storing frames or personal identifiers. No raw diagnostic output is committed.
 
 ## Current provisional MediaPipe baseline
 
@@ -147,7 +152,7 @@ No Estimator A/B implementation, M0D6 replay/metrics tooling, M0D7 evidence coll
 - Verified `ORC-POSE-ESTIMATOR-001` is present as Class C with `Review status: pending` and `Freeze status: draft`.
 - Verified current source contains benchmark-only MediaPipe worker output and no estimator implementation.
 - Initial Sol High review: changes required. Remediation audit: substantive design accepted; freeze deferred for consolidation and exact-package matrix-provenance closure. Current status: awaiting final stronger Class C audit. No production estimator code is introduced here.
-- M0D3B implementation verification: packaged diagnostic wiring, bounded capture state, pinned task/archive provenance verification, and failure/timeout runner behavior were verified by deterministic checks. Physical execution remains intentionally pending operator action; no diagnostic JSON was committed.
+- M0D3B implementation verification: packaged diagnostic wiring, bounded capture state, pinned task/archive provenance verification, failure/timeout runner behavior, and the operator's completed physical diagnostic summary were reviewed. Raw diagnostic JSON remains local and uncommitted; no formal estimator-comparison evidence was created.
 
 ## Escalation conditions
 

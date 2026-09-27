@@ -1,5 +1,7 @@
 export type HomogeneousPoint = readonly [number, number, number, number];
 
+export const HOMOGENEOUS_W_TOLERANCE = 1e-5;
+
 export const identityMatrix = [
   1, 0, 0, 0,
   0, 1, 0, 0,
@@ -43,6 +45,6 @@ export function applyColumnMajorMatrix(data: readonly number[], point: readonly 
 
 export function reviewedWorldViewerConversion(point: HomogeneousPoint): readonly [number, number, number] {
   const [x, y, z, w] = point;
-  if (w !== 1) throw new RangeError("fixture expects normalized homogeneous w=1");
+  if (Math.abs(w - 1) > HOMOGENEOUS_W_TOLERANCE) throw new RangeError("fixture expects affine homogeneous w approximately equal to 1");
   return [-10 * x, 10 * y, -10 * z];
 }

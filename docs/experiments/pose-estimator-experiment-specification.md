@@ -1,6 +1,6 @@
 # Pose Estimator Experiment Specification
 
-## Draft v0.3
+## Draft v0.4
 
 # Document Status
 
@@ -23,13 +23,13 @@ Upstream artifacts:
 Purpose of this document:  
 Freeze the baseline pose-estimator methods, shared inputs, calibration inputs, replay format, metric formulas, live hardware procedure, evidence layout, rerun rules, collection restrictions, and interpretation boundary before estimator implementation and live evidence collection begin.
 
-This document is intentionally prescriptive. Its purpose is to remove design ambiguity from M0D4–M0D7 so those tasks can be executed by lower-cost models without silently redesigning the computer-vision experiment. Draft v0.3 incorporates the initial stronger-reasoning Class C findings and remains pending re-review; it is not an approved or frozen oracle.
+This document is intentionally prescriptive. Its purpose is to remove design ambiguity from M0D4–M0D7 so those tasks can be executed by lower-cost models without silently redesigning the computer-vision experiment. Draft v0.4 incorporates the initial stronger-reasoning Class C findings and the completed matrix-diagnostic reconciliation, and remains pending re-review; it is not an approved or frozen oracle.
 
-# Draft v0.3 review state
+# Draft v0.4 review state
 
-Draft v0.3 incorporates the initial stronger-reasoning Class C findings and is awaiting stronger re-review. The corrections below are procedural and provenance safeguards; they do not approve or freeze this oracle.
+Draft v0.4 incorporates the initial stronger-reasoning Class C findings and the completed matrix-diagnostic reconciliation and is awaiting stronger re-review. The corrections below are procedural and provenance safeguards; they do not approve or freeze this oracle.
 
-The future evidence namespace for this procedure is `evidence/m0d/estimator-experiment-v2/`.
+The future evidence namespace for this procedure is `evidence/m0d/estimator-experiment-v3/`.
 
 # 1\. Experiment Objective
 
@@ -141,7 +141,7 @@ Both estimators reference MediaPipe’s canonical face model so they use a commo
 Pinned source:  
 `public/mediapipe/face_landmarker.task`, SHA-256 `64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF`.
 
-The embedded archive entry is `geometry_pipeline_metadata_landmarks.binarypb`, SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`. The reproducible extractor is `scripts/derive-mediapipe-canonical-face-model.mjs`; its generated artifact is `evidence/m0d/estimator-experiment-v2/canonical-face-model.json`.
+The embedded archive entry is `geometry_pipeline_metadata_landmarks.binarypb`, SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`. The reproducible extractor is `scripts/derive-mediapipe-canonical-face-model.mjs`; its generated artifact for this procedure is `evidence/m0d/estimator-experiment-v3/canonical-face-model.json`. The earlier v2 artifact remains historical and is not renamed or rewritten.
 
 Implementation requirements:  
 • pin or vendor the canonical face-model data needed by the estimator build/test tooling  
@@ -203,7 +203,7 @@ Rules:
 • calibration trace is retained as part of the evidence bundle  
 • evaluation trials are separate from the calibration capture
 
-The 600 mm target is the Draft v0.3 proposed baseline. It becomes frozen only after the Class C review/freeze gate in Section 27 passes. Any material change after freeze requires a new experiment-procedure version before new evidence is collected.
+The 600 mm target is the Draft v0.4 proposed baseline. It becomes frozen only after the Class C review/freeze gate in Section 27 passes. Any material change after freeze requires a new experiment-procedure version before new evidence is collected.
 
 # 9\. Estimator A — Facial Transformation Matrix
 
@@ -224,7 +224,7 @@ The matrix dimensions are 4 × 4. The reviewed expected storage interpretation i
 `z' = d[2] * x + d[6] * y + d[10] * z + d[14]`
 `w' = d[3] * x + d[7] * y + d[11] * z + d[15]`
 
-The adapter must validate dimensions and finite values, and must validate finite nonzero homogeneous `w'` before Cartesian use. It must not silently transpose the matrix to make results look right. Exact package provenance for packed-order semantics is recorded in Section 26; the package conversion itself does not reorder the returned data, but the upstream packed-order meaning remains unproven.
+The adapter must validate dimensions and finite values and must apply the reviewed column-major affine transform without transposition or reinterpretation. Define `HOMOGENEOUS_W_TOLERANCE = 1e-5`; the reconstructed homogeneous result must be finite and satisfy `abs(w' - 1) <= HOMOGENEOUS_W_TOLERANCE` before Cartesian use. The adapter must not silently divide an arbitrary projective result by `w'` or transpose the matrix to make results look right. A materially non-unit `w'` is invalid and returns null with machine-readable reason `non-unit-homogeneous-w`. Exact package provenance for packed-order semantics is recorded in Section 26; the completed packaged diagnostic empirically supports this existing WorldViewer column-major/column-vector consumption of the returned array.
 
 Canonical-to-runtime point:  
 pRuntime \= M × \[CC.x, CC.y, CC.z, 1\]
@@ -252,7 +252,7 @@ Invalid result conditions:
 • transformation matrix missing  
 • matrix not 4 × 4  
 • any required matrix/canonical/result value non-finite  
-• pRuntime homogeneous result invalid  
+• pRuntime homogeneous result non-finite or `abs(w' - 1) > 1e-5`
 • zMedianRaw non-finite or ≤ 0 during calibration  
 • per-frame resulting Z ≤ 0
 
@@ -329,7 +329,7 @@ Invalid samples return null with a machine-readable reason. No temporal smoothin
 
 # 11\. Shared-Observation Comparison Requirement
 
-For claim-bearing M0D8 evidence, Estimator A and Estimator B MUST be evaluated by deterministic replay from the exact same authoritative normalized TrackingObservation trace. A trace missing information required by either candidate is invalid comparative evidence and must be flagged by the evidence validator.
+For claim-bearing M0D8 evidence, Estimator A and Estimator B MUST be evaluated by deterministic replay from the exact same authoritative normalized TrackingObservation trace. A trace schema that omits information required to replay either candidate is structurally invalid comparative evidence and must be flagged by the evidence validator.
 
 Preferred flow:  
 camera → MediaPipe worker → normalized TrackingObservation trace → estimator A replay \+ estimator B replay
@@ -338,7 +338,7 @@ This avoids comparing two different head movements as though they were the same 
 
 The live runner may compute both estimators during capture for immediate diagnostics, but the authoritative comparison metrics are regenerated from the saved normalized observation trace through the deterministic replay harness.
 
-If a trace lacks information required by one candidate, the trace is invalid for comparative evidence and must be flagged by the evidence validator.
+Schema completeness and per-observation availability are distinct. An individual normalized observation may contain `faceDetected = true` and `facialTransformMatrix = null`; it remains in the authoritative shared trace. Estimator A returns null with a machine-readable missing-matrix reason, while Estimator B may evaluate when its required landmarks are valid. The observation contributes to each candidate's valid/null rates as applicable, is not deleted, and does not invalidate the entire trace. Simultaneous live availability of both candidates is not required; both candidates must still replay from the exact same saved normalized trace.
 
 # 12\. Trace Record Format
 
@@ -403,13 +403,17 @@ For a prescribed single-axis target change, report the median change observed on
 Face-detected rate:
 faceDetectedRate \= faceDetectedObservationSamples / totalObservationSamples
 
+If `totalObservationSamples == 0`, `faceDetectedRate` is null/not computable. Do not emit NaN, Infinity, 0%, or 100% for this case.
+
 Valid rate:  
 validRate \= validEstimatorSamples / faceDetectedObservationSamples
 
 Null rate:  
 nullRate \= nullEstimatorSamples / faceDetectedObservationSamples
 
-Report all three rates separately; do not combine them into a weighted score. Report source observation cadence, face-detected cadence, and valid RawViewerPose cadence. If source cadence is at least 15 Hz and candidate valid RawViewerPose cadence is below 15 Hz, mark candidate cadence viability as a structural failure. If source cadence is below 15 Hz, estimator cadence viability is insufficient to judge. The 20–30 Hz range is preferred/descriptive context only.
+If `faceDetectedObservationSamples == 0`, both `validRate` and `nullRate` are null/not computable. Preserve the distinction between a computable 0% and a not-computable value; do not emit NaN, Infinity, or fabricated percentages. No candidate structural judgment may be derived from a rate whose denominator is zero.
+
+Report all three rates separately; do not combine them into a weighted score. Report source observation cadence, face-detected cadence, and valid RawViewerPose cadence. Candidate cadence viability requires both source and face-detected streams to provide sufficient input: if `sourceObservationCadence >= 15 Hz` and `faceDetectedCadence >= 15 Hz` and `candidateValidPoseCadence < 15 Hz`, mark candidate estimator cadence viability as a structural failure. If `sourceObservationCadence >= 15 Hz` but `faceDetectedCadence < 15 Hz`, mark candidate estimator cadence viability Unverified/insufficient to attribute to the estimator and retain the upstream face-detection shortfall as tracking evidence. If `sourceObservationCadence < 15 Hz`, mark candidate estimator cadence viability Unverified/insufficient to judge. The 20–30 Hz range is preferred/descriptive context only.
 
 Robust stationary outlier:  
 For each stationary trial/axis:  
@@ -519,7 +523,7 @@ Processing/cadence run:
 • duration: 60 seconds  
 • purpose: inference cadence, estimator processing time, valid/null rates, backlog/replacement counters
 
-Draft v0.3 retains the proposed target positions for the first experiment procedure. They become frozen only after the Class C review/freeze gate in Section 27 passes. Any deliberate material change after freeze increments experimentProcedureVersion and is documented before new evidence is collected.
+Draft v0.4 retains the proposed target positions for the first experiment procedure. They become frozen only after the Class C review/freeze gate in Section 27 passes. Any deliberate material change after freeze increments experimentProcedureVersion and is documented before new evidence is collected.
 
 # 16\. Physical Reference and Operator Tolerance
 
@@ -605,7 +609,7 @@ Repository root:
 
 evidence/  
   m0d/  
-    estimator-experiment-v2/
+    estimator-experiment-v3/
       run-\<timestamp\>/  
         manifest.json  
         environment.json  
@@ -763,7 +767,7 @@ Pre-freeze review requirement:
 
 Freeze record:  
 Before ordinary implementation/evidence collection begins, the approved Class C experiment must be represented by one or more current ORC-\* records in docs/testing/oracle-registry.md. The registry record(s) must identify this specification/revision as a governing source, the applicable Class C classification, approved review result/owner, frozen baseline, authoritative procedure/tests where available, and oracle-change authority.  
-Publishing Draft v0.3 is not itself the freeze event. The oracle becomes consumable only after the required review is approved and the applicable ORC-\* record(s) are marked frozen.
+Publishing Draft v0.4 is not itself the freeze event. The oracle becomes consumable only after the required review is approved and the applicable ORC-\* record(s) are marked frozen.
 
 Planned execution after oracle freeze:  
 M0D4 — Estimator A implementation  
@@ -796,7 +800,7 @@ The model executing M0D4–M0D7 must not broaden scope because it believes anoth
 
 # 26\. Technical Reference Notes
 
-MediaPipe reference basis used to design Draft v0.3:
+MediaPipe reference basis used to design Draft v0.4:
 
 1\. MediaPipe Face Landmarker options document that facial transformation matrices can be requested and are intended to transform the canonical face to the detected face:  
 https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/FaceLandmarkerOptions
@@ -817,17 +821,17 @@ https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/cc/visio
 5\. Known JavaScript API limitation: the Face Landmarker public API does not expose the virtual-camera intrinsics used to produce the transformation matrix. This is why Estimator A uses a recorded one-point neutral depth scale instead of assuming exact physical calibration:  
 https://github.com/google-ai-edge/mediapipe/issues/5945
 
-Exact installed-package provenance for the matrix result is also recorded here. The exact package is `node_modules/@mediapipe/tasks-vision/`, package `@mediapipe/tasks-vision@1.0.1`, resolved by `package-lock.json` to `tasks-vision-1.0.1.tgz` with integrity `sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==`. Its `vision.d.ts` defines Matrix rows, columns, and data. Its exact `vision_bundle.mjs.map` conversion attaches the `face_geometry` proto listener and constructs each result as `{rows: ..., columns: ..., data: xd(d,3,cc,wd()).slice()}`; this copies the decoded repeated field-3 values and contains no transpose/reorder operation. This establishes exact package conversion behavior but does not establish whether the upstream packed field-3 values are row-major or column-major. Therefore ordering remains unproven. The asymmetric reviewed fixture is not independent package evidence. The package-specific provenance test is `tests/unit/m0dMatrixPackageProvenance.test.ts`.
+Exact installed-package provenance for the matrix result is also recorded here. The exact package is `node_modules/@mediapipe/tasks-vision/`, package `@mediapipe/tasks-vision@1.0.1`, resolved by `package-lock.json` to `tasks-vision-1.0.1.tgz` with integrity `sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==`. Its `vision.d.ts` defines Matrix rows, columns, and data. Its exact `vision_bundle.mjs.map` conversion attaches the `face_geometry` proto listener and constructs each result as `{rows: ..., columns: ..., data: xd(d,3,cc,wd()).slice()}`; this copies the decoded repeated field-3 values and contains no transpose/reorder operation. A completed visible packaged diagnostic from build `ff285467382c4723a614419990f3d58ed1d37c85` used this package, the pinned task asset SHA-256 `64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF`, embedded metadata SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`, negotiated 640 × 360 at 24 FPS, and four complete phases with zero missing/invalid observations. The stronger review found that the exact returned array is correctly consumed by WorldViewer as the reviewed column-major 4 × 4 transform applied to column vectors, with translation at indices 12, 13, and 14 and no transpose/reorder: physical left movement decreased WorldViewer X, right movement increased X, and approaching the screen decreased Z. A mathematically equivalent row-major/row-vector label remains a representational alternative, not a change to this implementation conclusion. The numerical diagnostic remains local and uncommitted; this finding does not approve or freeze the Class C oracle. The package-specific provenance test is `tests/unit/m0dMatrixPackageProvenance.test.ts`.
 
 These references define the baseline method; implementation should pin exact dependency/model versions and retain relevant source/version provenance in evidence.
 
-# 27\. Draft v0.3 Review / Oracle Freeze Conditions
+# 27\. Draft v0.4 Review / Oracle Freeze Conditions
 
-Draft v0.3 is the governance-reconciled experiment definition. The accepted corrections are consolidated directly into Sections 5, 9, 10, 11, 12, 13, and 14; this draft remains pending stronger re-review and is not frozen.
+Draft v0.4 is the governance-reconciled experiment definition. The accepted corrections are consolidated directly into Sections 5, 9, 10, 11, 12, 13, and 14; this draft remains pending stronger re-review and is not frozen.
 
 Before M0D4–M0D7 begin, confirm all technical prerequisites:  
 • landmark indices and canonical-model extraction script produce finite plausible CC and DcanonMm  
-• exact installed-package matrix dimensions and conversion behavior are documented; packed-order semantics remain explicitly unproven
+• exact installed-package matrix dimensions and conversion behavior are documented; the completed diagnostic supports the reviewed column-major/column-vector consumption, subject to final Class C approval
 • actual E590 camera capture mode is recorded  
 • cameraOriginScreenMm measurement fields exist  
 • 600/450/750 mm depth targets are practical  
@@ -853,7 +857,7 @@ Freeze conditions:
 • M0D4–M0D7 task specifications cite the applicable ORC-\* record(s) and may not begin while the required record is draft, pending, superseded, retired, stale, or contradictory
 
 Procedure/version discipline:  
-• Draft v0.3 records experimentProcedureVersion 2 because the reviewed corrections change procedure/evidence comparability
+• Draft v0.4 records experimentProcedureVersion 3 because the reviewed corrections change procedure/evidence comparability
 • any stronger-review finding that changes a candidate formula, required input, metric formula, target/tolerance, live procedure, invalidation/rerun rule, evidence-validity requirement, or interpretation criterion must be incorporated before freeze and must increment experimentProcedureVersion when it changes the actual experiment procedure/evidence comparability  
 • after freeze, any material oracle/procedure change requires a new reviewed specification/procedure version and corresponding Oracle Registry update/supersession before new evidence is collected  
 • evidence produced under different material experimentProcedureVersion values must never be mixed as though the procedures were identical  

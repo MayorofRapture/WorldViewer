@@ -13,7 +13,7 @@ function argument(name, fallback) {
 }
 
 const taskPath = argument("--task", "public/mediapipe/face_landmarker.task");
-const outputPath = argument("--output", "evidence/m0d/estimator-experiment-v2/canonical-face-model.json");
+const outputPath = argument("--output", "evidence/m0d/estimator-experiment-v3/canonical-face-model.json");
 const taskBytes = readFileSync(taskPath);
 const taskSha256 = createHash("sha256").update(taskBytes).digest("hex").toUpperCase();
 if (taskSha256 !== EXPECTED_TASK_SHA256) throw new Error(`Pinned task SHA-256 mismatch: ${taskSha256}`);
@@ -72,8 +72,8 @@ if (!CC.every(Number.isFinite) || !Number.isFinite(DcanonMm) || DcanonMm <= 0) t
 
 const output = {
   schemaVersion: 1,
-  experimentSpecVersion: "0.3",
-  experimentProcedureVersion: 2,
+  experimentSpecVersion: "0.4",
+  experimentProcedureVersion: 3,
   taskAsset: { path: taskPath.replaceAll("\\", "/"), sha256: taskSha256, bytes: taskBytes.length },
   embeddedMetadata: { archivePath: METADATA_ENTRY, sha256: metadataSha256, bytes: metadataBytes.length },
   canonicalUnit: { name: "centimeter", unitToMm: 10, provenance: "MediaPipe GeometryPipelineMetadata/Mesh3d schema identifies canonical mesh XYZ coordinates as centimeters; exact package-source revision equivalence remains a review limitation." },
