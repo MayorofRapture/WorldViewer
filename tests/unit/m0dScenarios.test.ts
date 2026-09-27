@@ -20,5 +20,7 @@ describe("M0D frozen scenario model", () => {
     const anomaly = createAnomaly({ anomalyId: "anomaly-1", experimentRunId: "run", scenarioId: "neutral-stationary", trialId: "trial-1", attemptId: "attempt-2", sequenceNumber: 4, estimatorId: null, kind: "dropout", detail: "one missing frame" });
     expect(invalidation).not.toHaveProperty("triggersRerun");
     expect(anomaly.triggersRerun).toBe(false);
+    expect(() => createProceduralInvalidation({ invalidationId: "inv-2", experimentRunId: "run", scenarioId: "neutral-stationary", trialId: "trial-1", attemptId: "attempt-3", originalAttemptId: null, replacementAttemptId: null, reason: "operator-moved-after-settling-during-stationary-capture", stationaryPhase: "settling", detail: "movement during settling" })).toThrow("only during stationary capture");
+    expect(createProceduralInvalidation({ invalidationId: "inv-3", experimentRunId: "run", scenarioId: "neutral-stationary", trialId: "trial-1", attemptId: "attempt-4", originalAttemptId: null, replacementAttemptId: null, reason: "operator-moved-after-settling-during-stationary-capture", stationaryPhase: "capture", detail: "movement after settling" }).stationaryPhase).toBe("capture");
   });
 });

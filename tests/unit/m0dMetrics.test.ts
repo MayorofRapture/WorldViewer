@@ -25,14 +25,16 @@ describe("M0D frozen metrics", () => {
     expect(trialMedianPose([p(1, 2, 3), p(3, 4, 5), p(2, 3, 4)])).toEqual(p(2, 3, 4));
     expect(repeatabilityRms([p(0, 0, 0), p(2, 0, 0)])).toBe(1);
     expect(referenceError(p(2, -3, 4), p(1, -1, 5))).toEqual({ signedMm: p(1, -2, -1), absoluteMm: p(1, 2, 1) });
-    expect(crossAxisDrift([p(10, 2, 0), p(10, -2, 0)], p(0, 0, 0), "x")).toMatchObject({ offAxisRmsMm: 2, offAxisMaximumMm: 2, offAxisRmsByAxis: { y: 2, z: 0 } });
+    expect(crossAxisDrift([p(10, 2, 0), p(10, 100, 0)], [p(0, 0, 0), p(0, 4, 0)], "x")).toMatchObject({ offAxisRmsMm: 49, offAxisMaximumMm: 49, offAxisRmsByAxis: { y: 49, z: 0 } });
   });
 
   it("uses nearest-rank percentiles and reports robust outliers without removal", () => {
     expect(percentileNearestRank([1, 2, 3, 4], 0.95)).toBe(4);
     const result = robustOutlierSummary([1, 1, 1, 1, 100]);
-    expect(result).toMatchObject({ median: 1, mad: 0, valuesRetained: true, outlierIndices: [4] });
-    expect(robustStationaryOutlierSummary([p(0, 0, 0), p(0, 0, 0), p(0, 0, 100)])).toMatchObject({ outlierCount: 1, outlierRate: 1 / 3, valuesRetained: true });
+    expect(result).toMatchObject({ median: 1, mad: 0, valuesRetained: true, outlierIndices: [] });
+    expect(robustStationaryOutlierSummary([p(0, 0, 0), p(0, 0, 1), p(0, 0, 2), p(0, 0, 3), p(0, 0, 100)])).toMatchObject({ outlierCount: 1, outlierRate: 1 / 5, valuesRetained: true });
+    expect(robustOutlierSummary([1, 1, 1, 1, 1])).toMatchObject({ mad: 0, outlierIndices: [], outlierRate: 0 });
+    expect(robustStationaryOutlierSummary([p(0, 0, 0), p(0, 0, 0), p(0, 0, 100)])).toMatchObject({ outlierCount: 0 });
   });
 
   it("keeps valid/null rates denominator-explicit and preserves cadence attribution statuses", () => {
@@ -43,7 +45,8 @@ describe("M0D frozen metrics", () => {
     expect(cadenceStructuralStatus(20, 10, 20)).toBe("Unverified / insufficient attribution to estimator");
     expect(cadenceStructuralStatus(20, 20, 10)).toBe("Structural failure");
     expect(cadenceStructuralStatus(20, 20, 20)).toBe("Verified");
-    expect(cadenceSummary([0, 1000, 2000], [0, 1000], [0, 1000])).toMatchObject({ sourceRateHz: 1, faceRateHz: 1, validRateOfSource: 2 / 3 });
+    expect(cadenceSummary([0, 1000, 2000], [0, 1000], [0, 1000])).toMatchObject({ sourceRateHz: 1, faceRateHz: 1, validRateOfSource: 1, windowStartMs: 0, windowEndMs: 1000 });
+    expect(cadenceSummary(Array.from({ length: 20 }, (_, index) => index * 100), Array.from({ length: 20 }, (_, index) => index * 100), Array.from({ length: 10 }, (_, index) => index * 200))).toMatchObject({ sourceRateHz: 10, faceRateHz: 10, status: "Unverified / insufficient to judge" });
   });
 
   it("reports discontinuity and processing summaries and leaves unavailable values null", () => {

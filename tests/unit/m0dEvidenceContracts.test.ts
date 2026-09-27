@@ -169,9 +169,10 @@ describe("M0D evidence contracts", () => {
       calibrationBurden: { manualMeasurementCount: 1, calibrationCaptureCount: 1, calibrationDurationSeconds: 5, candidateCalibrationStepCount: 2, description: "fixture" },
     };
     const result = validateM0DEvidenceBundle({
-      manifest: validManifest, calibrationTrace: [faceWithMatrixObservationTrace], observationTrace: [faceWithMatrixObservationTrace], replayOutputs: [],
-      environment: {}, camera: {}, configuration: {}, filesIncluded: ["manifest.json", "environment.json", "camera.json", "configuration.json", "calibration/observation-trace.jsonl"],
-      metricInput, storedMetrics: { ...calculateCandidateMetricSummary(metricInput), validOutputRate: 0 },
+      manifest: validManifest, calibrationTrace: [faceWithMatrixObservationTrace], observationTrace: [faceWithMatrixObservationTrace],
+      replayOutputs: [validReplayOutput, { ...validReplayOutput, estimatorId: "estimator-b", estimatorConfigHash: "sha256:estimator-b" }],
+      environment: {}, camera: {}, configuration: { calibrationBurden: { manualMeasurementCount: 1, calibrationCaptureCount: 1, calibrationDurationSeconds: 5, candidateCalibrationStepCount: 2, description: "fixture" } }, filesIncluded: ["manifest.json", "environment.json", "camera.json", "configuration.json", "calibration/observation-trace.jsonl"],
+      metricInput, storedMetrics: { estimatorA: calculateCandidateMetricSummary(metricInput), estimatorB: calculateCandidateMetricSummary(metricInput) },
     });
     expect(result.passed).toBe(false);
     expect(result.failures).toContainEqual(expect.objectContaining({ code: "metric-regeneration-mismatch" }));

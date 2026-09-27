@@ -30,6 +30,12 @@ export interface TrackingSource {
   subscribe(listener: (observation: TrackingObservation) => void): () => void;
 }
 
+export interface TrackingObservationEvent {
+  readonly observation: TrackingObservation;
+  readonly inferenceDurationMs: number;
+  readonly completedAtMs: number;
+}
+
 export interface TrackingWorkerLike {
   onmessage: ((event: MessageEvent<TrackingWorkerToHostMessage>) => void) | null;
   onerror: ((event: ErrorEvent) => void) | null;
@@ -38,7 +44,7 @@ export interface TrackingWorkerLike {
 }
 
 export interface TrackingStreamLike {
-  getTracks(): readonly { stop(): void }[];
+  getTracks(): readonly { stop(): void; getSettings?: () => Readonly<{ width?: number; height?: number; frameRate?: number }> }[];
 }
 
 export interface TrackingVideoLike {
@@ -106,6 +112,7 @@ export class MediaPipeTrackingSource implements TrackingSource {
   private readonly createFrame: (video: TrackingVideoLike) => VideoFrame;
   private readonly nowMs: () => MonotonicMs;
   private readonly listeners = new Set<(observation: TrackingObservation) => void>();
+  private readonly detailedListeners = new Set<(event: TrackingObservationEvent) => void>();
 
   private state: SourceState = "stopped";
   private health: Readonly<TrackingHealth>;
@@ -120,6 +127,7 @@ export class MediaPipeTrackingSource implements TrackingSource {
   private shutdownResolve: (() => void) | undefined;
   private startPromise: Promise<void> | undefined;
   private stopPromise: Promise<void> | undefined;
+  private droppedFrameCount = 0;
 
   public constructor(options: MediaPipeTrackingSourceOptions = {}) {
     this.id = options.id ?? "mediapipe-camera-0";
@@ -179,7 +187,22 @@ export class MediaPipeTrackingSource implements TrackingSource {
     return () => this.listeners.delete(listener);
   }
 
+  public subscribeDetailed(listener: (event: TrackingObservationEvent) => void): () => void {
+    this.detailedListeners.add(listener);
+    return () => this.detailedListeners.delete(listener);
+  }
+
+  public getDroppedFrameCount(): number {
+    return this.droppedFrameCount;
+  }
+
+  public getCameraConfiguration(): Readonly<{ widthPx: number | null; heightPx: number | null; frameRate: number | null }> {
+    const settings = this.stream?.getTracks()[0]?.getSettings?.();
+    return Object.freeze({ widthPx: settings?.width ?? this.video?.videoWidth ?? null, heightPx: settings?.height ?? this.video?.videoHeight ?? null, frameRate: settings?.frameRate ?? null });
+  }
+
   private async startInternal(): Promise<void> {
+    this.droppedFrameCount = 0;
     const worker = this.createWorker();
     this.worker = worker;
     worker.onmessage = (event) => this.handleWorkerMessage(event.data);
@@ -249,6 +272,7 @@ export class MediaPipeTrackingSource implements TrackingSource {
         return;
       }
       try {
+        if (this.frameQueue.pendingFrameCount === 1) this.droppedFrameCount += 1;
         const frame = this.createFrame(this.video);
         this.frameQueue.submit({ frame, timestampMs, widthPx, heightPx });
       } catch (error) {
@@ -276,7 +300,7 @@ export class MediaPipeTrackingSource implements TrackingSource {
     }
     if (message.kind === "observation") {
       this.frameQueue?.complete();
-      this.acceptObservation(freezeTrackingObservation(message.observation));
+      this.acceptObservation(freezeTrackingObservation(message.observation), { inferenceDurationMs: message.inferenceDurationMs, completedAtMs: message.completedAtMs });
       return;
     }
     this.frameQueue?.complete();
@@ -287,7 +311,7 @@ export class MediaPipeTrackingSource implements TrackingSource {
     this.handleFatalError(new Error(message.error.message));
   }
 
-  private acceptObservation(observation: TrackingObservation): void {
+  private acceptObservation(observation: TrackingObservation, timing: Readonly<{ inferenceDurationMs: number; completedAtMs: number }>): void {
     if (this.lastAcceptedObservationTimestampMs !== undefined && observation.timestampMs < this.lastAcceptedObservationTimestampMs) {
       this.setHealth("degraded", observation.confidence, "stale-observation");
       return;
@@ -297,6 +321,8 @@ export class MediaPipeTrackingSource implements TrackingSource {
     const status = hasFace ? "tracked" : this.health.status === "tracked" || this.health.status === "degraded" ? "lost" : "acquiring";
     this.setHealth(status, observation.confidence, hasFace ? undefined : "no-face");
     for (const listener of this.listeners) listener(observation);
+    const event = Object.freeze({ observation, inferenceDurationMs: timing.inferenceDurationMs, completedAtMs: timing.completedAtMs });
+    for (const listener of this.detailedListeners) listener(event);
   }
 
   private handleFatalError(error: Error): void {

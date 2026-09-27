@@ -4,10 +4,12 @@ import {
   M0D_EXPERIMENT_SPEC_VERSION,
   M0D_VALIDATOR_VERSION,
   M0D_REQUIRED_LANDMARK_INDICES,
+  type M0DObservationTraceRecord,
+  type M0DReplayOutputRecord,
   type M0DJsonValue,
 } from "./m0dEvidenceContracts";
 import { stableM0DJsonStringify } from "./m0dSerialization";
-import { calculateCandidateMetricSummary, type M0DCandidateMetricInput } from "../metrics/m0dMetrics";
+import { regenerateM0DMetricsFromEvidence, type M0DCalibrationBurdenSummary, type M0DCandidateMetricInput } from "../metrics/m0dMetrics";
 import { M0D_PROCEDURAL_INVALIDATION_REASONS, getM0DScenario } from "../scenarios/m0dScenarioModel";
 
 export interface M0DEvidenceBundleInput {
@@ -284,6 +286,8 @@ function validateObservationTrace(
     else traceIds.add(envelope.traceId);
     if (!nonEmptyString(envelope.scenarioId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.scenarioId`, "scenario ID must be a non-empty string");
     if (!nonEmptyString(envelope.segmentId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.segmentId`, "segment ID must be a non-empty string");
+    if (envelope.trialId !== undefined && !nonEmptyString(envelope.trialId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.trialId`, "trial ID must be a non-empty string when present");
+    if (envelope.attemptId !== undefined && !nonEmptyString(envelope.attemptId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.attemptId`, "attempt ID must be a non-empty string when present");
     if (!nonEmptyString(envelope.experimentRunId)) addFailure(failures, "invalid-envelope-field", `${path}.envelope.experimentRunId`, "experiment run ID must be a non-empty string");
     if (!Array.isArray(envelope.configurationIds) || envelope.configurationIds.some((id) => !nonEmptyString(id))) addFailure(failures, "invalid-envelope-field", `${path}.envelope.configurationIds`, "configuration IDs must be an array of non-empty strings");
     if (!Array.isArray(envelope.configurationHashes) || envelope.configurationHashes.some((hash) => !nonEmptyString(hash))) addFailure(failures, "invalid-envelope-field", `${path}.envelope.configurationHashes`, "configuration hashes must be an array of non-empty strings");
@@ -363,6 +367,7 @@ function validateProceduralRecords(
     if (plainRecord(value) && value.originalAttemptId !== null && value.originalAttemptId !== undefined && (!nonEmptyString(value.originalAttemptId) || value.originalAttemptId === value.attemptId)) addFailure(failures, "invalid-procedural-invalidation", `${path}.originalAttemptId`, "original attempt reference must be null or a distinct non-empty attempt ID");
     if (plainRecord(value) && value.replacementAttemptId !== null && value.replacementAttemptId !== undefined && value.replacementAttemptId === value.attemptId) addFailure(failures, "invalid-procedural-invalidation", `${path}.replacementAttemptId`, "replacement attempt must differ from invalidated attempt");
     if (plainRecord(value) && value.triggersRerun !== undefined) addFailure(failures, "invalid-procedural-invalidation", `${path}.triggersRerun`, "procedural invalidations are records of discard, not automatic rerun commands");
+    if (plainRecord(value) && value.reason === "operator-moved-after-settling-during-stationary-capture" && value.stationaryPhase !== "capture") addFailure(failures, "invalid-procedural-invalidation", `${path}.stationaryPhase`, "operator movement invalidation applies only after settling has completed during stationary capture");
   });
   const anomalyIds = new Set<string>();
   anomalies?.forEach((value, index) => {
@@ -490,11 +495,27 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
   }
 
   if (bundle.storedMetrics !== undefined || bundle.metricInput !== undefined) {
-    if (bundle.storedMetrics === undefined || bundle.metricInput === undefined) addFailure(failures, "metric-regeneration-unavailable", "storedMetrics", "stored metrics and metric input are both required for deterministic regeneration");
+    const burdenValue = plainRecord(bundle.configuration) ? bundle.configuration.calibrationBurden : undefined;
+    const burdenRecord = plainRecord(burdenValue) ? burdenValue : null;
+    const burden = burdenRecord !== null
+      && Number.isInteger(burdenRecord.manualMeasurementCount) && (burdenRecord.manualMeasurementCount as number) >= 0
+      && Number.isInteger(burdenRecord.calibrationCaptureCount) && (burdenRecord.calibrationCaptureCount as number) >= 0
+      && (burdenRecord.calibrationDurationSeconds === null || (finite(burdenRecord.calibrationDurationSeconds) && burdenRecord.calibrationDurationSeconds >= 0))
+      && Number.isInteger(burdenRecord.candidateCalibrationStepCount) && (burdenRecord.candidateCalibrationStepCount as number) >= 0
+      && nonEmptyString(burdenRecord.description)
+      ? burdenRecord as unknown as M0DCalibrationBurdenSummary
+      : null;
+    if (bundle.storedMetrics === undefined || !Array.isArray(observationTrace) || !Array.isArray(replayOutputs) || burden === null) addFailure(failures, "metric-regeneration-unavailable", "storedMetrics", "stored metrics require authoritative observations, replay outputs, and a valid calibration-burden record");
     else {
       try {
-        const regenerated = calculateCandidateMetricSummary(bundle.metricInput as M0DCandidateMetricInput);
-        if (stableM0DJsonStringify(regenerated) !== stableM0DJsonStringify(bundle.storedMetrics)) addFailure(failures, "metric-regeneration-mismatch", "storedMetrics", "stored metrics do not match deterministic regeneration from the authoritative trace");
+        const evidence = { observationTrace: observationTrace as M0DObservationTraceRecord[], replayOutputs: replayOutputs as M0DReplayOutputRecord[], calibrationBurden: burden };
+        const manifestIdentities = plainRecord(bundle.manifest) ? [bundle.manifest.estimatorA, bundle.manifest.estimatorB] : [];
+        const stored = plainRecord(bundle.storedMetrics) ? bundle.storedMetrics : {};
+        for (const identity of manifestIdentities) {
+          if (!plainRecord(identity) || !nonEmptyString(identity.estimatorId)) continue;
+          const storedSummary = stored[identity.estimatorId] ?? (identity === (plainRecord(bundle.manifest) ? bundle.manifest.estimatorA : null) ? stored.estimatorA : stored.estimatorB);
+          if (storedSummary === undefined || stableM0DJsonStringify(regenerateM0DMetricsFromEvidence(evidence, identity.estimatorId)) !== stableM0DJsonStringify(storedSummary)) addFailure(failures, "metric-regeneration-mismatch", "storedMetrics", `stored metrics do not match authoritative regeneration for ${identity.estimatorId}`);
+        }
       } catch (error) {
         addFailure(failures, "metric-regeneration-failed", "storedMetrics", error instanceof Error ? error.message : "metric regeneration failed");
       }

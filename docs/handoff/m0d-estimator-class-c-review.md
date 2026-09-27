@@ -17,15 +17,15 @@
 - Review status: approved
 - Freeze status: frozen
 - Reviewed baseline: `aef3e7c8280784db3e878757338c073cbce45a81`
-- M0D4: Ready; M0D5: Ready; M0D6: Ready.
-- M0D7 live evidence collection and M0D8 stronger-reasoning interpretation/production selection remain deferred; no M0D7 evidence is claimed here.
+- M0D4: Ready; M0D5: Ready; M0D6: Ready after the audited metric/invalidation corrections; M0D7 runner: implementation complete pending packaged verification.
+- M0D7 physical evidence collection and M0D8 stronger-reasoning interpretation/production selection remain deferred; no M0D7 evidence is claimed here.
 - Section 27 readiness inputs recorded for this tooling include E590 `cameraOriginScreenMm = { x: 0, y: 103.188, z: 0 }` mm and operator-confirmed target practicality; these are not live experiment evidence.
 - M0D4–M0D6 implementation status is Ready under this handoff; M0D7 live evidence collection and M0D8 interpretation/selection remain separately scoped.
 - This note records the approved and frozen oracle plus the completed M0D4/M0D5/M0D6 implementation boundary; it does not change the experiment semantics.
 
 ## Handoff record
 
-- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization, M0D3B's opt-in packaged matrix diagnostic, the M0D3 production MediaPipe TrackingObservation path, the M0D v3 evidence contracts/validator, M0D4/M0D5 estimator candidates, and M0D6 replay/metrics/evidence tooling are implemented and verified; live formal evidence collection remains out of scope.
+- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization, M0D3B's opt-in packaged matrix diagnostic, the M0D3 production MediaPipe TrackingObservation path, the M0D v3 evidence contracts/validator, M0D4/M0D5 estimator candidates, M0D6 replay/metrics/evidence tooling, and the opt-in M0D7 guided runner are implemented and verified; live formal evidence collection remains an operator activity and has not been performed.
 - Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeTrackingSource.ts` is the host-private `TrackingSource`, `src/mediapipe/mediapipeTrackingWorker.ts` owns MediaPipe inference, and `src/mediapipe/mediapipeBenchmarkWorker.ts` remains benchmark/diagnostic-only.
 - Oracle IDs: `ORC-POSE-ESTIMATOR-001` (approved/frozen).
 - Authoritative tests/oracles: The approved and frozen Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
@@ -41,7 +41,7 @@
 - Deterministic tests and fixture paths for M0D6 include `src/m0d/evidence/m0dEvidenceContracts.ts`, `src/m0d/evidence/m0dEvidenceValidator.ts`, `src/m0d/evidence/m0dSerialization.ts`, `src/m0d/replay/m0dReplay.ts`, `src/m0d/metrics/m0dMetrics.ts`, `src/m0d/scenarios/m0dScenarioModel.ts`, the estimator modules, `tests/unit/m0dEvidenceContracts.test.ts`, `tests/unit/m0dEstimators.test.ts`, `tests/unit/m0dReplay.test.ts`, `tests/unit/m0dMetrics.test.ts`, `tests/unit/m0dSerialization.test.ts`, and `tests/unit/m0dScenarios.test.ts`; the replay and metric tests are synthetic and create no formal evidence.
 - Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006, ADR-009.
 - Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; the local M0D3B diagnostic output is intentionally not referenced or committed, and none of these is a validated estimator-comparison bundle.
-- Known limitations / unsupported behavior: The production path emits normalized observations, while the host-private M0D4/M0D5 candidates produce pure RawViewerPose results without selecting a production estimator. M0D6 tooling replays saved traces and does not collect camera evidence, rank candidates, or select a production estimator. M0D3B remains a separate diagnostic-only worker path. The completed physical diagnostic supports the reviewed matrix consumption but is not formal M0D7 evidence; the recorded E590 camera-origin input and target-practicality confirmation are readiness inputs, not M0D7 evidence.
+- Known limitations / unsupported behavior: The production path emits normalized observations, while the host-private M0D4/M0D5 candidates produce pure RawViewerPose results without selecting a production estimator. M0D6 tooling replays saved traces and does not rank candidates or select a production estimator. The M0D7 runner performs one live normalized capture followed by deterministic A/B replay and validation, but no physical run has been performed and no evidence bundle is claimed. M0D3B remains a separate diagnostic-only worker path. The completed physical diagnostic supports the reviewed matrix consumption but is not formal M0D7 evidence; the recorded E590 camera-origin input and target-practicality confirmation are readiness inputs, not M0D7 evidence.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`. Rust formatting remains unverified because `cargo-fmt.exe` is unavailable in the installed toolchain.
 - Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to alter the frozen oracle returns to stronger review; M0D6/M0D7 work must remain within its own bounded implementation and evidence gates.
 
@@ -153,6 +153,18 @@ The final stronger reviewer approved the proposed formulas, matrix interpretatio
 
 M0D4 and M0D5 estimator candidates and M0D6 replay/metrics/evidence tooling are implemented as host-private pure paths. M0D7 live evidence collection, M0D8 stronger-reasoning interpretation, tracker selection, and ADR-006.01 remain outside this package. No live camera run or formal M0D7 evidence was created.
 
+## M0D7 runner boundary
+
+The packaged smoke command is:
+
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-packaged-smoke.ps1 -Mode m0d7-runner-smoke`
+
+The operator launch command after the packaged executable is built is:
+
+`$env:WORLD_VIEWER_SMOKE_MODE = "m0d7-runner"; & .\src-tauri\target\release\worldviewer.exe; Remove-Item Env:WORLD_VIEWER_SMOKE_MODE`
+
+This opt-in mode opens the visible guided runner but does not start the camera until the operator presses the start button. The native writer accepts only the runner's JSON/JSONL files, stages them under the application data `m0d\evidence` directory, allocates a unique `run-<epoch>` directory, and publishes it only after all files are written. Incomplete staging directories remain visibly marked `.incomplete`; prior run directories are never overwritten. The runner stores normalized observations, timing, dropped-frame counts, markers, anomalies, metrics, and validator output only; it does not store images, frames, screenshots, or identifiers. M0D8 remains a not-started placeholder.
+
 ## Verification performed for this package
 
 - Verified all paths cited above exist.
@@ -163,6 +175,7 @@ M0D4 and M0D5 estimator candidates and M0D6 replay/metrics/evidence tooling are 
 - M0D evidence-readiness verification: schemaVersion 1 contracts, validatorVersion 1 structural checks, synthetic no-face/face/matrix/replay fixtures, finite camera-origin validation, and positive `ZrefCameraMm` derivation pass deterministic tests; no physical measurement or fabricated evidence was created.
 - M0D4/M0D5 implementation verification: both candidates use the shared neutral calibration input, preserve the frozen matrix/axis/depth formulas, emit confidence `1.0` for finite valid poses, return null with deterministic reasons for invalid samples, and pass synthetic replay-compatible estimator tests. No live camera run or experiment evidence was created.
 - M0D6 implementation verification: deterministic schema-1 observation reconstruction, shared-trace dual-candidate replay, injected estimator-only timing, stable candidate identity, frozen metric helpers, cadence attribution, structural status, scenario/invalidation/anomaly models, deterministic JSON/JSONL serialization, strict bundle validation, and metric regeneration checks pass synthetic tests. No live camera run or formal M0D7 evidence was created.
+- M0D7 runner implementation verification: the scripted procedure, automatic markers, fake-source orchestration, cancellation retention, and replacement-attempt identity pass deterministic tests. No physical experiment was performed.
 
 ## Escalation conditions
 

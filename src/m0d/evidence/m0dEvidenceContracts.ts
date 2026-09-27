@@ -47,6 +47,8 @@ export interface M0DEvidenceEnvelope {
   readonly traceId: string;
   readonly scenarioId: string;
   readonly segmentId: string;
+  readonly trialId?: string;
+  readonly attemptId?: string;
   readonly experimentRunId: string;
   readonly configurationIds: readonly string[];
   readonly configurationHashes: readonly string[];

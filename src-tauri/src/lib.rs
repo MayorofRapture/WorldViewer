@@ -1,7 +1,8 @@
 use std::collections::HashSet;
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
+use std::path::{Component, Path, PathBuf};
 use std::process;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -22,7 +23,7 @@ struct StartupMode(Option<SmokeMode>);
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz, #[serde(rename = "mediapipe-480x270-20hz")] MediaPipe480x27020Hz, #[serde(rename = "mediapipe-matrix-diagnostic")] MediaPipeMatrixDiagnostic }
+enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz, #[serde(rename = "mediapipe-480x270-20hz")] MediaPipe480x27020Hz, #[serde(rename = "mediapipe-matrix-diagnostic")] MediaPipeMatrixDiagnostic, #[serde(rename = "m0d7-runner")] M0D7Runner, #[serde(rename = "m0d7-runner-smoke")] M0D7RunnerSmoke }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -62,6 +63,8 @@ fn parse_startup_mode(value: Option<&str>) -> Option<SmokeMode> {
         Some("mediapipe-20hz") => Some(SmokeMode::MediaPipe20Hz),
         Some("mediapipe-480x270-20hz") => Some(SmokeMode::MediaPipe480x27020Hz),
         Some("mediapipe-matrix-diagnostic") => Some(SmokeMode::MediaPipeMatrixDiagnostic),
+        Some("m0d7-runner") => Some(SmokeMode::M0D7Runner),
+        Some("m0d7-runner-smoke") => Some(SmokeMode::M0D7RunnerSmoke),
         _ => None,
     }
 }
@@ -368,6 +371,74 @@ fn validate_result(result: &SmokeResult, active_mode: Option<SmokeMode>) -> Resu
     Ok(())
 }
 
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct M0DEvidenceFile {
+    relative_path: String,
+    contents: String,
+}
+
+fn m0d_evidence_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let root = app.path().app_data_dir().map_err(|error| format!("could not resolve application data directory: {error}"))?.join("m0d").join("evidence");
+    fs::create_dir_all(&root).map_err(|error| format!("could not create M0D evidence root: {error}"))?;
+    Ok(root)
+}
+
+fn validate_m0d_relative_path(relative_path: &str) -> Result<&Path, String> {
+    let path = Path::new(relative_path);
+    if relative_path.trim().is_empty() || path.is_absolute() || path.extension().and_then(|extension| extension.to_str()) != Some("json") && path.extension().and_then(|extension| extension.to_str()) != Some("jsonl") {
+        return Err(format!("invalid M0D evidence relative path: {relative_path}"));
+    }
+    if path.components().any(|component| matches!(component, Component::Prefix(_) | Component::RootDir | Component::ParentDir | Component::CurDir)) {
+        return Err(format!("M0D evidence path escapes its run directory: {relative_path}"));
+    }
+    Ok(path)
+}
+
+#[tauri::command]
+fn get_m0d_evidence_root(app: tauri::AppHandle) -> Result<String, String> {
+    Ok(m0d_evidence_root(&app)?.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn write_m0d_evidence_bundle(app: tauri::AppHandle, files: Vec<M0DEvidenceFile>) -> Result<String, String> {
+    if files.is_empty() || files.len() > 64 {
+        return Err("M0D evidence bundle must contain between 1 and 64 files".to_owned());
+    }
+    let mut paths = HashSet::with_capacity(files.len());
+    for file in &files {
+        let path = validate_m0d_relative_path(&file.relative_path)?;
+        if file.contents.len() > 16 * 1024 * 1024 {
+            return Err(format!("M0D evidence file is too large: {}", file.relative_path));
+        }
+        if !paths.insert(path.to_string_lossy().into_owned()) {
+            return Err(format!("duplicate M0D evidence path: {}", file.relative_path));
+        }
+    }
+    let root = m0d_evidence_root(&app)?;
+    let epoch_ms = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|error| error.to_string())?.as_millis();
+    for suffix in 0..1000u32 {
+        let stem = if suffix == 0 { format!("run-{epoch_ms}") } else { format!("run-{epoch_ms}-{suffix}") };
+        let final_dir = root.join(&stem);
+        let staging_dir = root.join(format!(".{stem}.incomplete"));
+        if final_dir.exists() || staging_dir.exists() {
+            continue;
+        }
+        fs::create_dir(&staging_dir).map_err(|error| format!("could not reserve M0D evidence staging directory: {error}"))?;
+        for file in &files {
+            let relative = validate_m0d_relative_path(&file.relative_path)?;
+            let destination = staging_dir.join(relative);
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent).map_err(|error| format!("could not create M0D evidence subdirectory: {error}"))?;
+            }
+            fs::write(&destination, file.contents.as_bytes()).map_err(|error| format!("could not write M0D evidence file {}: {error}", file.relative_path))?;
+        }
+        fs::rename(&staging_dir, &final_dir).map_err(|error| format!("could not publish M0D evidence bundle atomically: {error}"))?;
+        return Ok(final_dir.to_string_lossy().into_owned());
+    }
+    Err("could not allocate a unique M0D evidence run directory".to_owned())
+}
+
 #[tauri::command]
 fn get_startup_mode(state: State<'_, StartupMode>) -> Option<SmokeMode> { state.0 }
 
@@ -385,10 +456,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(StartupMode(startup_mode_from_environment()))
-        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event])
+        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event, get_m0d_evidence_root, write_m0d_evidence_bundle])
         .setup(|app| {
             #[cfg(windows)]
-            if media_pipe_benchmark_mode(startup_mode_from_environment()) {
+            if media_pipe_benchmark_mode(startup_mode_from_environment()) || startup_mode_from_environment() == Some(SmokeMode::M0D7Runner) {
                 install_mediapipe_camera_permission_handler(app)?;
             }
             if matches!(startup_mode_from_environment(), Some(SmokeMode::TrackingSidecar | SmokeMode::TrackingSustained)) {

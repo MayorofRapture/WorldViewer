@@ -5,8 +5,9 @@ import { SYNTHETIC_MOTION_SCRIPTS } from "../engine/pose/syntheticMotionScripts"
 import { SyntheticProjectionRuntime, type SyntheticProjectionRuntimeObservation } from "../world-host/development/syntheticProjectionRuntime";
 import { runPackagedMediaPipeBenchmark, type MediaPipeBenchmarkMode } from "../mediapipe/packagedMediaPipeBenchmark";
 import { runPackagedMediaPipeMatrixDiagnostic } from "../mediapipe/packagedMediaPipeMatrixDiagnostic";
+import { runM0D7Runner } from "../m0d/runner/m0d7RunnerUi";
 
-type SmokeMode = "launch" | "synthetic" | "tracking-sidecar" | "tracking-sustained" | "mediapipe-matrix-diagnostic" | MediaPipeBenchmarkMode;
+type SmokeMode = "launch" | "synthetic" | "tracking-sidecar" | "tracking-sustained" | "mediapipe-matrix-diagnostic" | "m0d7-runner" | "m0d7-runner-smoke" | MediaPipeBenchmarkMode;
 type SmokeStatus = "pass" | "fail";
 type SmokeResult = {
   schemaVersion: 1;
@@ -96,6 +97,7 @@ export default function App() {
   useEffect(() => {
     let foundation: RendererFoundation | undefined;
     let syntheticRuntime: SyntheticProjectionRuntime | undefined;
+    let disposeM0D7Runner: (() => void) | undefined;
     let cancelled = false;
 
     void invoke<SmokeMode | null>("get_startup_mode")
@@ -104,6 +106,10 @@ export default function App() {
       if (cancelled || mode === "launch" || mode === "tracking-sidecar" || mode === "tracking-sustained" || !rendererHost.current) return;
       if (mode === "mediapipe-matrix-diagnostic") {
         void runPackagedMediaPipeMatrixDiagnostic(rendererHost.current);
+        return;
+      }
+      if (mode === "m0d7-runner" || mode === "m0d7-runner-smoke") {
+        disposeM0D7Runner = runM0D7Runner(rendererHost.current, { smoke: mode === "m0d7-runner-smoke" });
         return;
       }
       if (mode === "mediapipe-idle" || mode === "mediapipe-24hz" || mode === "mediapipe-20hz" || mode === "mediapipe-480x270-20hz") {
@@ -164,6 +170,7 @@ export default function App() {
 
     return () => {
       cancelled = true;
+      disposeM0D7Runner?.();
       if (syntheticRuntime) {
         void syntheticRuntime.dispose().finally(() => foundation?.dispose());
       } else {

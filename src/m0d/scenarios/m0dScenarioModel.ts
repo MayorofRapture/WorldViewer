@@ -48,7 +48,7 @@ export const M0D_PROCEDURAL_INVALIDATION_REASONS = [
   "wrong-camera-capture-mode",
   "capture-failed-incomplete-corrupt",
   "application-worker-crash",
-  "operator-moved-during-stationary-settling",
+  "operator-moved-after-settling-during-stationary-capture",
   "target-position-materially-wrong",
   "validator-missing-required-fields",
   "external-interruption",
@@ -66,6 +66,7 @@ export interface M0DProceduralInvalidationRecord {
   readonly originalAttemptId: string | null;
   readonly replacementAttemptId: string | null;
   readonly reason: M0DProceduralInvalidationReason;
+  readonly stationaryPhase?: "settling" | "capture";
   readonly detail: string;
 }
 
@@ -86,6 +87,7 @@ export interface M0DAnomalyRecord {
 export function createProceduralInvalidation(
   input: Omit<M0DProceduralInvalidationRecord, "schemaVersion">,
 ): M0DProceduralInvalidationRecord {
+  if (input.reason === "operator-moved-after-settling-during-stationary-capture" && input.stationaryPhase !== "capture") throw new RangeError("operator movement invalidation is valid only during stationary capture after settling");
   return Object.freeze({ schemaVersion: 1, ...input });
 }
 

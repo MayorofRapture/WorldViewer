@@ -1,7 +1,7 @@
 param(
     [string]$ExecutablePath = "src-tauri/target/release/worldviewer.exe",
     [int]$TimeoutSeconds = 30,
-    [ValidateSet("launch", "synthetic", "tracking-sidecar", "tracking-sustained")]
+    [ValidateSet("launch", "synthetic", "tracking-sidecar", "tracking-sustained", "m0d7-runner-smoke")]
     [string]$Mode = "launch",
     [string]$ResultPath,
     [switch]$AllowFailure
@@ -77,6 +77,13 @@ try {
         $trackingCheck = @($result.checks | Where-Object { $_.id -eq $expectedCheckId })
         if ($trackingCheck.Count -ne 1 -or ((-not $AllowFailure) -and $trackingCheck[0].status -ne "pass")) {
             throw "Tracking smoke result must contain a passing $expectedCheckId check."
+        }
+    } elseif ($Mode -eq "m0d7-runner-smoke") {
+        foreach ($checkId in @("m0d7-runner-opened", "m0d7-evidence-path-ready", "m0d7-procedure-idle")) {
+            $runnerCheck = @($result.checks | Where-Object { $_.id -eq $checkId })
+            if ($runnerCheck.Count -ne 1 -or $runnerCheck[0].status -ne "pass") {
+                throw "M0D7 runner smoke result must contain a passing '$checkId' check."
+            }
         }
     }
 

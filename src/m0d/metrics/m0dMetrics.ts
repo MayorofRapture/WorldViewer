@@ -1,4 +1,5 @@
 import type { Vec3Mm } from "../../shared/contracts/primitives";
+import type { M0DObservationTraceRecord, M0DReplayOutputRecord } from "../evidence/m0dEvidenceContracts";
 
 export interface M0DPercentileSummary {
   readonly count: number;
@@ -78,6 +79,8 @@ export interface M0DCadenceSummary {
   readonly validRateHz: number | null;
   readonly validRateOfSource: number | null;
   readonly validRateOfFace: number | null;
+  readonly windowStartMs: number | null;
+  readonly windowEndMs: number | null;
   readonly status: "Verified" | "Structural failure" | "Unverified / insufficient attribution to estimator" | "Unverified / insufficient to judge";
 }
 
@@ -99,6 +102,8 @@ export interface M0DMetricPoseSample {
 export interface M0DCandidateMetricInput {
   readonly stationaryPositionsMm?: readonly Vec3Mm[];
   readonly trialPositionsMm?: readonly Vec3Mm[];
+  readonly crossAxisTargetPositionsMm?: readonly Vec3Mm[];
+  readonly associatedNeutralPositionsMm?: readonly Vec3Mm[];
   readonly referencePositionMm?: Vec3Mm | null;
   readonly estimatedMovementPositionMm?: Vec3Mm | null;
   readonly referenceMovementPositionMm?: Vec3Mm | null;
@@ -110,6 +115,12 @@ export interface M0DCandidateMetricInput {
   readonly validTimestampsMs: readonly number[];
   readonly faceDetectedCount: number;
   readonly poseSamples: readonly M0DMetricPoseSample[];
+  readonly calibrationBurden: M0DCalibrationBurdenSummary;
+}
+
+export interface M0DAuthoritativeMetricEvidence {
+  readonly observationTrace: readonly M0DObservationTraceRecord[];
+  readonly replayOutputs: readonly M0DReplayOutputRecord[];
   readonly calibrationBurden: M0DCalibrationBurdenSummary;
 }
 
@@ -247,19 +258,25 @@ export function relativeMovementError(
 }
 
 export function crossAxisDrift(
-  positions: readonly Vec3Mm[],
-  neutral: Vec3Mm | null | undefined,
+  targetHoldPositions: readonly Vec3Mm[],
+  associatedNeutralPositions: readonly Vec3Mm[] | Vec3Mm | null | undefined,
   movementAxis: "x" | "y" | "z" | null | undefined,
 ): M0DCrossAxisDriftSummary | null {
-  if (!validVector(neutral) || movementAxis === null || movementAxis === undefined) return null;
+  const neutralPositions = Array.isArray(associatedNeutralPositions)
+    ? associatedNeutralPositions.filter(validVector)
+    : validVector(associatedNeutralPositions) ? [associatedNeutralPositions] : [];
+  if (movementAxis === null || movementAxis === undefined || neutralPositions.length === 0) return null;
   const axes = (["x", "y", "z"] as const).filter((axis) => axis !== movementAxis);
-  const usable = positions.filter(validVector);
+  const usable = targetHoldPositions.filter(validVector);
   if (usable.length === 0) return { movementAxis, offAxisRmsByAxis: { x: null, y: null, z: null }, offAxisMaximumByAxis: { x: null, y: null, z: null }, offAxisRmsMm: null, offAxisMaximumMm: null };
-  const axisValues = Object.fromEntries((["x", "y", "z"] as const).map((axis) => [axis, usable.map((position) => position[axis] - neutral[axis])])) as Record<"x" | "y" | "z", number[]>;
-  const offAxisRmsByAxis = { x: movementAxis === "x" ? null : rms(axisValues.x), y: movementAxis === "y" ? null : rms(axisValues.y), z: movementAxis === "z" ? null : rms(axisValues.z) };
-  const offAxisMaximumByAxis = { x: movementAxis === "x" ? null : Math.max(...axisValues.x.map(Math.abs)), y: movementAxis === "y" ? null : Math.max(...axisValues.y.map(Math.abs)), z: movementAxis === "z" ? null : Math.max(...axisValues.z.map(Math.abs)) };
-  const magnitudes = usable.map((position) => Math.hypot(...axes.map((axis) => position[axis] - neutral[axis])));
-  return { movementAxis, offAxisRmsByAxis, offAxisMaximumByAxis, offAxisRmsMm: rms(magnitudes), offAxisMaximumMm: Math.max(...magnitudes) };
+  const targetMedian = trialMedianPose(usable)!;
+  const neutralMedian = trialMedianPose(neutralPositions);
+  if (neutralMedian === null) return null;
+  const changes = difference(targetMedian, neutralMedian);
+  const offAxisRmsByAxis = { x: movementAxis === "x" ? null : changes.x, y: movementAxis === "y" ? null : changes.y, z: movementAxis === "z" ? null : changes.z };
+  const offAxisMaximumByAxis = { x: movementAxis === "x" ? null : changes.x, y: movementAxis === "y" ? null : changes.y, z: movementAxis === "z" ? null : changes.z };
+  const magnitudes = axes.map((axis) => Math.abs(changes[axis]));
+  return { movementAxis, offAxisRmsByAxis, offAxisMaximumByAxis, offAxisRmsMm: Math.hypot(...magnitudes), offAxisMaximumMm: Math.max(...magnitudes) };
 }
 
 export function faceDetectedRate(faceDetectedCount: number, sourceCount: number): number | null {
@@ -280,7 +297,7 @@ export function robustOutlierSummary(values: readonly number[]): M0DOutlierSumma
   const mad = median(deviations)!;
   const robustSigma = 1.4826 * mad;
   const threshold = 6 * robustSigma;
-  const outlierIndices = usable.map((value, index) => Math.abs(value - center) > threshold ? index : -1).filter((index) => index >= 0);
+  const outlierIndices = mad > 0 ? usable.map((value, index) => Math.abs(value - center) > threshold ? index : -1).filter((index) => index >= 0) : [];
   return { count: usable.length, median: center, mad, robustSigma, threshold, outlierIndices, outlierRate: outlierIndices.length / usable.length, valuesRetained: true };
 }
 
@@ -291,7 +308,7 @@ function axisOutlierFlags(values: readonly number[]): { readonly center: number;
   const mad = median(usable.map((value) => Math.abs(value - center)))!;
   const sigma = 1.4826 * mad;
   const threshold = 6 * sigma;
-  return { center, mad, sigma, threshold, indices: usable.map((value, index) => Math.abs(value - center) > threshold ? index : -1).filter((index) => index >= 0) };
+  return { center, mad, sigma, threshold, indices: mad > 0 ? usable.map((value, index) => Math.abs(value - center) > threshold ? index : -1).filter((index) => index >= 0) : [] };
 }
 
 export function robustStationaryOutlierSummary(positions: readonly Vec3Mm[]): M0DStationaryOutlierSummary | null {
@@ -352,10 +369,10 @@ export function processingSummary(samples: readonly M0DMetricPoseSample[]): M0DP
   return percentileSummary(samples.map((sample) => sample.processingMs).filter((value): value is number => finite(value)));
 }
 
-export function cadenceStructuralStatus(sourceCount: number, faceCount: number, validCount: number): M0DCadenceSummary["status"] {
-  if (sourceCount < 15) return "Unverified / insufficient to judge";
-  if (faceCount < 15) return "Unverified / insufficient attribution to estimator";
-  if (validCount < 15) return "Structural failure";
+export function cadenceStructuralStatus(sourceRateHz: number, faceRateHz: number, validRateHz: number): M0DCadenceSummary["status"] {
+  if (!finite(sourceRateHz) || sourceRateHz < 15) return "Unverified / insufficient to judge";
+  if (!finite(faceRateHz) || faceRateHz < 15) return "Unverified / insufficient attribution to estimator";
+  if (!finite(validRateHz) || validRateHz < 15) return "Structural failure";
   return "Verified";
 }
 
@@ -364,24 +381,33 @@ export function cadenceSummary(
   faceTimestampsMs: readonly number[],
   validTimestampsMs: readonly number[],
 ): M0DCadenceSummary {
-  const source = validNumbers(sourceTimestampsMs);
-  const face = validNumbers(faceTimestampsMs);
-  const valid = validNumbers(validTimestampsMs);
+  const source = validNumbers(sourceTimestampsMs).sort((left, right) => left - right);
+  const face = validNumbers(faceTimestampsMs).sort((left, right) => left - right);
+  const valid = validNumbers(validTimestampsMs).sort((left, right) => left - right);
+  const all = [source, face, valid].filter((timestamps) => timestamps.length >= 2);
+  const windowStartMs = all.length === 0 ? null : Math.max(...all.map((timestamps) => timestamps[0]!));
+  const windowEndMs = all.length === 0 ? null : Math.min(...all.map((timestamps) => timestamps[timestamps.length - 1]!));
+  const inWindow = (timestamps: readonly number[]): number[] => windowStartMs === null || windowEndMs === null || windowEndMs <= windowStartMs ? [] : timestamps.filter((timestamp) => timestamp >= windowStartMs && timestamp <= windowEndMs);
+  const windowedSource = inWindow(source);
+  const windowedFace = inWindow(face);
+  const windowedValid = inWindow(valid);
   const durationSeconds = (timestamps: readonly number[]): number | null => timestamps.length < 2 ? null : (timestamps[timestamps.length - 1]! - timestamps[0]!) / 1000;
   const rate = (timestamps: readonly number[]): number | null => {
     const duration = durationSeconds(timestamps);
     return duration !== null && duration > 0 ? (timestamps.length - 1) / duration : null;
   };
   return {
-    sourceCount: source.length,
-    faceCount: face.length,
-    validCount: valid.length,
-    sourceRateHz: rate(source),
-    faceRateHz: rate(face),
-    validRateHz: rate(valid),
-    validRateOfSource: source.length === 0 ? null : valid.length / source.length,
-    validRateOfFace: face.length === 0 ? null : valid.length / face.length,
-    status: cadenceStructuralStatus(source.length, face.length, valid.length),
+    sourceCount: windowedSource.length,
+    faceCount: windowedFace.length,
+    validCount: windowedValid.length,
+    sourceRateHz: rate(windowedSource),
+    faceRateHz: rate(windowedFace),
+    validRateHz: rate(windowedValid),
+    validRateOfSource: windowedSource.length === 0 ? null : windowedValid.length / windowedSource.length,
+    validRateOfFace: windowedFace.length === 0 ? null : windowedValid.length / windowedFace.length,
+    windowStartMs,
+    windowEndMs,
+    status: cadenceStructuralStatus(rate(windowedSource) ?? 0, rate(windowedFace) ?? 0, rate(windowedValid) ?? 0),
   };
 }
 
@@ -395,7 +421,7 @@ export function calculateCandidateMetricSummary(input: M0DCandidateMetricInput):
     repeatabilityRmsMm: input.trialPositionsMm === undefined ? null : repeatabilityRms(input.trialPositionsMm),
     referenceError: referenceError(input.estimatedMovementPositionMm, input.referenceMovementPositionMm),
     relativeMovementError: relativeMovementError(input.estimatedMovementPositionMm, input.referenceMovementPositionMm, input.neutralMovementPositionMm, input.commandedDisplacementMm),
-    crossAxisDrift: crossAxisDrift(input.poseSamples.map((sample) => sample.positionMm).filter((position): position is Vec3Mm => validVector(position)), input.neutralMovementPositionMm, input.commandedAxis),
+    crossAxisDrift: crossAxisDrift(input.crossAxisTargetPositionsMm ?? input.trialPositionsMm ?? input.poseSamples.map((sample) => sample.positionMm).filter((position): position is Vec3Mm => validVector(position)), input.associatedNeutralPositionsMm ?? input.neutralMovementPositionMm, input.commandedAxis),
     faceDetectedRate: faceDetectedRate(input.faceDetectedCount, input.sourceTimestampsMs.length),
     validOutputRate: rates.validRate,
     nullOutputRate: rates.nullRate,
@@ -405,4 +431,42 @@ export function calculateCandidateMetricSummary(input: M0DCandidateMetricInput):
     cadence: cadenceSummary(input.sourceTimestampsMs, input.faceTimestampsMs, input.validTimestampsMs),
     calibrationBurden: input.calibrationBurden,
   };
+}
+
+export function deriveM0DMetricInputFromEvidence(
+  evidence: M0DAuthoritativeMetricEvidence,
+  estimatorId: string,
+): M0DCandidateMetricInput {
+  const outputs = evidence.replayOutputs.filter((output) => output.estimatorId === estimatorId).sort((left, right) => left.timestampMs - right.timestampMs);
+  const observations = [...evidence.observationTrace].sort((left, right) => left.observation.timestampMs - right.observation.timestampMs);
+  const faceTimestampsMs = observations.filter((record) => record.observation.faceDetected).map((record) => record.observation.timestampMs);
+  const stationaryScenarioIds = new Set(["neutral-stationary", "near-stationary-450", "far-stationary-750"]);
+  const stationaryTimestamps = new Set(observations.filter((record) => stationaryScenarioIds.has(record.envelope.scenarioId)).map((record) => record.observation.timestampMs));
+  const neutralTimestamps = new Set(observations.filter((record) => record.envelope.scenarioId === "neutral-stationary").map((record) => record.observation.timestampMs));
+  const movementRecords = observations.filter((record) => ["lateral-movement", "vertical-movement", "approach-retreat"].includes(record.envelope.scenarioId));
+  const movementTimestamps = new Set(movementRecords.map((record) => record.observation.timestampMs));
+  const commandedAxis = movementRecords.map((record) => record.envelope.diagnostics.targetAxis).find((axis): axis is "x" | "y" | "z" => axis === "x" || axis === "y" || axis === "z") ?? null;
+  const stationaryPositionsMm = outputs.filter((output) => stationaryTimestamps.has(output.timestampMs) && output.positionMm !== null).map((output) => output.positionMm!);
+  const associatedNeutralPositionsMm = outputs.filter((output) => neutralTimestamps.has(output.timestampMs) && output.positionMm !== null).map((output) => output.positionMm!);
+  const crossAxisTargetPositionsMm = outputs.filter((output) => movementTimestamps.has(output.timestampMs) && output.positionMm !== null).map((output) => output.positionMm!);
+  return {
+    stationaryPositionsMm,
+    trialPositionsMm: stationaryPositionsMm,
+    crossAxisTargetPositionsMm,
+    associatedNeutralPositionsMm,
+    commandedAxis,
+    sourceTimestampsMs: observations.map((record) => record.observation.timestampMs),
+    faceTimestampsMs,
+    validTimestampsMs: outputs.filter((output) => output.valid).map((output) => output.timestampMs),
+    faceDetectedCount: faceTimestampsMs.length,
+    poseSamples: outputs.map((output, index) => ({ sequenceNumber: index, timestampMs: output.timestampMs, positionMm: output.positionMm, processingMs: output.estimatorProcessingMs })),
+    calibrationBurden: evidence.calibrationBurden,
+  };
+}
+
+export function regenerateM0DMetricsFromEvidence(
+  evidence: M0DAuthoritativeMetricEvidence,
+  estimatorId: string,
+): M0DCandidateMetricSummary {
+  return calculateCandidateMetricSummary(deriveM0DMetricInputFromEvidence(evidence, estimatorId));
 }
