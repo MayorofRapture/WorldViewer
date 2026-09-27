@@ -4,6 +4,7 @@ import type { TrackingObservation } from "../../src/mediapipe/trackingObservatio
 import { M0D7EvidenceRunner, type M0D7EvidenceFile, type M0D7LiveTrackingSource } from "../../src/m0d/runner/m0d7EvidenceRunner";
 import { buildM0D7ProcedureSteps } from "../../src/m0d/runner/m0d7Procedure";
 import type { MediaPipeProvenance } from "../../src/mediapipe/mediapipeProvenance";
+import { estimatorAObservation, estimatorBObservation, affineMatrix } from "../fixtures/m0d/estimatorFixtures";
 
 function observation(timestampMs: number): TrackingObservation {
   const landmarks = Array.from({ length: 364 }, () => ({ x: 0.5, y: 0.5, z: -0.1 }));
@@ -14,12 +15,20 @@ class FakeSource implements M0D7LiveTrackingSource {
   private listener: ((event: TrackingObservationEvent) => void) | undefined;
   public started = false;
   public stopped = false;
+  public eventObservation: (timestampMs: number) => TrackingObservation = observation;
   public async start(): Promise<void> { this.started = true; }
   public async stop(): Promise<void> { this.stopped = true; }
   public subscribeDetailed(listener: (event: TrackingObservationEvent) => void): () => void { this.listener = listener; return () => { this.listener = undefined; }; }
   public getDroppedFrameCount(): number { return 0; }
   public getCameraConfiguration() { return { widthPx: 640, heightPx: 360, frameRate: 24 }; }
-  public emit(timestampMs: number): void { this.listener?.({ observation: observation(timestampMs), inferenceDurationMs: 2, completedAtMs: timestampMs + 2 }); }
+  public emit(timestampMs: number): void { this.listener?.({ observation: this.eventObservation(timestampMs), inferenceDurationMs: 2, completedAtMs: timestampMs + 2 }); }
+}
+
+function fixtureObservation(timestampMs: number): TrackingObservation {
+  const a = estimatorAObservation({ timestampMs, matrix: affineMatrix() });
+  const b = estimatorBObservation({ timestampMs });
+  if (a.face === undefined || b.face === undefined) throw new Error("fixture face missing");
+  return Object.freeze({ ...a, face: Object.freeze({ ...a.face, normalizedLandmarks: b.face.normalizedLandmarks }) });
 }
 
 const provenance: MediaPipeProvenance = {
@@ -45,5 +54,34 @@ describe("M0D7 evidence runner orchestration", () => {
     expect(written).toHaveLength(1);
     expect(written[0]?.map((file) => file.relativePath)).toEqual(expect.arrayContaining(["manifest.json", "calibration/observation-trace.jsonl", "observations/trace.jsonl", "estimator-a/outputs/replay.jsonl", "estimator-b/outputs/replay.jsonl", "validation.json", "m0d8-review.json"]));
     expect(written[0]?.some((file) => file.contents.includes("webcam"))).toBe(false);
+  });
+
+  it("runs the full deterministic procedure through replay, scenario metrics, structural evidence, and validation", async () => {
+    const source = new FakeSource();
+    source.eventObservation = fixtureObservation;
+    const written: M0D7EvidenceFile[][] = [];
+    const runner = new M0D7EvidenceRunner({ source, runId: "run-complete-fixture", cameraOriginScreenMm: { x: 0, y: 103.188, z: 0 }, clock: { now: () => 0 }, provenance: async () => provenance, writer: { write: async (files) => { written.push([...files]); return "fixture-output"; } } });
+    await runner.start();
+    runner.beginProcedure(0);
+    let now = 0;
+    while (runner.getState().status === "running") {
+      const current = runner.getState().steps[runner.getState().stepIndex];
+      if (current === undefined) break;
+      if (current.kind === "transition") {
+        runner.confirmTargetReached(now + 1);
+        source.emit(now + 2);
+        now += 2_001;
+        runner.tick(now);
+      } else {
+        source.emit(now + 1);
+        now += current.durationMs ?? 0;
+        runner.tick(now);
+      }
+    }
+    const result = await runner.finalize();
+    expect(result.validation.passed).toBe(true);
+    expect(result.replayCalibration).not.toBeNull();
+    expect(result.estimatorAOutputs.length).toBeGreaterThan(0);
+    expect(written[0]?.find((file) => file.relativePath === "metrics/scenario-summary.json")?.contents).toContain("lateral-movement");
   });
 });
