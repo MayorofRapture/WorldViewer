@@ -23,11 +23,11 @@ Upstream artifacts:
 Purpose of this document:  
 Freeze the baseline pose-estimator methods, shared inputs, calibration inputs, replay format, metric formulas, live hardware procedure, evidence layout, rerun rules, collection restrictions, and interpretation boundary before estimator implementation and live evidence collection begin.
 
-This document is intentionally prescriptive. Its purpose is to remove design ambiguity from M0D4–M0D7 so those tasks can be executed by lower-cost models without silently redesigning the computer-vision experiment. Draft v0.4 incorporates the initial stronger-reasoning Class C findings and the completed matrix-diagnostic reconciliation, and remains pending re-review; it is not an approved or frozen oracle.
+This document is intentionally prescriptive. Its purpose is to remove design ambiguity from M0D4–M0D7 so those tasks can be executed by lower-cost models without silently redesigning the computer-vision experiment. Draft v0.4 incorporates the initial stronger-reasoning Class C findings and the completed matrix-diagnostic reconciliation. Final GPT-5.6 Sol High Class C review approved and froze this Draft v0.4 / experimentProcedureVersion 3 through `ORC-POSE-ESTIMATOR-001` against reviewed repository baseline `aef3e7c8280784db3e878757338c073cbce45a81`.
 
 # Draft v0.4 review state
 
-Draft v0.4 incorporates the initial stronger-reasoning Class C findings and the completed matrix-diagnostic reconciliation and is awaiting stronger re-review. The corrections below are procedural and provenance safeguards; they do not approve or freeze this oracle.
+Draft v0.4 incorporates the initial stronger-reasoning Class C findings and the completed matrix-diagnostic reconciliation. The final GPT-5.6 Sol High Class C review approved the specification and `ORC-POSE-ESTIMATOR-001` froze it at experimentProcedureVersion 3. The corrections below are procedural and provenance safeguards; they do not change the frozen experiment semantics.
 
 The future evidence namespace for this procedure is `evidence/m0d/estimator-experiment-v3/`.
 
@@ -203,7 +203,7 @@ Rules:
 • calibration trace is retained as part of the evidence bundle  
 • evaluation trials are separate from the calibration capture
 
-The 600 mm target is the Draft v0.4 proposed baseline. It becomes frozen only after the Class C review/freeze gate in Section 27 passes. Any material change after freeze requires a new experiment-procedure version before new evidence is collected.
+The 600 mm target is the Draft v0.4 frozen baseline. Any material change after freeze requires a new experiment-procedure version before new evidence is collected.
 
 # 9\. Estimator A — Facial Transformation Matrix
 
@@ -821,17 +821,19 @@ https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/cc/visio
 5\. Known JavaScript API limitation: the Face Landmarker public API does not expose the virtual-camera intrinsics used to produce the transformation matrix. This is why Estimator A uses a recorded one-point neutral depth scale instead of assuming exact physical calibration:  
 https://github.com/google-ai-edge/mediapipe/issues/5945
 
-Exact installed-package provenance for the matrix result is also recorded here. The exact package is `node_modules/@mediapipe/tasks-vision/`, package `@mediapipe/tasks-vision@1.0.1`, resolved by `package-lock.json` to `tasks-vision-1.0.1.tgz` with integrity `sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==`. Its `vision.d.ts` defines Matrix rows, columns, and data. Its exact `vision_bundle.mjs.map` conversion attaches the `face_geometry` proto listener and constructs each result as `{rows: ..., columns: ..., data: xd(d,3,cc,wd()).slice()}`; this copies the decoded repeated field-3 values and contains no transpose/reorder operation. A completed visible packaged diagnostic from build `ff285467382c4723a614419990f3d58ed1d37c85` used this package, the pinned task asset SHA-256 `64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF`, embedded metadata SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`, negotiated 640 × 360 at 24 FPS, and four complete phases with zero missing/invalid observations. The stronger review found that the exact returned array is correctly consumed by WorldViewer as the reviewed column-major 4 × 4 transform applied to column vectors, with translation at indices 12, 13, and 14 and no transpose/reorder: physical left movement decreased WorldViewer X, right movement increased X, and approaching the screen decreased Z. A mathematically equivalent row-major/row-vector label remains a representational alternative, not a change to this implementation conclusion. The numerical diagnostic remains local and uncommitted; this finding does not approve or freeze the Class C oracle. The package-specific provenance test is `tests/unit/m0dMatrixPackageProvenance.test.ts`.
+Exact installed-package provenance for the matrix result is also recorded here. The exact package is `node_modules/@mediapipe/tasks-vision/`, package `@mediapipe/tasks-vision@1.0.1`, resolved by `package-lock.json` to `tasks-vision-1.0.1.tgz` with integrity `sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==`. Its `vision.d.ts` defines Matrix rows, columns, and data. Its exact `vision_bundle.mjs.map` conversion attaches the `face_geometry` proto listener and constructs each result as `{rows: ..., columns: ..., data: xd(d,3,cc,wd()).slice()}`; this copies the decoded repeated field-3 values and contains no transpose/reorder operation. A completed visible packaged diagnostic from build `ff285467382c4723a614419990f3d58ed1d37c85` used this package, the pinned task asset SHA-256 `64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF`, embedded metadata SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`, negotiated 640 × 360 at 24 FPS, and four complete phases with zero missing/invalid observations. The stronger review found that the exact returned array is correctly consumed by WorldViewer as the reviewed column-major 4 × 4 transform applied to column vectors, with translation at indices 12, 13, and 14 and no transpose/reorder: physical left movement decreased WorldViewer X, right movement increased X, and approaching the screen decreased Z. A mathematically equivalent row-major/row-vector label remains a representational alternative, not a change to this implementation conclusion. The numerical diagnostic remains local and uncommitted; this finding does not itself alter the approved and frozen Class C oracle. The package-specific provenance test is `tests/unit/m0dMatrixPackageProvenance.test.ts`.
 
 These references define the baseline method; implementation should pin exact dependency/model versions and retain relevant source/version provenance in evidence.
 
 # 27\. Draft v0.4 Review / Oracle Freeze Conditions
 
-Draft v0.4 is the governance-reconciled experiment definition. The accepted corrections are consolidated directly into Sections 5, 9, 10, 11, 12, 13, and 14; this draft remains pending stronger re-review and is not frozen.
+Draft v0.4 is the governance-reconciled experiment definition. The accepted corrections are consolidated directly into Sections 5, 9, 10, 11, 12, 13, and 14. Final GPT-5.6 Sol High Class C review approved this specification and `ORC-POSE-ESTIMATOR-001` froze it at experimentProcedureVersion 3 against reviewed repository baseline `aef3e7c8280784db3e878757338c073cbce45a81`.
+
+The frozen oracle definition does not by itself establish M0D4–M0D7 implementation readiness. The technical prerequisites below remain required before those tasks begin.
 
 Before M0D4–M0D7 begin, confirm all technical prerequisites:  
 • landmark indices and canonical-model extraction script produce finite plausible CC and DcanonMm  
-• exact installed-package matrix dimensions and conversion behavior are documented; the completed diagnostic supports the reviewed column-major/column-vector consumption, subject to final Class C approval
+• exact installed-package matrix dimensions and conversion behavior are documented; the completed diagnostic supports the reviewed column-major/column-vector consumption recorded by the frozen oracle
 • actual E590 camera capture mode is recorded  
 • cameraOriginScreenMm measurement fields exist  
 • 600/450/750 mm depth targets are practical  
@@ -863,4 +865,4 @@ Procedure/version discipline:
 • evidence produced under different material experimentProcedureVersion values must never be mixed as though the procedures were identical  
 • M0D8 may recommend a new experiment version if the frozen procedure proves inadequate, but it must preserve and interpret the completed evidence under the version that actually produced it
 
-Only after these technical checks, stronger Class C review, and Oracle Registry freeze are complete is the experiment implementation-approved for M0D4–M0D7.
+The Class C oracle is approved and frozen through `ORC-POSE-ESTIMATOR-001`. M0D4–M0D7 remain gated until the unresolved technical prerequisites above are satisfied; this freeze does not authorize their implementation or evidence collection by itself.

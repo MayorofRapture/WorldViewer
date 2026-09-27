@@ -14,23 +14,24 @@
 - M0D3B physical matrix-diagnostic review: completed by the operator against build `ff285467382c4723a614419990f3d58ed1d37c85`; raw output remains local and uncommitted.
 - Oracle ID: `ORC-POSE-ESTIMATOR-001`
 - Classification: Class C
-- Review status: pending
-- Freeze status: draft
-- M0D4–M0D7 status: blocked until the Class C review is approved and the Oracle Registry record is frozen.
-- This note does not approve, freeze, reinterpret, or implement the experiment.
+- Review status: approved
+- Freeze status: frozen
+- Reviewed baseline: `aef3e7c8280784db3e878757338c073cbce45a81`
+- M0D4–M0D7 status: implementation readiness remains gated by unresolved Section 27 technical prerequisites; oracle approval/freeze does not authorize those tasks by itself.
+- This note records the approved and frozen oracle; it does not implement M0D4–M0D7 or change the experiment semantics.
 
 ## Handoff record
 
 - Subsystem status and supported scope: M0D3A pure TrackingObservation normalization and M0D3B's opt-in packaged matrix diagnostic are implemented and verified; live tracking-source integration, estimators, replay, and formal evidence implementation remain out of scope.
 - Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeBenchmarkWorker.ts` is benchmark-only and is not yet a `TrackingSource` implementation.
-- Oracle IDs: `ORC-POSE-ESTIMATOR-001` (pending/draft).
-- Authoritative tests/oracles: Pending Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
-- M1 oracle freeze status and classification: Not M1-ready; Class C review pending and freeze draft.
+- Oracle IDs: `ORC-POSE-ESTIMATOR-001` (approved/frozen).
+- Authoritative tests/oracles: The approved and frozen Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
+- M1 oracle freeze status and classification: Not M1-ready; the Class C oracle is approved/frozen, but M0D4–M0D7 technical readiness is not established.
 - Known-good reference implementation: Packaged MediaPipe benchmark path in `src/mediapipe/`, with the M0D3B diagnostic reusing its pinned worker configuration; no estimator implementation is approved.
 - REUSE IDs: None applicable to this review-preparation artifact.
 - Approved dependency/reference implementation: MediaPipe package/model provenance is recorded for the spike only; no estimator reference implementation is approved.
-- Authoritative Approval Source: None yet; approval must come from the required final stronger Class C review and governing-source reconciliation.
-- Reuse Mode: Not applicable to the pending oracle; no production estimator reuse decision is made.
+- Authoritative Approval Source: Final GPT-5.6 Sol High Class C review and governing-source reconciliation recorded in `docs/testing/oracle-registry.md` against reviewed baseline `aef3e7c8280784db3e878757338c073cbce45a81`.
+- Reuse Mode: Not applicable to the frozen oracle; no production estimator reuse decision is made.
 - Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.4, experimentProcedureVersion 3, and future evidence namespace `evidence/m0d/estimator-experiment-v3/` remain navigation facts only. The earlier v2 artifact/directory is historical and is not renamed or rewritten.
 - Remaining project-specific custom-code boundary: Future M0D normalization, estimator, replay, and evidence code must consume the frozen contracts and may not author new experiment semantics.
 - Prohibited Reinvention: Do not replace the prescribed methods, invent canonical constants, transpose matrices by appearance, or tune/rerun evidence outside the frozen procedure.
@@ -39,14 +40,14 @@
 - Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; the local M0D3B diagnostic output is intentionally not referenced or committed, and none of these is a validated estimator-comparison bundle.
 - Known limitations / unsupported behavior: M0D3B adds a separate diagnostic-only worker path, but does not create a live TrackingSource or production observation integration. The completed physical diagnostic supports the reviewed matrix consumption but is not formal M0D7 evidence; no camera-origin measurement, estimator, replay, or M0D evidence validator is present.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`.
-- Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to begin M0D4–M0D7 before oracle freeze returns to stronger review.
+- Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to alter the frozen oracle returns to stronger review; unresolved Section 27 technical prerequisites remain implementation gates for M0D4–M0D7.
 
 ## Governing sources
 
 - `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.4 / experimentProcedureVersion 3, especially §§4–24 for experiment semantics and §§25–27 for Class C review/freeze conditions.
 - `docs/planning/milestone-roadmap.md`, M0D and the Class C oracle timing rule.
 - `docs/testing/testing-strategy.md`, Class C review/freeze and verification-readiness policy.
-- `docs/testing/oracle-registry.md`, `ORC-POSE-ESTIMATOR-001` pending/draft record.
+- `docs/testing/oracle-registry.md`, `ORC-POSE-ESTIMATOR-001` approved/frozen record.
 - `docs/architecture/interface-contract-specification.md`, §§8–11 and D-IC-03/D-IC-10 for `TrackingObservation`, `RawViewerPose`, and the M0D→M0E boundary.
 - `docs/architecture/technical-design-specification.md`, §§9–13 and D-TDS-10 for worker, estimator, calibration, replay, and evidence ownership.
 - `docs/architecture/adr/ADR-003 — Canonical Screen Coordinate System and Millimeter Units.md`.
@@ -106,7 +107,7 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; estimator implementation remains absent. |
 | Physical-target practicality | Ambiguous | E590 operator/setup confirmation is not present. |
 
-Exact-package matrix conclusion: The completed physical diagnostic supports the existing WorldViewer column-major/column-vector consumption of the exact returned array, with translation at indices 12, 13, and 14 and no transpose/reorder. This stronger-review finding does not approve or freeze the Class C oracle.
+Exact-package matrix conclusion: The completed physical diagnostic supports the existing WorldViewer column-major/column-vector consumption of the exact returned array, with translation at indices 12, 13, and 14 and no transpose/reorder. This finding is recorded in the approved and frozen Class C oracle.
 
 ## Completed physical matrix-diagnostic review
 
@@ -144,18 +145,18 @@ Relevant implementation/provenance paths:
 
 ## Unresolved review questions and handoff boundary
 
-The stronger reviewer must decide whether the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation are valid and sufficiently specified. Any material finding must be resolved in the governing experiment specification before freeze.
+The final stronger reviewer approved the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation for the frozen oracle. Any future material finding must be resolved through the retained stronger-review change authority before modifying the frozen procedure.
 
-No Estimator A/B implementation, M0D6 replay/metrics tooling, M0D7 evidence collection, tracker selection, or ADR-006.01 is authorized by this package. M0D4–M0D7 remain blocked while `ORC-POSE-ESTIMATOR-001` is `pending` / `draft`.
+No Estimator A/B implementation, M0D6 replay/metrics tooling, M0D7 evidence collection, tracker selection, or ADR-006.01 is authorized by this package. M0D4–M0D7 remain blocked by unresolved Section 27 technical prerequisites even though `ORC-POSE-ESTIMATOR-001` is approved / frozen.
 
 ## Verification performed for this package
 
 - Verified all paths cited above exist.
-- Verified `ORC-POSE-ESTIMATOR-001` is present as Class C with `Review status: pending` and `Freeze status: draft`.
+- Verified `ORC-POSE-ESTIMATOR-001` is present as Class C with `Review status: approved` and `Freeze status: frozen` against reviewed baseline `aef3e7c8280784db3e878757338c073cbce45a81`.
 - Verified current source contains benchmark-only MediaPipe worker output and no estimator implementation.
-- Initial Sol High review: changes required. Remediation audit: substantive design accepted; freeze deferred for consolidation and exact-package matrix-provenance closure. Current status: awaiting final stronger Class C audit. No production estimator code is introduced here.
+- Initial Sol High review: changes required. Remediation audit: substantive design accepted; final GPT-5.6 Sol High Class C review approved and froze the reconciled Draft v0.4 / procedure 3 baseline. No production estimator code is introduced here.
 - M0D3B implementation verification: packaged diagnostic wiring, bounded capture state, pinned task/archive provenance verification, failure/timeout runner behavior, and the operator's completed physical diagnostic summary were reviewed. Raw diagnostic JSON remains local and uncommitted; no formal estimator-comparison evidence was created.
 
 ## Escalation conditions
 
-Stop and return to stronger review if the experiment specification, interface contracts, ADRs, or existing evidence disagree; if a prerequisite is promoted from proposed to frozen without an authoritative review; or if implementation work is requested before the Class C oracle is approved and frozen.
+Stop and return to stronger review if the experiment specification, interface contracts, ADRs, or existing evidence disagree; if a prerequisite is promoted from proposed to frozen without an authoritative review; if a material change to the frozen oracle is requested; or if implementation work is requested before the remaining Section 27 technical prerequisites are satisfied.
