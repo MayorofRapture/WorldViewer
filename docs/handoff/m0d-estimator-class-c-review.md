@@ -17,11 +17,19 @@
 - Review status: approved
 - Freeze status: frozen
 - Reviewed baseline: `aef3e7c8280784db3e878757338c073cbce45a81`
-- M0D4: Ready; M0D5: Ready; M0D6: Ready after the audited metric/invalidation corrections; M0D7 runner: implementation complete pending packaged verification.
+- Class C oracle: approved/frozen. M0D4-M0D7 implementation readiness is not yet Ready: remaining Section 27 technical prerequisites still gate formal physical evidence collection.
 - M0D7 physical evidence collection and M0D8 stronger-reasoning interpretation/production selection remain deferred; no M0D7 evidence is claimed here.
-- Section 27 readiness inputs recorded for this tooling include E590 `cameraOriginScreenMm = { x: 0, y: 103.188, z: 0 }` mm and operator-confirmed target practicality; these are not live experiment evidence.
+- Section 27 readiness inputs recorded for this tooling include an E590 `cameraOriginScreenMm = { x: 0, y: 103.188, z: 0 }` mm candidate and operator target-practicality input; neither closes the corresponding formal M0D4-M0D7 entry prerequisite or constitutes live experiment evidence.
 - M0D4–M0D6 implementation status is Ready under this handoff; M0D7 live evidence collection and M0D8 interpretation/selection remain separately scoped.
-- This note records the approved and frozen oracle plus the completed M0D4/M0D5/M0D6 implementation boundary; it does not change the experiment semantics.
+- This note records the approved/frozen oracle and the current implementation boundary. It does not change experiment semantics.
+- Current readiness clarification: deterministic implementation verification does not close M0D4-M0D7 technical entry readiness; the Section 27 table below remains authoritative for unresolved Missing and Ambiguous prerequisites.
+- Superseding state for the prior implementation-status wording above: M0D4-M0D7 technical entry readiness remains unresolved wherever the Section 27 table below says Missing or Ambiguous.
+
+### Current M0D7 physical-evidence correction boundary
+
+The focused implementation correction preserves the accepted lifecycle and frozen procedure while making evidence semantics explicit: invalidation is scoped to an `(attemptId, unitId)` pair; the verified negotiated camera configuration is persisted before source shutdown; depth ordering uses the prescribed 450/600/750 mm values; repeatability and movement errors are grouped by physical target and same-cycle neutral reference; hold completeness requires accepted hold/capture observations plus start/end markers; replacement attempts require their own evidence and markers; and scenario summaries are serialized as exact regenerable metrics without score or rank.
+
+These corrections do not approve a physical run. The runner status is ready for operator collection only after the remaining Section 27 technical entry prerequisites are separately resolved and the operator performs the visible run.
 
 ## Handoff record
 
@@ -104,12 +112,13 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Monotonic timestamp normalization | Ready | Production worker uses `VideoFrameCallbackMetadata.mediaTime`, preserves equal timestamps, rejects stale timestamps, and never substitutes wall-clock time. |
 | Inference/worker timing | Ready | Production observation messages carry inference timing as protocol metadata outside the core `TrackingObservation`; benchmark timing remains unchanged. |
 | Camera configuration | Ready | The operator diagnostic negotiated 640 × 360 at 24 FPS; this is diagnostic confirmation, not formal M0D7 evidence. |
-| `cameraOriginScreenMm` measurement field/validation contract | Ready | Host-private M0D contract validates finite x/y/z and derives `ZrefCameraMm = ZrefScreenMm - cameraOriginScreenMm.z` only when positive. |
-| Actual E590 `cameraOriginScreenMm` measurement | Ready | Operator-provided readiness input recorded as `{ x: 0, y: 103.188, z: 0 }` mm in the canonical screen-relative frame. |
-| Evidence schema/validator | Ready | v3 `schemaVersion = 1` contracts and `validatorVersion = 1` validate the frozen manifest, context files, calibration/evaluation traces, replay outputs, camera-origin, sequence/timestamp, numeric, candidate-identity, scenario/invalidation/anomaly, configuration-consistency, and metric-regeneration rules. Historical v2 artifacts remain unchanged. |
-| Live worker-to-TrackingObservation integration | Ready | `MediaPipeTrackingSource` owns camera/frame lifecycle and consumes protocol-versioned observations from `mediapipeTrackingWorker.ts`; deterministic lifecycle, normalization, timestamp, and boundary tests pass. |
+| `cameraOriginScreenMm` measurement field/validation contract | Ambiguous | Host-private M0D validation exists, but formal operator measurement and entry evidence for the physical experiment remain unresolved. |
+| Actual E590 `cameraOriginScreenMm` measurement | Missing | `{ x: 0, y: 103.188, z: 0 }` mm is an operator-provided readiness input only; it is not a formal M0D7 measurement record. |
+| Evidence schema/validator implementation/readiness | Ambiguous | v3 `schemaVersion = 1` contracts and `validatorVersion = 1` implementation exist and are tested, but formal Section 27 evidence-readiness acceptance remains unresolved. Historical v2 artifacts remain unchanged. |
+| Live worker-to-TrackingObservation integration | Ambiguous | The source/worker path and deterministic tests exist, but formal M0D7 live integration entry acceptance remains unresolved. |
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; both frozen M0D4/M0D5 candidates emit finite values or null with diagnostics. |
-| Physical-target practicality | Ready | Operator confirmed the frozen 450/600/750 mm depth, ±150 mm lateral, ±100 mm vertical, and approximately 25–30° head-turn targets are practical on the E590 setup. |
+| Physical-target practicality | Missing | The diagnostic/operator input is not formal M0D7 physical-target evidence; operator practicality must be established at the physical-evidence entry gate. |
+| Formal M0D7 physical evidence collection readiness | Missing | No physical M0D7 run has been performed; visible operator collection, complete evidence, and validation remain outstanding. |
 
 Exact-package matrix conclusion: The completed physical diagnostic supports the existing WorldViewer column-major/column-vector consumption of the exact returned array, with translation at indices 12, 13, and 14 and no transpose/reorder. This finding is recorded in the approved and frozen Class C oracle.
 
@@ -149,7 +158,7 @@ Relevant implementation/provenance paths:
 
 ## Unresolved review questions and handoff boundary
 
-The final stronger reviewer approved the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation for the frozen oracle. Section 27 implementation-readiness prerequisites are now recorded as complete, including the operator-provided E590 camera-origin input and target-practicality confirmation. Any future material finding must be resolved through the retained stronger-review change authority before modifying the frozen procedure.
+The final stronger reviewer approved the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation for the frozen oracle. That approval freezes the Class C oracle; it does not complete the remaining Section 27 technical entry prerequisites. The operator-provided E590 camera-origin input and target-practicality confirmation remain non-evidence readiness inputs. Any future material oracle finding must be resolved through the retained stronger-review change authority before modifying the frozen procedure.
 
 M0D4 and M0D5 estimator candidates and M0D6 replay/metrics/evidence tooling are implemented as host-private pure paths. M0D7 live evidence collection, M0D8 stronger-reasoning interpretation, tracker selection, and ADR-006.01 remain outside this package. No live camera run or formal M0D7 evidence was created.
 

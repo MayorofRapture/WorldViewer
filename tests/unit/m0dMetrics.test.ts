@@ -8,7 +8,9 @@ import {
   faceDetectedRate,
   percentileNearestRank,
   referenceError,
+  relativeMovementError,
   repeatabilityRms,
+  repeatabilityRmsAcrossTrialMedians,
   robustOutlierSummary,
   robustStationaryOutlierSummary,
   stationaryAxisRms,
@@ -24,6 +26,8 @@ describe("M0D frozen metrics", () => {
     expect(stationaryAxisRms([p(0, 0, 600), p(2, 0, 600)])).toEqual({ x: 1, y: 0, z: 0 });
     expect(trialMedianPose([p(1, 2, 3), p(3, 4, 5), p(2, 3, 4)])).toEqual(p(2, 3, 4));
     expect(repeatabilityRms([p(0, 0, 0), p(2, 0, 0)])).toBe(1);
+    expect(repeatabilityRmsAcrossTrialMedians([p(0, 0, 0), p(2, 0, 0), p(4, 0, 0)])).toBeCloseTo(Math.sqrt(8 / 3));
+    expect(repeatabilityRmsAcrossTrialMedians([null, null])).toBeNull();
     expect(referenceError(p(2, -3, 4), p(1, -1, 5))).toEqual({ signedMm: p(1, -2, -1), absoluteMm: p(1, 2, 1) });
     expect(crossAxisDrift([p(10, 2, 0), p(10, 100, 0)], [p(0, 0, 0), p(0, 4, 0)], "x")).toMatchObject({ offAxisRmsMm: 49, offAxisMaximumMm: 49, offAxisRmsByAxis: { y: 49, z: 0 } });
   });
@@ -79,8 +83,26 @@ describe("M0D frozen metrics", () => {
     expect(directionalStructuralStatus([{ first: -1, neutral: 0, last: 1 }, { first: -2, neutral: 0, last: 2 }])).toBe("Verified");
     expect(directionalStructuralStatus([{ first: 1, neutral: 0, last: 2 }, { first: 2, neutral: 0, last: 1 }])).toBe("Structural failure");
     expect(directionalStructuralStatus([{ first: -1, neutral: 0, last: 1 }])).toBe("Unverified");
+    expect(directionalStructuralStatus([{ first: -1, neutral: 0, last: 1 }, { first: -2, neutral: 0, last: 2 }, { first: 2, neutral: 0, last: -1 }])).toBe("Verified");
     const result = calculateStructuralFailureSummary({ replayable: true, calibrationValid: true, replayOutputs: [{ valid: true, positionMm: { x: Number.NaN, y: 0, z: 1 } }], xCycles: [{ first: 1, neutral: 0, last: 2 }, { first: 2, neutral: 0, last: 1 }] });
     expect(result.status).toBe("Structural failure");
     expect(result.hardFailures).toContain("valid-output-nonfinite-position");
+  });
+
+  it("uses the prescribed 450/600/750 depth triplet and leaves insufficient depth unverified", () => {
+    expect(calculateStructuralFailureSummary({ replayable: true, calibrationValid: true, replayOutputs: [], depthCycles: [{ z450: 1, z600: 2, z750: 3 }, { z450: 2, z600: 3, z750: 4 }] }).directional.z).toBe("Verified");
+    expect(calculateStructuralFailureSummary({ replayable: true, calibrationValid: true, replayOutputs: [], depthCycles: [{ z450: 3, z600: 2, z750: 1 }, { z450: 4, z600: 3, z750: 2 }] }).directional.z).toBe("Structural failure");
+    expect(calculateStructuralFailureSummary({ replayable: true, calibrationValid: true, replayOutputs: [], depthCycles: [{ z450: 1, z600: 2, z750: 3 }, { z450: 2, z600: 3, z750: 4 }, { z450: 4, z600: 3, z750: 2 }] }).directional.z).toBe("Verified");
+    expect(calculateStructuralFailureSummary({ replayable: true, calibrationValid: true, replayOutputs: [], depthCycles: [{ z450: 1, z600: 2, z750: 3 }] }).directional.z).toBe("Unverified");
+  });
+
+  it("keeps lateral and vertical movement error and cross-axis drift target-specific", () => {
+    const lateralNeutral = p(10, 20, 600);
+    const lateralTarget = p(110, 25, 600);
+    expect(relativeMovementError(lateralTarget, p(110, 20, 600), lateralNeutral, 100)).toMatchObject({ signedMm: p(0, 5, 0), normalizedByCommandedDisplacement: 0.05 });
+    expect(crossAxisDrift([lateralTarget], lateralNeutral, "x")).toMatchObject({ movementAxis: "x", offAxisRmsByAxis: { y: 5, z: 0 }, offAxisMaximumByAxis: { y: 5, z: 0 } });
+    const verticalNeutral = p(10, 20, 600);
+    const verticalTarget = p(13, 120, 600);
+    expect(crossAxisDrift([verticalTarget], verticalNeutral, "y")).toMatchObject({ movementAxis: "y", offAxisRmsByAxis: { x: 3, z: 0 }, offAxisMaximumByAxis: { x: 3, z: 0 } });
   });
 });

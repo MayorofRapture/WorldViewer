@@ -40,7 +40,7 @@ describe("M0D7 frozen live procedure", () => {
     const steps = buildM0D7ProcedureSteps().slice(0, 2);
     let state = markM0D7Ready(beginM0D7Initialization(createM0D7Runner("run", steps)), { widthPx: 640, heightPx: 360, frameRate: 24 });
     state = startM0D7Runner(state, 0);
-    state = invalidateM0D7Attempt(state, createProceduralInvalidation({ invalidationId: "inv-1", experimentRunId: "run", scenarioId: "calibration", trialId: null, attemptId: "run-attempt-1", originalAttemptId: null, replacementAttemptId: null, reason: "external-interruption", detail: "operator stopped the attempt" }));
+    state = invalidateM0D7Attempt(state, createProceduralInvalidation({ invalidationId: "inv-1", experimentRunId: "run", scenarioId: "calibration", unitId: steps[0]!.unitId, trialId: null, attemptId: "run-attempt-1", originalAttemptId: null, replacementAttemptId: null, reason: "external-interruption", detail: "operator stopped the attempt" }));
     expect(state.status).toBe("invalidated");
     state = beginM0D7ReplacementAttempt(state, 50);
     expect(state.status).toBe("running");

@@ -144,16 +144,44 @@ export interface M0DCandidateMetricSummary {
 export interface M0DScenarioStationaryMetric {
   readonly scenarioId: string;
   readonly trialId: string;
+  readonly targetMm: number | null;
+  readonly sampleCount: number;
   readonly trialMedianPoseMm: Vec3Mm | null;
   readonly stationaryAxisRmsMm: M0DAxisMetricSummary | null;
   readonly robustOutliers: M0DStationaryOutlierSummary | null;
+}
+
+export interface M0DStationaryRepeatabilityMetric {
+  readonly scenarioId: string;
+  readonly targetMm: number | null;
+  readonly trialIds: readonly string[];
+  readonly trialMedians: readonly (Vec3Mm | null)[];
+  readonly repeatabilityRmsMm: number | null;
+}
+
+export interface M0DScenarioMovementTargetMetric {
+  readonly holdId: string;
+  readonly targetMm: number | null;
+  readonly targetMedianPoseMm: Vec3Mm | null;
+  readonly associatedNeutralMedianPoseMm: Vec3Mm | null;
+  readonly prescribedDisplacementMm: number | null;
+  readonly relativeMovementError: M0DRelativeMovementErrorSummary;
+  readonly crossAxisDrift: M0DCrossAxisDriftSummary | null;
+}
+
+export interface M0DDepthOrderingCycle {
+  readonly z450: number | null;
+  readonly z600: number | null;
+  readonly z750: number | null;
 }
 
 export interface M0DScenarioMovementMetric {
   readonly scenarioId: string;
   readonly cycleId: string;
   readonly holdMedians: readonly (Vec3Mm | null)[];
+  readonly targets: readonly M0DScenarioMovementTargetMetric[];
   readonly orderingCycle: M0DOrderingCycle;
+  readonly depthOrderingCycle: M0DDepthOrderingCycle | null;
   readonly relativeMovementError: M0DRelativeMovementErrorSummary;
   readonly crossAxisDrift: M0DCrossAxisDriftSummary | null;
 }
@@ -161,6 +189,7 @@ export interface M0DScenarioMovementMetric {
 export interface M0DScenarioMetricSummary {
   readonly overall: M0DCandidateMetricSummary;
   readonly stationary: readonly M0DScenarioStationaryMetric[];
+  readonly stationaryRepeatability: readonly M0DStationaryRepeatabilityMetric[];
   readonly movement: readonly M0DScenarioMovementMetric[];
   readonly other: readonly { readonly scenarioId: string; readonly sampleCount: number }[];
 }
@@ -258,6 +287,12 @@ export function repeatabilityRms(positions: readonly Vec3Mm[]): number | null {
   const center = trialMedianPose(positions);
   const usable = positions.filter(validVector);
   return center === null || usable.length === 0 ? null : rms(usable.map((position) => magnitude(difference(position, center))));
+}
+
+/** Frozen repeatability: calculate dispersion across accepted trial medians, never raw samples. */
+export function repeatabilityRmsAcrossTrialMedians(trialMedians: readonly (Vec3Mm | null)[]): number | null {
+  const usable = trialMedians.filter(validVector);
+  return usable.length === 0 ? null : repeatabilityRms(usable);
 }
 
 export function referenceError(estimate: Vec3Mm | null | undefined, reference: Vec3Mm | null | undefined): M0DReferenceErrorSummary {
@@ -361,12 +396,14 @@ export function calculateStructuralFailureSummary(input: {
   readonly xCycles?: readonly M0DOrderingCycle[];
   readonly yCycles?: readonly M0DOrderingCycle[];
   readonly zCycles?: readonly M0DOrderingCycle[];
+  readonly depthCycles?: readonly M0DDepthOrderingCycle[];
 }): M0DStructuralFailureSummary {
   const hardFailures: string[] = [];
   for (const output of input.replayOutputs) if (output.valid && !validVector(output.positionMm)) hardFailures.push("valid-output-nonfinite-position");
   if (!input.calibrationValid) hardFailures.push("invalid-calibration");
   if (!input.replayable) hardFailures.push("replay-not-possible");
-  const directional = { x: directionalStructuralStatus(input.xCycles ?? []), y: directionalStructuralStatus(input.yCycles ?? []), z: directionalStructuralStatus(input.zCycles ?? []) };
+  const depthOrderingCycles = (input.depthCycles ?? []).map((cycle) => ({ first: cycle.z450, neutral: cycle.z600, last: cycle.z750 }));
+  const directional = { x: directionalStructuralStatus(input.xCycles ?? []), y: directionalStructuralStatus(input.yCycles ?? []), z: directionalStructuralStatus(depthOrderingCycles.length > 0 ? depthOrderingCycles : input.zCycles ?? []) };
   const status = hardFailures.length > 0 || Object.values(directional).includes("Structural failure") ? "Structural failure" : "Verified";
   return { hardFailures: [...new Set(hardFailures)], directional, status };
 }
@@ -502,7 +539,7 @@ function medianVector(values: readonly Vec3Mm[]): Vec3Mm | null {
 
 export function deriveM0DScenarioMetricSummary(evidence: M0DAuthoritativeMetricEvidence, estimatorId: string): M0DScenarioMetricSummary {
   const outputs = new Map(evidence.replayOutputs.filter((output) => output.estimatorId === estimatorId).map((output) => [output.timestampMs, output]));
-  const byUnit = (records: readonly M0DObservationTraceRecord[]): Vec3Mm[] => records.map((record) => outputs.get(record.observation.timestampMs)?.positionMm).filter((value): value is Vec3Mm => validVector(value));
+  const positionsFor = (records: readonly M0DObservationTraceRecord[]): Vec3Mm[] => records.map((record) => outputs.get(record.observation.timestampMs)?.positionMm).filter((value): value is Vec3Mm => validVector(value));
   const stationary: M0DScenarioStationaryMetric[] = [];
   const stationaryRecords = new Map<string, M0DObservationTraceRecord[]>();
   for (const record of evidence.observationTrace) {
@@ -512,33 +549,57 @@ export function deriveM0DScenarioMetricSummary(evidence: M0DAuthoritativeMetricE
   }
   for (const [key, records] of stationaryRecords) {
     const [scenarioId, trialId] = key.split("|");
-    const positions = byUnit(records);
-    stationary.push({ scenarioId: scenarioId!, trialId: trialId!, trialMedianPoseMm: medianVector(positions), stationaryAxisRmsMm: stationaryAxisRms(positions), robustOutliers: robustStationaryOutlierSummary(positions) });
+    const positions = positionsFor(records);
+    const targetMm = typeof records[0]?.envelope.diagnostics.targetMm === "number" ? records[0].envelope.diagnostics.targetMm : null;
+    stationary.push({ scenarioId: scenarioId!, trialId: trialId!, targetMm, sampleCount: positions.length, trialMedianPoseMm: medianVector(positions), stationaryAxisRmsMm: stationaryAxisRms(positions), robustOutliers: robustStationaryOutlierSummary(positions) });
   }
+  const repeatabilityGroups = new Map<string, M0DScenarioStationaryMetric[]>();
+  for (const trial of stationary) {
+    const key = `${trial.scenarioId}|${trial.targetMm ?? "null"}`;
+    repeatabilityGroups.set(key, [...(repeatabilityGroups.get(key) ?? []), trial]);
+  }
+  const stationaryRepeatability: M0DStationaryRepeatabilityMetric[] = [];
+  for (const [key, trials] of repeatabilityGroups) {
+    const [scenarioId, target] = key.split("|");
+    const targetMm = target === "null" ? null : Number(target);
+    const medians = trials.map((trial) => trial.trialMedianPoseMm);
+    stationaryRepeatability.push({ scenarioId: scenarioId!, targetMm: Number.isFinite(targetMm) ? targetMm : null, trialIds: trials.map((trial) => trial.trialId), trialMedians: medians, repeatabilityRmsMm: repeatabilityRmsAcrossTrialMedians(medians) });
+  }
+
   const movementRecords = new Map<string, M0DObservationTraceRecord[]>();
   for (const record of evidence.observationTrace) {
     if (!["lateral-movement", "vertical-movement", "approach-retreat"].includes(record.envelope.scenarioId) || record.envelope.stepKind !== "hold" || typeof record.envelope.cycleId !== "string" || typeof record.envelope.holdId !== "string") continue;
     const key = `${record.envelope.scenarioId}|${record.envelope.cycleId}|${record.envelope.holdId}`;
     movementRecords.set(key, [...(movementRecords.get(key) ?? []), record]);
   }
-  const cycles = new Map<string, { scenarioId: string; cycleId: string; holds: Map<string, Vec3Mm | null>; targets: Map<string, number> }>();
+  const cycleGroups = new Map<string, { scenarioId: string; cycleId: string; holds: M0DScenarioMovementTargetMetric[] }>();
   for (const [key, records] of movementRecords) {
-    const [scenarioId, cycleId, holdId] = key.split("|"); const first = records[0]!; const position = medianVector(byUnit(records));
-    const target = first.envelope.diagnostics.targetMm;
-    const groupKey = `${scenarioId}|${cycleId}`; const group = cycles.get(groupKey) ?? { scenarioId: scenarioId!, cycleId: cycleId!, holds: new Map(), targets: new Map() };
-    group.holds.set(holdId!, position); if (typeof target === "number") group.targets.set(holdId!, target); cycles.set(groupKey, group);
+    const [scenarioId, cycleId, holdId] = key.split("|");
+    const first = records[0]!;
+    const targetMm = typeof first.envelope.diagnostics.targetMm === "number" ? first.envelope.diagnostics.targetMm : null;
+    const targetMedianPoseMm = medianVector(positionsFor(records));
+    const groupKey = `${scenarioId}|${cycleId}`;
+    const group = cycleGroups.get(groupKey) ?? { scenarioId: scenarioId!, cycleId: cycleId!, holds: [] };
+    group.holds.push({ holdId: holdId!, targetMm, targetMedianPoseMm, associatedNeutralMedianPoseMm: null, prescribedDisplacementMm: null, relativeMovementError: { signedMm: null, absoluteMm: null, normalizedByCommandedDisplacement: null }, crossAxisDrift: null });
+    cycleGroups.set(groupKey, group);
   }
   const movement: M0DScenarioMovementMetric[] = [];
-  for (const group of cycles.values()) {
-    const ordered = [...group.holds.entries()]; const values = ordered.map(([, value]) => value);
-    const numbers = ordered.map(([holdId]) => group.targets.get(holdId) ?? null);
+  for (const group of cycleGroups.values()) {
     const axis = group.scenarioId === "lateral-movement" ? "x" : group.scenarioId === "vertical-movement" ? "y" : "z";
-    const axisValue = (value: Vec3Mm | null): number | null => value === null ? null : value[axis];
-    const orderingCycle = { first: axisValue(values[0] ?? null), neutral: axisValue(values[Math.floor(values.length / 2)] ?? null), last: axisValue(values.at(-1) ?? null) };
-    const positions = values.filter((value): value is Vec3Mm => validVector(value));
-    movement.push({ scenarioId: group.scenarioId, cycleId: group.cycleId, holdMedians: values, orderingCycle, relativeMovementError: relativeMovementError(positions.at(-1) ?? null, positions.at(0) ?? null, values[Math.floor(values.length / 2)] ?? null, numbers.at(-1) === null || numbers[0] === null ? null : Math.abs(numbers.at(-1)! - numbers[0]!)), crossAxisDrift: positions.length === 0 ? null : crossAxisDrift(positions, values[Math.floor(values.length / 2)] ?? null, axis) });
+    const neutral = group.holds.find((hold) => hold.targetMm === 0)?.targetMedianPoseMm ?? null;
+    const enrichedTargets = group.holds.map((hold) => {
+      const isDirectional = group.scenarioId !== "approach-retreat" && hold.targetMm !== null && hold.targetMm !== 0;
+      const prescribed = isDirectional ? hold.targetMm : null;
+      const reference = neutral !== null && prescribed !== null ? { ...neutral, [axis]: neutral[axis] + prescribed } as Vec3Mm : null;
+      return { ...hold, associatedNeutralMedianPoseMm: neutral, prescribedDisplacementMm: prescribed, relativeMovementError: isDirectional ? relativeMovementError(hold.targetMedianPoseMm, reference, neutral, Math.abs(prescribed!)) : hold.relativeMovementError, crossAxisDrift: isDirectional ? crossAxisDrift(hold.targetMedianPoseMm === null ? [] : [hold.targetMedianPoseMm], neutral, axis) : null };
+    });
+    const axisValue = (target: number): number | null => enrichedTargets.find((hold) => hold.targetMm === target)?.targetMedianPoseMm?.[axis] ?? null;
+    const orderingCycle = { first: axisValue(-Math.abs(group.holds.find((hold) => hold.targetMm !== null && hold.targetMm !== 0)?.targetMm ?? 0)), neutral: axisValue(0), last: axisValue(Math.abs(group.holds.find((hold) => hold.targetMm !== null && hold.targetMm !== 0)?.targetMm ?? 0)) };
+    const depthOrderingCycle = group.scenarioId === "approach-retreat" ? { z450: axisValue(450), z600: axisValue(600), z750: axisValue(750) } : null;
+    const values = enrichedTargets.map((hold) => hold.targetMedianPoseMm);
+    movement.push({ scenarioId: group.scenarioId, cycleId: group.cycleId, holdMedians: values, targets: enrichedTargets, orderingCycle, depthOrderingCycle, relativeMovementError: enrichedTargets.find((hold) => hold.relativeMovementError.signedMm !== null)?.relativeMovementError ?? { signedMm: null, absoluteMm: null, normalizedByCommandedDisplacement: null }, crossAxisDrift: enrichedTargets.find((hold) => hold.crossAxisDrift !== null)?.crossAxisDrift ?? null });
   }
   const otherCounts = new Map<string, number>();
   for (const record of evidence.observationTrace) if (!["neutral-stationary", "near-stationary-450", "far-stationary-750", "lateral-movement", "vertical-movement", "approach-retreat"].includes(record.envelope.scenarioId)) otherCounts.set(record.envelope.scenarioId, (otherCounts.get(record.envelope.scenarioId) ?? 0) + 1);
-  return { overall: regenerateM0DMetricsFromEvidence(evidence, estimatorId), stationary, movement, other: [...otherCounts].map(([scenarioId, sampleCount]) => ({ scenarioId, sampleCount })) };
+  return { overall: regenerateM0DMetricsFromEvidence(evidence, estimatorId), stationary, stationaryRepeatability, movement, other: [...otherCounts].map(([scenarioId, sampleCount]) => ({ scenarioId, sampleCount })) };
 }

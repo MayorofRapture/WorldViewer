@@ -129,6 +129,7 @@ export interface M0D7RunnerState {
   readonly anomalies: readonly M0D7AnomalyReference[];
   readonly proceduralError: string | null;
   readonly actualCameraConfiguration: Readonly<{ widthPx: number | null; heightPx: number | null; frameRate: number | null }> | null;
+  readonly cameraConfigurationVerified: boolean;
 }
 
 function freezeState(state: M0D7RunnerState): M0D7RunnerState {
@@ -137,7 +138,7 @@ function freezeState(state: M0D7RunnerState): M0D7RunnerState {
 
 export function createM0D7Runner(runId: string, steps: readonly M0D7ProcedureStep[] = buildM0D7ProcedureSteps()): M0D7RunnerState {
   if (runId.trim().length === 0) throw new RangeError("runId must be non-empty");
-  return freezeState({ status: "idle", runId, attemptId: `${runId}-attempt-1`, attemptNumber: 1, stepIndex: 0, unitStartIndex: 0, stepStartedAtMs: null, steps: [...steps], markers: [], proceduralInvalidations: [], anomalies: [], proceduralError: null, actualCameraConfiguration: null });
+  return freezeState({ status: "idle", runId, attemptId: `${runId}-attempt-1`, attemptNumber: 1, stepIndex: 0, unitStartIndex: 0, stepStartedAtMs: null, steps: [...steps], markers: [], proceduralInvalidations: [], anomalies: [], proceduralError: null, actualCameraConfiguration: null, cameraConfigurationVerified: false });
 }
 
 export function beginM0D7Initialization(state: M0D7RunnerState): M0D7RunnerState {
@@ -145,7 +146,11 @@ export function beginM0D7Initialization(state: M0D7RunnerState): M0D7RunnerState
 }
 
 export function markM0D7Ready(state: M0D7RunnerState, actualCameraConfiguration: M0D7RunnerState["actualCameraConfiguration"]): M0D7RunnerState {
-  return state.status === "initializing" ? freezeState({ ...state, status: "ready", actualCameraConfiguration }) : state;
+  return state.status === "initializing" ? freezeState({ ...state, status: "ready", actualCameraConfiguration, cameraConfigurationVerified: true }) : state;
+}
+
+export function recordM0D7CameraConfiguration(state: M0D7RunnerState, actualCameraConfiguration: M0D7RunnerState["actualCameraConfiguration"]): M0D7RunnerState {
+  return state.status === "initializing" ? freezeState({ ...state, actualCameraConfiguration }) : state;
 }
 
 function segmentMarker(state: M0D7RunnerState, current: M0D7ProcedureStep, marker: "start" | "end", monotonicMs: number, attemptId = state.attemptId): M0D7SegmentMarker {

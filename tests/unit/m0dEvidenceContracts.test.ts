@@ -31,6 +31,31 @@ function bundle(overrides: Record<string, unknown> = {}): Record<string, unknown
   };
 }
 
+function procedureTrace(overrides: Record<string, unknown> = {}) {
+  return {
+    ...faceWithMatrixObservationTrace,
+    envelope: {
+      ...faceWithMatrixObservationTrace.envelope,
+      scenarioId: "neutral-stationary",
+      segmentId: "procedure",
+      unitId: "unit-1",
+      trialId: "trial-1",
+      holdId: "hold-1",
+      stepKind: "capture",
+      attemptId: "attempt-1",
+      diagnostics: { ...faceWithMatrixObservationTrace.envelope.diagnostics, targetMm: 600 },
+      ...overrides,
+    },
+  };
+}
+
+function holdMarkers(attemptId = "attempt-1", kind: "capture" | "transition" = "capture") {
+  return [
+    { marker: "start", monotonicMs: 0, stepId: "step-1", unitId: "unit-1", attemptId, scenarioId: "neutral-stationary", kind, trialId: "trial-1", holdId: "hold-1" },
+    { marker: "end", monotonicMs: 1000, stepId: "step-1", unitId: "unit-1", attemptId, scenarioId: "neutral-stationary", kind, trialId: "trial-1", holdId: "hold-1" },
+  ];
+}
+
 describe("M0D evidence contracts", () => {
   it("accepts the supported schema, frozen experiment versions, and shared trace identities", () => {
     const result = validateM0DEvidenceBundle(bundle());
@@ -156,7 +181,7 @@ describe("M0D evidence contracts", () => {
       requiredScenarioIds: ["neutral-stationary"],
       requiredTrialIds: ["neutral-1"],
       trialsIncluded: [],
-      proceduralInvalidations: [{ schemaVersion: 1, invalidationId: "inv", experimentRunId: "run", scenarioId: "neutral-stationary", trialId: "neutral-1", attemptId: "attempt", originalAttemptId: null, replacementAttemptId: null, reason: "external-interruption", detail: "stopped", triggersRerun: true }],
+      proceduralInvalidations: [{ schemaVersion: 1, invalidationId: "inv", experimentRunId: "run", scenarioId: "neutral-stationary", unitId: "neutral-stationary-trial-1", trialId: "neutral-1", attemptId: "attempt", originalAttemptId: null, replacementAttemptId: null, reason: "external-interruption", detail: "stopped", triggersRerun: true }],
     });
     expect(result.passed).toBe(false);
     expect(result.failures.map((failure) => failure.code)).toEqual(expect.arrayContaining(["configuration-change-within-run", "invalid-procedural-invalidation"]));
@@ -176,5 +201,31 @@ describe("M0D evidence contracts", () => {
     });
     expect(result.passed).toBe(false);
     expect(result.failures).toContainEqual(expect.objectContaining({ code: "metric-regeneration-mismatch" }));
+  });
+
+  it("requires accepted hold/capture observations and markers, not transition-only evidence", () => {
+    const result = validateM0DEvidenceBundle({
+      manifest: validManifest,
+      observationTrace: [procedureTrace({ stepKind: "transition" })],
+      requiredUnitIds: ["unit-1"],
+      requiredHoldIds: ["hold-1"],
+      procedureMarkers: holdMarkers("attempt-1", "transition"),
+    });
+    expect(result.passed).toBe(false);
+    expect(result.failures.map((failure) => failure.code)).toEqual(expect.arrayContaining(["incomplete-required-unit", "missing-required-hold", "missing-hold-observations", "missing-hold-markers"]));
+  });
+
+  it("requires replacement evidence and replacement markers beyond a replacementAttemptId", () => {
+    const result = validateM0DEvidenceBundle({
+      manifest: validManifest,
+      observationTrace: [procedureTrace()],
+      requiredUnitIds: ["unit-1"],
+      requiredTrialIds: ["trial-1"],
+      requiredHoldIds: ["hold-1"],
+      procedureMarkers: holdMarkers(),
+      proceduralInvalidations: [{ schemaVersion: 1, invalidationId: "inv-replacement", experimentRunId: "run-fixture-001", scenarioId: "neutral-stationary", unitId: "unit-1", trialId: "trial-1", attemptId: "attempt-1", originalAttemptId: null, replacementAttemptId: "attempt-2", reason: "external-interruption", detail: "replacement evidence intentionally omitted" }],
+    });
+    expect(result.passed).toBe(false);
+    expect(result.failures.map((failure) => failure.code)).toEqual(expect.arrayContaining(["missing-replacement-evidence", "missing-replacement-markers"]));
   });
 });

@@ -9,7 +9,7 @@ import {
   type M0DJsonValue,
 } from "./m0dEvidenceContracts";
 import { stableM0DJsonStringify } from "./m0dSerialization";
-import { regenerateM0DMetricsFromEvidence, type M0DCalibrationBurdenSummary, type M0DCandidateMetricInput } from "../metrics/m0dMetrics";
+import { deriveM0DScenarioMetricSummary, regenerateM0DMetricsFromEvidence, type M0DCalibrationBurdenSummary, type M0DCandidateMetricInput } from "../metrics/m0dMetrics";
 import { M0D_PROCEDURAL_INVALIDATION_REASONS, getM0DScenario } from "../scenarios/m0dScenarioModel";
 
 export interface M0DEvidenceBundleInput {
@@ -26,10 +26,12 @@ export interface M0DEvidenceBundleInput {
   readonly requiredTrialIds?: readonly string[];
   readonly requiredCycleIds?: readonly string[];
   readonly requiredHoldIds?: readonly string[];
+  readonly requiredUnitIds?: readonly string[];
   readonly procedureMarkers?: readonly unknown[];
   readonly proceduralInvalidations?: readonly unknown[];
   readonly anomalies?: readonly unknown[];
   readonly storedMetrics?: unknown;
+  readonly storedScenarioMetrics?: unknown;
   readonly metricInput?: M0DCandidateMetricInput;
 }
 
@@ -75,7 +77,9 @@ const CHECKS_PERFORMED = [
   "configuration-consistency",
   "required-scenario-and-trial-coverage",
   "procedural-invalidation-and-anomaly-records",
+  "unit-and-hold-completeness",
   "metric-regeneration",
+  "scenario-metric-regeneration",
 ] as const;
 
 function finite(value: unknown): value is number {
@@ -362,7 +366,7 @@ function validateProceduralRecords(
   const invalidationIds = new Set<string>();
   values?.forEach((value, index) => {
     const path = `proceduralInvalidations[${index}]`;
-    if (!plainRecord(value) || value.schemaVersion !== 1 || !nonEmptyString(value.invalidationId) || !nonEmptyString(value.experimentRunId) || !nonEmptyString(value.scenarioId) || !nonEmptyString(value.attemptId) || !nonEmptyString(value.reason) || !M0D_PROCEDURAL_INVALIDATION_REASONS.includes(value.reason as typeof M0D_PROCEDURAL_INVALIDATION_REASONS[number]) || !nonEmptyString(value.detail) || getM0DScenario(value.scenarioId as string) === null) {
+    if (!plainRecord(value) || value.schemaVersion !== 1 || !nonEmptyString(value.invalidationId) || !nonEmptyString(value.experimentRunId) || !nonEmptyString(value.scenarioId) || !nonEmptyString(value.unitId) || !nonEmptyString(value.attemptId) || !nonEmptyString(value.reason) || !M0D_PROCEDURAL_INVALIDATION_REASONS.includes(value.reason as typeof M0D_PROCEDURAL_INVALIDATION_REASONS[number]) || !nonEmptyString(value.detail) || getM0DScenario(value.scenarioId as string) === null) {
       addFailure(failures, "invalid-procedural-invalidation", path, "procedural invalidation must use the frozen Section 19 reason set and required identifiers");
     }
     if (plainRecord(value) && nonEmptyString(value.invalidationId)) {
@@ -454,7 +458,7 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
     ? new Set<string>()
     : Array.isArray(replayOutputs) ? validateReplayOutputs(replayOutputs, bundle.manifest, traceIds, failures) : (addFailure(failures, "malformed-replay-outputs", "replayOutputs", "replayOutputs must be an array when present"), new Set<string>());
 
-  const strictM0D6 = bundle.calibrationTrace !== undefined || bundle.requiredScenarioIds !== undefined || bundle.requiredTrialIds !== undefined || bundle.storedMetrics !== undefined || bundle.metricInput !== undefined;
+  const strictM0D6 = bundle.calibrationTrace !== undefined || bundle.requiredScenarioIds !== undefined || bundle.requiredTrialIds !== undefined || bundle.storedMetrics !== undefined || bundle.storedScenarioMetrics !== undefined || bundle.metricInput !== undefined;
   const filesIncluded = Array.isArray(bundle.filesIncluded) && bundle.filesIncluded.every((file): file is string => typeof file === "string") ? [...bundle.filesIncluded] : [];
   const trialsIncluded = Array.isArray(bundle.trialsIncluded) && bundle.trialsIncluded.every((trial): trial is string => typeof trial === "string") ? [...bundle.trialsIncluded] : [];
   const invalidations = Array.isArray(bundle.proceduralInvalidations) ? bundle.proceduralInvalidations : [];
@@ -462,11 +466,18 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
   const requiredTrialIds = Array.isArray(bundle.requiredTrialIds) && bundle.requiredTrialIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredTrialIds] : [];
   const requiredCycleIds = Array.isArray(bundle.requiredCycleIds) && bundle.requiredCycleIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredCycleIds] : [];
   const requiredHoldIds = Array.isArray(bundle.requiredHoldIds) && bundle.requiredHoldIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredHoldIds] : [];
+  const requiredUnitIds = Array.isArray(bundle.requiredUnitIds) && bundle.requiredUnitIds.every((id): id is string => typeof id === "string") ? [...bundle.requiredUnitIds] : [];
 
   if (strictM0D6) {
     validateContext(bundle.environment, "environment", failures);
     validateContext(bundle.camera, "camera", failures);
     validateContext(bundle.configuration, "configuration", failures);
+    if (plainRecord(bundle.camera) && (bundle.camera.verified !== undefined || bundle.camera.actual !== undefined) && bundle.camera.verified !== true) addFailure(failures, "unverified-camera-configuration", "camera.verified", "formal M0D7 evidence requires a negotiated camera configuration verified before procedure timing");
+    if (plainRecord(bundle.camera) && plainRecord(bundle.camera.actual) && plainRecord(bundle.manifest) && plainRecord(bundle.manifest.cameraConfiguration)) {
+      const actual = bundle.camera.actual;
+      const manifestCamera = bundle.manifest.cameraConfiguration;
+      if (actual.widthPx !== manifestCamera.widthPx || actual.heightPx !== manifestCamera.heightPx || actual.frameRate !== manifestCamera.fps) addFailure(failures, "camera-configuration-mismatch", "manifest.cameraConfiguration", "manifest camera configuration must equal the persisted verified negotiated configuration");
+    }
     const requiredFiles = ["manifest.json", "environment.json", "camera.json", "configuration.json", "calibration/observation-trace.jsonl"];
     for (const file of requiredFiles) if (!filesIncluded.includes(file)) addFailure(failures, "missing-required-evidence-file", "filesIncluded", `required M0D6 evidence file is missing: ${file}`);
     if (!Array.isArray(bundle.calibrationTrace)) addFailure(failures, "missing-calibration-trace", "calibrationTrace", "M0D6 requires a calibration observation trace");
@@ -497,32 +508,60 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
       else if (!presentScenarios.has(scenarioId) && !invalidatedScenarios.has(scenarioId)) addFailure(failures, "missing-required-scenario", "observationTrace", `required scenario is absent and not explicitly invalidated: ${scenarioId}`);
     }
   }
+  const invalidatedUnits = new Set(invalidations.filter(plainRecord).map((value) => `${value.attemptId}|${value.unitId}`));
+  const allTraceEntries = [...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord);
+  const acceptedTraceEntries = allTraceEntries.filter((entry) => {
+    if (!plainRecord(entry.envelope) || typeof entry.envelope.attemptId !== "string" || typeof entry.envelope.unitId !== "string") return true;
+    return !invalidatedUnits.has(`${entry.envelope.attemptId}|${entry.envelope.unitId}`);
+  });
   if (requiredTrialIds.length > 0) {
-    const presentTrialIds = new Set([...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.trialId : null).filter(nonEmptyString));
+    const presentTrialIds = new Set(acceptedTraceEntries.map((entry) => plainRecord(entry.envelope) ? entry.envelope.trialId : null).filter(nonEmptyString));
     for (const trialId of requiredTrialIds) {
-      const hasAcceptedReplacement = invalidations.some((value) => plainRecord(value) && value.trialId === trialId && typeof value.replacementAttemptId === "string" && [...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].some((entry) => plainRecord(entry) && plainRecord(entry.envelope) && entry.envelope.trialId === trialId && entry.envelope.attemptId === value.replacementAttemptId));
+      const hasAcceptedReplacement = invalidations.some((value) => plainRecord(value) && value.trialId === trialId && typeof value.replacementAttemptId === "string" && acceptedTraceEntries.some((entry) => plainRecord(entry.envelope) && entry.envelope.trialId === trialId && entry.envelope.unitId === value.unitId && entry.envelope.attemptId === value.replacementAttemptId && (entry.envelope.stepKind === "hold" || entry.envelope.stepKind === "capture")));
       if (!presentTrialIds.has(trialId) && !hasAcceptedReplacement) addFailure(failures, "missing-required-trial", "observationTrace", `required trial is absent from accepted evidence and has no replacement: ${trialId}`);
     }
   }
-  const presentCycleIds = new Set((Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.cycleId : null).filter(nonEmptyString));
-  const presentHoldIds = new Set([...(Array.isArray(observationTrace) ? observationTrace : []), ...(Array.isArray(bundle.calibrationTrace) ? bundle.calibrationTrace : [])].filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.holdId : null).filter(nonEmptyString));
+  const presentCycleIds = new Set(acceptedTraceEntries.map((entry) => plainRecord(entry.envelope) ? entry.envelope.cycleId : null).filter(nonEmptyString));
+  const presentHoldIds = new Set(acceptedTraceEntries.map((entry) => plainRecord(entry.envelope) && (entry.envelope.stepKind === "hold" || entry.envelope.stepKind === "capture") ? entry.envelope.holdId : null).filter(nonEmptyString));
   for (const cycleId of requiredCycleIds) if (!presentCycleIds.has(cycleId)) addFailure(failures, "missing-required-cycle", "observationTrace", `required cycle is absent from accepted evidence: ${cycleId}`);
   for (const holdId of requiredHoldIds) if (!presentHoldIds.has(holdId)) addFailure(failures, "missing-required-hold", "observationTrace", `required hold is absent from accepted evidence: ${holdId}`);
+  for (const unitId of requiredUnitIds) {
+    const unitRecords = acceptedTraceEntries.filter((entry) => plainRecord(entry.envelope) && entry.envelope.unitId === unitId && !invalidatedUnits.has(`${entry.envelope.attemptId}|${unitId}`));
+    const hasAcceptedObservation = unitRecords.some((entry) => plainRecord(entry.envelope) && (entry.envelope.stepKind === "hold" || entry.envelope.stepKind === "capture"));
+    if (!hasAcceptedObservation) addFailure(failures, "incomplete-required-unit", "observationTrace", `required unit lacks accepted hold/capture observations: ${unitId}`);
+  }
   if (Array.isArray(bundle.procedureMarkers)) {
-    const invalidAttemptIds = new Set(invalidations.filter(plainRecord).map((value) => value.attemptId).filter(nonEmptyString));
-    const acceptedAttemptIds = new Set((Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord).map((entry) => plainRecord(entry.envelope) ? entry.envelope.attemptId : null).filter(nonEmptyString));
     bundle.procedureMarkers.forEach((marker, index) => {
       if (!plainRecord(marker) || !nonEmptyString(marker.attemptId) || !nonEmptyString(marker.stepId) || !nonEmptyString(marker.unitId) || !nonEmptyString(marker.marker)) addFailure(failures, "invalid-procedure-marker", `procedureMarkers[${index}]`, "procedure markers require marker, stepId, unitId, and attemptId");
-      if (plainRecord(marker) && invalidAttemptIds.has(marker.attemptId as string) && acceptedAttemptIds.has(marker.attemptId as string)) addFailure(failures, "invalid-procedure-marker", `procedureMarkers[${index}].attemptId`, "an invalidated attempt cannot be accepted in the authoritative trace");
     });
     for (const entry of (Array.isArray(observationTrace) ? observationTrace : []).filter(plainRecord)) {
       const envelope = plainRecord(entry.envelope) ? entry.envelope : null;
-      if (envelope !== null && typeof envelope.attemptId === "string" && invalidAttemptIds.has(envelope.attemptId)) addFailure(failures, "invalid-authoritative-attempt", "observationTrace", "authoritative trace contains an invalidated attempt");
+      if (envelope !== null && typeof envelope.attemptId === "string" && typeof envelope.unitId === "string" && invalidatedUnits.has(`${envelope.attemptId}|${envelope.unitId}`)) addFailure(failures, "invalid-authoritative-attempt", "observationTrace", "authoritative trace contains an invalidated unit");
     }
     for (const holdId of requiredHoldIds) {
-      const holdMarkers = bundle.procedureMarkers.filter((marker) => plainRecord(marker) && marker.holdId === holdId && !invalidAttemptIds.has(marker.attemptId as string));
+      const holdRecords = acceptedTraceEntries.filter((entry) => plainRecord(entry.envelope) && entry.envelope.holdId === holdId && (entry.envelope.stepKind === "hold" || entry.envelope.stepKind === "capture"));
+      const holdMarkers = bundle.procedureMarkers.filter((marker) => plainRecord(marker) && marker.holdId === holdId && (marker.kind === "hold" || marker.kind === "capture") && !invalidatedUnits.has(`${marker.attemptId}|${marker.unitId}`));
+      if (holdRecords.length === 0) addFailure(failures, "missing-hold-observations", "observationTrace", `required hold lacks accepted hold/capture observations: ${holdId}`);
       if (!holdMarkers.some((marker) => plainRecord(marker) && marker.marker === "start") || !holdMarkers.some((marker) => plainRecord(marker) && marker.marker === "end")) addFailure(failures, "missing-hold-markers", "procedureMarkers", `required hold lacks accepted start/end markers: ${holdId}`);
     }
+  }
+  for (const invalidation of invalidations.filter(plainRecord)) {
+    if (!nonEmptyString(invalidation.replacementAttemptId)) continue;
+    const sameTrial = (trialId: unknown): boolean => invalidation.trialId === null || invalidation.trialId === undefined
+      ? trialId === null || trialId === undefined
+      : trialId === invalidation.trialId;
+    const replacementObservation = acceptedTraceEntries.some((entry) => plainRecord(entry.envelope)
+      && entry.envelope.attemptId === invalidation.replacementAttemptId
+      && entry.envelope.unitId === invalidation.unitId
+      && sameTrial(entry.envelope.trialId)
+      && (entry.envelope.stepKind === "hold" || entry.envelope.stepKind === "capture"));
+    if (!replacementObservation) addFailure(failures, "missing-replacement-evidence", "proceduralInvalidations", `replacement attempt lacks accepted hold/capture evidence for ${invalidation.unitId}`);
+    const replacementMarkers = (Array.isArray(bundle.procedureMarkers) ? bundle.procedureMarkers : []).filter((marker) => plainRecord(marker)
+      && marker.attemptId === invalidation.replacementAttemptId
+      && marker.unitId === invalidation.unitId
+      && sameTrial(marker.trialId)
+      && (marker.kind === "hold" || marker.kind === "capture"));
+    if (!replacementMarkers.some((marker) => plainRecord(marker) && marker.marker === "start") || !replacementMarkers.some((marker) => plainRecord(marker) && marker.marker === "end")) addFailure(failures, "missing-replacement-markers", "procedureMarkers", `replacement attempt lacks accepted start/end markers for ${invalidation.unitId}`);
   }
 
   if (bundle.storedMetrics !== undefined || bundle.metricInput !== undefined) {
@@ -546,6 +585,14 @@ export function validateM0DEvidenceBundle(input: unknown): M0DEvidenceValidation
           if (!plainRecord(identity) || !nonEmptyString(identity.estimatorId)) continue;
           const storedSummary = stored[identity.estimatorId] ?? (identity === (plainRecord(bundle.manifest) ? bundle.manifest.estimatorA : null) ? stored.estimatorA : stored.estimatorB);
           if (storedSummary === undefined || stableM0DJsonStringify(regenerateM0DMetricsFromEvidence(evidence, identity.estimatorId)) !== stableM0DJsonStringify(storedSummary)) addFailure(failures, "metric-regeneration-mismatch", "storedMetrics", `stored metrics do not match authoritative regeneration for ${identity.estimatorId}`);
+        }
+        if (bundle.storedScenarioMetrics !== undefined) {
+          const storedScenario = plainRecord(bundle.storedScenarioMetrics) ? bundle.storedScenarioMetrics : {};
+          for (const identity of manifestIdentities) {
+            if (!plainRecord(identity) || !nonEmptyString(identity.estimatorId)) continue;
+            const storedSummary = storedScenario[identity.estimatorId] ?? (identity === (plainRecord(bundle.manifest) ? bundle.manifest.estimatorA : null) ? storedScenario.estimatorA : storedScenario.estimatorB);
+            if (storedSummary === undefined || stableM0DJsonStringify(deriveM0DScenarioMetricSummary(evidence, identity.estimatorId)) !== stableM0DJsonStringify(storedSummary)) addFailure(failures, "scenario-metric-regeneration-mismatch", "storedScenarioMetrics", `stored scenario metrics do not match authoritative regeneration for ${identity.estimatorId}`);
+          }
         }
       } catch (error) {
         addFailure(failures, "metric-regeneration-failed", "storedMetrics", error instanceof Error ? error.message : "metric regeneration failed");

@@ -61,6 +61,7 @@ export interface M0DProceduralInvalidationRecord {
   readonly invalidationId: string;
   readonly experimentRunId: string;
   readonly scenarioId: M0DScenarioId;
+  readonly unitId: string;
   readonly trialId: string | null;
   readonly attemptId: string;
   readonly originalAttemptId: string | null;
