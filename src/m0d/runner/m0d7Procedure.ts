@@ -22,6 +22,32 @@ export interface M0D7ProcedureStep {
   readonly instruction: string;
 }
 
+type M0D7PhysicalAxis = "x" | "y" | "z";
+
+function physicalPosition(axis: M0D7PhysicalAxis, targetMm: number): string {
+  if (axis === "x") {
+    if (targetMm < 0) return `Move your head LEFT ${Math.abs(targetMm)} mm from center`;
+    if (targetMm > 0) return `Move your head RIGHT ${targetMm} mm from center`;
+    return "Return your head to CENTER";
+  }
+  if (axis === "y") {
+    if (targetMm < 0) return `Move your head DOWN ${Math.abs(targetMm)} mm from center`;
+    if (targetMm > 0) return `Move your head UP ${targetMm} mm from center`;
+    return "Return your head to CENTER";
+  }
+  if (targetMm < 600) return `Move CLOSER TO THE SCREEN until your head/eye position is approximately ${targetMm} mm from the screen plane`;
+  if (targetMm > 600) return `Move FARTHER FROM THE SCREEN until your head/eye position is approximately ${targetMm} mm from the screen plane`;
+  return "Move to the NEUTRAL 600 mm depth from the screen plane";
+}
+
+export function formatM0D7PhysicalInstruction(axis: M0D7PhysicalAxis, targetMm: number, kind: M0D7StepKind): string {
+  const position = physicalPosition(axis, targetMm);
+  if (kind === "transition") return `${position}, then press Ready.`;
+  if (kind === "settle") return `${position} and hold still while settling.`;
+  if (kind === "capture") return "Hold this position for capture.";
+  return "Hold this position for 2 seconds.";
+}
+
 function step(
   scenarioId: M0DScenarioId,
   kind: M0D7StepKind,
@@ -52,13 +78,15 @@ function step(
 function stationarySteps(scenarioId: "neutral-stationary" | "near-stationary-450" | "far-stationary-750", trialCount: number, targetMm: number): M0D7ProcedureStep[] {
   const result: M0D7ProcedureStep[] = [];
   for (let trial = 1; trial <= trialCount; trial += 1) {
-    result.push(step(scenarioId, "settle", 2_000, trial, null, targetMm, `Move to ${targetMm} mm depth and hold still while settling.`));
-    result.push(step(scenarioId, "capture", 5_000, trial, null, targetMm, `Hold the ${targetMm} mm stationary target for capture.`));
+    result.push(step(scenarioId, "settle", 2_000, trial, null, targetMm, formatM0D7PhysicalInstruction("z", targetMm, "settle")));
+    result.push(step(scenarioId, "capture", 5_000, trial, null, targetMm, formatM0D7PhysicalInstruction("z", targetMm, "capture")));
   }
   return result;
 }
 
 function movementSteps(scenarioId: "lateral-movement" | "vertical-movement" | "approach-retreat", targets: readonly number[], cycles: number): M0D7ProcedureStep[] {
+  const scenario = M0D_SCENARIOS.find((candidate) => candidate.id === scenarioId)!;
+  const axis = scenario.targetAxis!;
   const result: M0D7ProcedureStep[] = [];
   for (let cycle = 1; cycle <= cycles; cycle += 1) {
     for (let ordinal = 0; ordinal < targets.length; ordinal += 1) {
@@ -67,7 +95,7 @@ function movementSteps(scenarioId: "lateral-movement" | "vertical-movement" | "a
       const unitId = `${scenarioId}-cycle-${cycle}-hold-${ordinal + 1}`;
       const base = step(scenarioId, "hold", 2_000, null, cycle, target, `Hold the ${target} mm target for 2 seconds.`);
       const hold = Object.freeze({ ...base, stepId: `${unitId}-hold`, unitId, holdId: unitId });
-      const transition = Object.freeze({ ...base, stepId: `${unitId}-transition`, unitId, kind: "transition" as const, durationMs: null, holdId: unitId, instruction: `Move continuously to the ${target} mm target, then press Ready.` });
+      const transition = Object.freeze({ ...base, stepId: `${unitId}-transition`, unitId, kind: "transition" as const, durationMs: null, holdId: unitId, instruction: formatM0D7PhysicalInstruction(axis, target, "transition") });
       result.push(transition, hold);
     }
   }
@@ -76,8 +104,8 @@ function movementSteps(scenarioId: "lateral-movement" | "vertical-movement" | "a
 
 export function buildM0D7ProcedureSteps(): readonly M0D7ProcedureStep[] {
   const steps = [
-    step("calibration", "settle", 2_000, 1, null, 600, "Move to 600 mm depth and hold still while settling."),
-    step("calibration", "capture", 3_000, 1, null, 600, "Hold the 600 mm calibration target for capture."),
+    step("calibration", "settle", 2_000, 1, null, 600, formatM0D7PhysicalInstruction("z", 600, "settle")),
+    step("calibration", "capture", 3_000, 1, null, 600, formatM0D7PhysicalInstruction("z", 600, "capture")),
     ...stationarySteps("neutral-stationary", 5, 600),
     ...stationarySteps("near-stationary-450", 3, 450),
     ...stationarySteps("far-stationary-750", 3, 750),

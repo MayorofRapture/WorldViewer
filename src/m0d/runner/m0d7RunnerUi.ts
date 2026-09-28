@@ -78,7 +78,7 @@ export function runM0D7Runner(host: HTMLElement, options: M0D7RunnerUiOptions): 
     details.textContent = [
       `Scenario: ${text(current?.scenarioId)}`,
       `Instruction: ${text(current?.instruction)}`,
-      `Phase: ${state.status === "ready" ? "Ready" : current?.kind === "transition" ? "Move next target / Press Ready" : current?.kind === "hold" ? "Holding" : current?.kind === "settle" ? "Settling" : current?.kind === "capture" ? "Capturing" : "Complete"}`,
+      `Phase: ${state.status === "ready" ? "Ready" : current?.kind === "transition" ? "Move next target / press Ready only after reaching it" : current?.kind === "hold" ? "Holding" : current?.kind === "settle" ? "Settling" : current?.kind === "capture" ? "Capturing" : "Complete"}`,
       `Trial: ${text(current?.trialNumber)}    Cycle: ${text(current?.cycleNumber)}    Hold/phase: ${text(current?.kind)}`,
       `Target: ${text(current?.targetMm)} mm ${text(current?.targetAxis)}`,
       `Countdown: ${current && current.durationMs !== null ? countdown(state.stepStartedAtMs, current.durationMs) : "—"}`,

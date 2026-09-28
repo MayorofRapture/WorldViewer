@@ -21,7 +21,40 @@ describe("M0D7 frozen live procedure", () => {
     expect(steps.filter((step) => step.scenarioId === "near-stationary-450" && step.kind === "capture")).toHaveLength(3);
     expect(steps.filter((step) => step.scenarioId === "far-stationary-750" && step.kind === "capture")).toHaveLength(3);
     expect(steps.filter((step) => step.scenarioId === "lateral-movement" && step.kind === "hold").map((step) => step.targetMm)).toEqual([-150, 0, 150, -150, 0, 150, -150, 0, 150]);
+    expect([...new Set(steps.map((step) => step.scenarioId))]).toEqual(["calibration", "neutral-stationary", "near-stationary-450", "far-stationary-750", "lateral-movement", "vertical-movement", "approach-retreat", "natural-seated-motion", "partial-visibility-head-turn", "processing-cadence"]);
     expect(steps.slice(-3).map((step) => step.durationMs)).toEqual([30000, 15000, 60000]);
+  });
+
+  it("maps frozen signed targets to explicit physical movement directions", () => {
+    const steps = buildM0D7ProcedureSteps();
+    const transitionInstruction = (scenarioId: string, targetMm: number): string => steps.find((step) => step.scenarioId === scenarioId && step.kind === "transition" && step.targetMm === targetMm)?.instruction ?? "missing";
+
+    expect(transitionInstruction("lateral-movement", -150)).toBe("Move your head LEFT 150 mm from center, then press Ready.");
+    expect(transitionInstruction("lateral-movement", 0)).toBe("Return your head to CENTER, then press Ready.");
+    expect(transitionInstruction("lateral-movement", 150)).toBe("Move your head RIGHT 150 mm from center, then press Ready.");
+    expect(transitionInstruction("vertical-movement", -100)).toBe("Move your head DOWN 100 mm from center, then press Ready.");
+    expect(transitionInstruction("vertical-movement", 0)).toBe("Return your head to CENTER, then press Ready.");
+    expect(transitionInstruction("vertical-movement", 100)).toBe("Move your head UP 100 mm from center, then press Ready.");
+    expect(transitionInstruction("approach-retreat", 450)).toBe("Move CLOSER TO THE SCREEN until your head/eye position is approximately 450 mm from the screen plane, then press Ready.");
+    expect(transitionInstruction("approach-retreat", 600)).toBe("Move to the NEUTRAL 600 mm depth from the screen plane, then press Ready.");
+    expect(transitionInstruction("approach-retreat", 750)).toBe("Move FARTHER FROM THE SCREEN until your head/eye position is approximately 750 mm from the screen plane, then press Ready.");
+  });
+
+  it("preserves movement Ready confirmation, hold duration, cycles, targets, and order", () => {
+    const steps = buildM0D7ProcedureSteps().filter((step) => step.scenarioId === "lateral-movement" || step.scenarioId === "vertical-movement" || step.scenarioId === "approach-retreat");
+    expect(steps.map((step) => step.scenarioId)).toEqual([
+      ...Array.from({ length: 18 }, () => "lateral-movement" as const),
+      ...Array.from({ length: 18 }, () => "vertical-movement" as const),
+      ...Array.from({ length: 30 }, () => "approach-retreat" as const),
+    ]);
+    expect(steps.filter((step) => step.kind === "transition")).toHaveLength(33);
+    expect(steps.filter((step) => step.kind === "transition").every((step) => step.durationMs === null && step.instruction.includes("press Ready"))).toBe(true);
+    expect(steps.filter((step) => step.kind === "hold").every((step) => step.durationMs === 2_000)).toBe(true);
+    expect(steps.filter((step) => step.kind === "hold").map((step) => step.targetMm)).toEqual([
+      -150, 0, 150, -150, 0, 150, -150, 0, 150,
+      -100, 0, 100, -100, 0, 100, -100, 0, 100,
+      450, 600, 750, 600, 450, 450, 600, 750, 600, 450, 450, 600, 750, 600, 450,
+    ]);
   });
 
   it("creates deterministic automatic markers across a time jump", () => {
