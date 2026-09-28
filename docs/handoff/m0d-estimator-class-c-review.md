@@ -17,26 +17,24 @@
 - Review status: approved
 - Freeze status: frozen
 - Reviewed baseline: `aef3e7c8280784db3e878757338c073cbce45a81`
-- Class C oracle: approved/frozen. M0D4-M0D7 implementation readiness is not yet Ready: remaining Section 27 technical prerequisites still gate formal physical evidence collection.
-- M0D7 physical evidence collection and M0D8 stronger-reasoning interpretation/production selection remain deferred; no M0D7 evidence is claimed here.
-- Section 27 readiness inputs recorded for this tooling include an E590 `cameraOriginScreenMm = { x: 0, y: 103.188, z: 0 }` mm candidate and operator target-practicality input; neither closes the corresponding formal M0D4-M0D7 entry prerequisite or constitutes live experiment evidence.
-- M0D4-M0D6 implementation artifacts are present, but M0D4-M0D7 entry readiness remains gated by unresolved Section 27 technical prerequisites; M0D7 live evidence collection and M0D8 interpretation/selection remain separately scoped.
+- Class C oracle: approved/frozen. Section 27 technical prerequisites for M0D4-M0D7 were reviewed and closed before implementation.
+- M0D7 runner readiness is Ready for operator physical evidence collection; formal M0D7 physical evidence collection is the next milestone activity and has not yet been performed. M0D8 interpretation/selection is not started.
+- Section 27 readiness inputs include the actual E590 `cameraOriginScreenMm = { x: 0, y: 103.188, z: 0 }` mm measurement and confirmed target practicality; these prerequisites are Ready, while they do not constitute formal M0D7 experiment evidence.
+- M0D4/M0D5/M0D6: Ready; M0D7 runner: Ready for operator physical evidence collection.
 - This note records the approved/frozen oracle and the current implementation boundary. It does not change experiment semantics.
-- Current readiness clarification: deterministic implementation verification does not close M0D4-M0D7 technical entry readiness; the Section 27 table below remains authoritative for unresolved Missing and Ambiguous prerequisites.
-- Superseding state for the prior implementation-status wording above: M0D4-M0D7 technical entry readiness remains unresolved wherever the Section 27 table below says Missing or Ambiguous.
 
 ### Current M0D7 physical-evidence correction boundary
 
 The focused implementation correction preserves the accepted lifecycle and frozen procedure while making evidence semantics explicit: invalidation is scoped to an `(attemptId, unitId)` pair; the verified negotiated camera configuration is persisted before source shutdown; depth ordering uses the prescribed 450/600/750 mm values; repeatability and movement errors are grouped by physical target and same-cycle neutral reference; hold completeness requires accepted hold/capture observations plus start/end markers; replacement attempts require their own evidence and markers; and scenario summaries are serialized as exact regenerable metrics without score or rank.
 
-These corrections do not approve a physical run. The runner status is ready for operator collection only after the remaining Section 27 technical entry prerequisites are separately resolved and the operator performs the visible run.
+These corrections preserve the approved lifecycle and closed Section 27 readiness state. They do not complete the physical experiment: formal M0D7 physical evidence collection has not yet been performed.
 
 ## Handoff record
 
 - Subsystem status and supported scope: M0D3A pure TrackingObservation normalization, M0D3B's opt-in packaged matrix diagnostic, the M0D3 production MediaPipe TrackingObservation path, the M0D v3 evidence contracts/validator, M0D4/M0D5 estimator candidates, M0D6 replay/metrics/evidence tooling, and the opt-in M0D7 guided runner are implemented and verified; live formal evidence collection remains an operator activity and has not been performed.
-- Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` Â§Â§8â€“11; `src/mediapipe/mediapipeTrackingSource.ts` is the host-private `TrackingSource`, `src/mediapipe/mediapipeTrackingWorker.ts` owns MediaPipe inference, and `src/mediapipe/mediapipeBenchmarkWorker.ts` remains benchmark/diagnostic-only.
+- Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeTrackingSource.ts` is the host-private `TrackingSource`, `src/mediapipe/mediapipeTrackingWorker.ts` owns MediaPipe inference, and `src/mediapipe/mediapipeBenchmarkWorker.ts` remains benchmark/diagnostic-only.
 - Oracle IDs: `ORC-POSE-ESTIMATOR-001` (approved/frozen).
-- Authoritative tests/oracles: The approved and frozen Class C procedure is the experiment specification Â§Â§6â€“27; existing package/unit checks do not constitute estimator-comparison evidence.
+- Authoritative tests/oracles: The approved and frozen Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
 - M1 oracle freeze status and classification: Not M1-ready; the Class C oracle is approved/frozen and M0D4/M0D5/M0D6 tooling is present, but M0D7/M0D8 completion and production selection are not established.
 - Known-good reference implementation: Packaged MediaPipe benchmark path in `src/mediapipe/`, with the M0D3B diagnostic reusing its pinned worker configuration; no production estimator has been selected.
 - REUSE IDs: None applicable to this review-preparation artifact.
@@ -55,17 +53,17 @@ These corrections do not approve a physical run. The runner status is ready for 
 
 ## Governing sources
 
-- `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.4 / experimentProcedureVersion 3, especially Â§Â§4â€“24 for experiment semantics and Â§Â§25â€“27 for Class C review/freeze conditions.
+- `docs/experiments/pose-estimator-experiment-specification.md` Draft v0.4 / experimentProcedureVersion 3, especially §§4–24 for experiment semantics and §§25–27 for Class C review/freeze conditions.
 - `docs/planning/milestone-roadmap.md`, M0D and the Class C oracle timing rule.
 - `docs/testing/testing-strategy.md`, Class C review/freeze and verification-readiness policy.
 - `docs/testing/oracle-registry.md`, `ORC-POSE-ESTIMATOR-001` approved/frozen record.
-- `docs/architecture/interface-contract-specification.md`, Â§Â§8â€“11 and D-IC-03/D-IC-10 for `TrackingObservation`, `RawViewerPose`, and the M0Dâ†’M0E boundary.
-- `docs/architecture/technical-design-specification.md`, Â§Â§9â€“13 and D-TDS-10 for worker, estimator, calibration, replay, and evidence ownership.
-- `docs/architecture/adr/ADR-003 â€” Canonical Screen Coordinate System and Millimeter Units.md`.
-- `docs/architecture/adr/ADR-004 â€” ViewerPoseSource as the Primary Viewer-Input Boundary.md`.
-- `docs/architecture/adr/ADR-005 â€” Worker-Based MediaPipe Tracking with Latest-Frame Backpressure.md`.
-- `docs/architecture/adr/ADR-006 â€” Pose Estimator Selected by Measurement, Not Assumption.md`.
-- `docs/architecture/adr/ADR-009 â€” Simple Fixed-Camera Calibration First.md`.
+- `docs/architecture/interface-contract-specification.md`, §§8–11 and D-IC-03/D-IC-10 for `TrackingObservation`, `RawViewerPose`, and the M0D→M0E boundary.
+- `docs/architecture/technical-design-specification.md`, §§9–13 and D-TDS-10 for worker, estimator, calibration, replay, and evidence ownership.
+- `docs/architecture/adr/ADR-003 — Canonical Screen Coordinate System and Millimeter Units.md`.
+- `docs/architecture/adr/ADR-004 — ViewerPoseSource as the Primary Viewer-Input Boundary.md`.
+- `docs/architecture/adr/ADR-005 — Worker-Based MediaPipe Tracking with Latest-Frame Backpressure.md`.
+- `docs/architecture/adr/ADR-006 — Pose Estimator Selected by Measurement, Not Assumption.md`.
+- `docs/architecture/adr/ADR-009 — Simple Fixed-Camera Calibration First.md`.
 - `docs/product/non-functional-requirements.md`, especially NFR-PERF-004/005/009, NFR-REL-003/004, NFR-PRIV-002, NFR-TEST-003, and NFR-OBS-002.
 
 ## Class C review inventory
@@ -74,28 +72,28 @@ The reviewer should inspect, without reconstructing the dependency graph from im
 
 | Material | Authority |
 | --- | --- |
-| Canonical screen coordinates, millimeters, camera-origin interpretation | Experiment Â§4; ADR-003 |
-| Shared `TrackingObservation` inputs and normalized trace shape | Experiment Â§Â§5, 11â€“12; Interface Contract Â§Â§8â€“9 |
-| Canonical face-model source, units, `CC`, and `DcanonMm` derivation | Experiment Â§Â§6â€“7 |
-| Estimator A matrix method, homogeneous transform, axis/unit conversion, and uniform neutral-depth scale | Experiment Â§9 |
-| Estimator B eye-center geometry, interocular scale, principal point, and camera-relative conversion | Experiment Â§10 |
-| Shared calibration capture and estimator-specific calibration inputs | Experiment Â§8; Â§Â§9â€“10 |
-| Metric formulas, cadence/timing, null/valid rates, outliers, discontinuities, and calibration burden | Experiment Â§13 |
-| Structural-failure conditions and directional/depth checks | Experiment Â§14 |
-| Fixed live scenarios, target positions, holds, cycles, and durations | Experiment Â§15 |
-| Physical setup and operator tolerances | Experiment Â§16 |
-| Runner behavior and segment-marker responsibility | Experiment Â§17 |
-| Prohibited tuning, sample removal, and selection during collection | Experiment Â§18; roadmap M0D7 |
-| Procedural invalidation and rerun rules | Experiment Â§19 |
-| Manifest, evidence layout, completeness fields, and validator failures | Experiment Â§Â§20â€“21 |
-| M0D8 structural-first interpretation and ADR-006.01 boundary | Experiment Â§Â§22â€“24; ADR-006 |
-| Class C allocation, stronger-review requirement, and freeze conditions | Experiment Â§Â§25â€“27; roadmap Class C rule |
+| Canonical screen coordinates, millimeters, camera-origin interpretation | Experiment §4; ADR-003 |
+| Shared `TrackingObservation` inputs and normalized trace shape | Experiment §§5, 11–12; Interface Contract §§8–9 |
+| Canonical face-model source, units, `CC`, and `DcanonMm` derivation | Experiment §§6–7 |
+| Estimator A matrix method, homogeneous transform, axis/unit conversion, and uniform neutral-depth scale | Experiment §9 |
+| Estimator B eye-center geometry, interocular scale, principal point, and camera-relative conversion | Experiment §10 |
+| Shared calibration capture and estimator-specific calibration inputs | Experiment §8; §§9–10 |
+| Metric formulas, cadence/timing, null/valid rates, outliers, discontinuities, and calibration burden | Experiment §13 |
+| Structural-failure conditions and directional/depth checks | Experiment §14 |
+| Fixed live scenarios, target positions, holds, cycles, and durations | Experiment §15 |
+| Physical setup and operator tolerances | Experiment §16 |
+| Runner behavior and segment-marker responsibility | Experiment §17 |
+| Prohibited tuning, sample removal, and selection during collection | Experiment §18; roadmap M0D7 |
+| Procedural invalidation and rerun rules | Experiment §19 |
+| Manifest, evidence layout, completeness fields, and validator failures | Experiment §§20–21 |
+| M0D8 structural-first interpretation and ADR-006.01 boundary | Experiment §§22–24; ADR-006 |
+| Class C allocation, stronger-review requirement, and freeze conditions | Experiment §§25–27; roadmap Class C rule |
 
 The requested high-risk review questions are: matrix layout/handedness and canonical-to-runtime soundness; unit/axis conversion; one-point uniform scale justification; Estimator B interocular definition; same-stream fairness; camera-origin consistency; metric ability to distinguish affine bias from nonlinear failure; practicality of E590 targets/tolerances; invalidation/rerun protection; raw-image-free reproducibility; internal contradictions or underspecification; and whether the experiment can support ADR-006.01.
 
 ## Prerequisite readiness
 
-Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguous`, and `Blocked`.
+Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguous`, `Blocked`, and `Not yet performed`.
 
 | Required prerequisite | Status | Current repository basis / gap |
 | --- | --- | --- |
@@ -111,24 +109,24 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Face-present/no-face normalization | Ready | Production worker emits both no-face observations and face-without-matrix observations as valid normalized messages; malformed results become structured errors. |
 | Monotonic timestamp normalization | Ready | Production worker uses `VideoFrameCallbackMetadata.mediaTime`, preserves equal timestamps, rejects stale timestamps, and never substitutes wall-clock time. |
 | Inference/worker timing | Ready | Production observation messages carry inference timing as protocol metadata outside the core `TrackingObservation`; benchmark timing remains unchanged. |
-| Camera configuration | Ready | The operator diagnostic negotiated 640 Ã— 360 at 24 FPS; this is diagnostic confirmation, not formal M0D7 evidence. |
-| `cameraOriginScreenMm` measurement field/validation contract | Ambiguous | Host-private M0D validation exists, but formal operator measurement and entry evidence for the physical experiment remain unresolved. |
-| Actual E590 `cameraOriginScreenMm` measurement | Missing | `{ x: 0, y: 103.188, z: 0 }` mm is an operator-provided readiness input only; it is not a formal M0D7 measurement record. |
-| Evidence schema/validator implementation/readiness | Ambiguous | v3 `schemaVersion = 1` contracts and `validatorVersion = 1` implementation exist and are tested, but formal Section 27 evidence-readiness acceptance remains unresolved. Historical v2 artifacts remain unchanged. |
-| Live worker-to-TrackingObservation integration | Ambiguous | The source/worker path and deterministic tests exist, but formal M0D7 live integration entry acceptance remains unresolved. |
+| Camera configuration | Ready | The operator diagnostic negotiated 640 × 360 at 24 FPS; this is diagnostic confirmation, not formal M0D7 evidence. |
+| `cameraOriginScreenMm` measurement field/validation contract | Ready | Host-private M0D validation validates finite x/y/z and derives `ZrefCameraMm = ZrefScreenMm - cameraOriginScreenMm.z` only when positive. |
+| Actual E590 `cameraOriginScreenMm` measurement | Ready | The measured E590 value is `{ x: 0, y: 103.188, z: 0 }` mm in the canonical screen-relative frame. It is a readiness prerequisite, not formal M0D7 experiment evidence. |
+| Evidence schema/validator implementation/readiness | Ready | v3 `schemaVersion = 1` contracts and `validatorVersion = 1` validate the frozen manifest, context files, traces, replay outputs, camera-origin, numeric, identity, scenario, invalidation, anomaly, configuration-consistency, completeness, and metric-regeneration rules. Historical v2 artifacts remain unchanged. |
+| Live worker-to-TrackingObservation integration | Ready | `MediaPipeTrackingSource` owns camera/frame lifecycle and consumes protocol-versioned observations from `mediapipeTrackingWorker.ts`; deterministic lifecycle, normalization, timestamp, and boundary tests pass. |
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; both frozen M0D4/M0D5 candidates emit finite values or null with diagnostics. |
-| Physical-target practicality | Missing | The diagnostic/operator input is not formal M0D7 physical-target evidence; operator practicality must be established at the physical-evidence entry gate. |
-| Formal M0D7 physical evidence collection readiness | Missing | No physical M0D7 run has been performed; visible operator collection, complete evidence, and validation remain outstanding. |
+| Physical-target practicality | Ready | The frozen 450/600/750 mm depth, ±150 mm lateral, ±100 mm vertical, and approximately 25–30° head-turn targets were reviewed as practical on the E590 setup. This does not mean the physical experiment has been performed. |
+| Formal M0D7 physical evidence collection | Not yet performed | The visible operator collection and formal evidence bundle have not yet been performed or claimed. |
 
 Exact-package matrix conclusion: The completed physical diagnostic supports the existing WorldViewer column-major/column-vector consumption of the exact returned array, with translation at indices 12, 13, and 14 and no transpose/reorder. This finding is recorded in the approved and frozen Class C oracle.
 
 ## Completed physical matrix-diagnostic review
 
-The operator completed the visible packaged diagnostic using build `ff285467382c4723a614419990f3d58ed1d37c85`, `@mediapipe/tasks-vision@1.0.1`, task SHA-256 `64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF`, and embedded canonical metadata SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`. The negotiated camera was 640 Ã— 360 at 24 FPS. Neutral, left-asymmetric, right-asymmetric, and near phases each completed three qualifying observations; missing-face, missing-matrix, invalid-observation, and validation-failure counts were all zero. The stronger review concluded that physical left movement decreases WorldViewer X, physical right movement increases X, and moving closer decreases Z, validating the existing column-major 4 Ã— 4 column-vector consumption with translation at flattened indices 12â€“14 and no transpose/reorder. The raw diagnostic JSON and numerical landmark/matrix data remain local and uncommitted.
+The operator completed the visible packaged diagnostic using build `ff285467382c4723a614419990f3d58ed1d37c85`, `@mediapipe/tasks-vision@1.0.1`, task SHA-256 `64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF`, and embedded canonical metadata SHA-256 `BDBCDA96DFCB7DA883DA124AAA2C55DEE49770D934F0FCC71747F8C21BDC75B4`. The negotiated camera was 640 × 360 at 24 FPS. Neutral, left-asymmetric, right-asymmetric, and near phases each completed three qualifying observations; missing-face, missing-matrix, invalid-observation, and validation-failure counts were all zero. The stronger review concluded that physical left movement decreases WorldViewer X, physical right movement increases X, and moving closer decreases Z, validating the existing column-major 4 × 4 column-vector consumption with translation at flattened indices 12–14 and no transpose/reorder. The raw diagnostic JSON and numerical landmark/matrix data remain local and uncommitted.
 
 ## Minimum matrix-ordering follow-up
 
-The physical diagnostic review is complete, but its output is diagnostic evidence only and is not formal M0D7 estimator-comparison evidence. M0D3B's standalone visible operator flow remains the bounded collection mechanism; it records asymmetric 4 Ã— 4 results (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamps, frame dimensions, and required indexed landmarks without storing frames or personal identifiers. No raw diagnostic output is committed.
+The physical diagnostic review is complete, but its output is diagnostic evidence only and is not formal M0D7 estimator-comparison evidence. M0D3B's standalone visible operator flow remains the bounded collection mechanism; it records asymmetric 4 × 4 results (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamps, frame dimensions, and required indexed landmarks without storing frames or personal identifiers. No raw diagnostic output is committed.
 
 ## Current provisional MediaPipe baseline
 
@@ -138,10 +136,10 @@ For continued M0D development, the provisional capture baseline is the known-goo
 - Face Landmarker, CPU delegate, `VIDEO` mode, one face
 - facial transformation matrices enabled, blendshapes disabled, default confidence thresholds
 - dedicated worker with latest-frame bounded backpressure
-- 640Ã—360 requested camera resolution at 24 FPS
+- 640×360 requested camera resolution at 24 FPS
 - approximately 23.59 Hz useful cadence and 100% useful face results in the supplied visible manual reference
 
-The 480Ã—270 @ 20 FPS run remains optimization evidence only and is not the M0D estimator-development baseline. Existing packaged spike evidence under `evidence/spikes/m0d-mediapipe-packaged-performance/` must not be treated as estimator-comparison evidence because it contains no estimator outputs or normalized comparison trace.
+The 480×270 @ 20 FPS run remains optimization evidence only and is not the M0D estimator-development baseline. Existing packaged spike evidence under `evidence/spikes/m0d-mediapipe-packaged-performance/` must not be treated as estimator-comparison evidence because it contains no estimator outputs or normalized comparison trace.
 
 Relevant implementation/provenance paths:
 
@@ -158,7 +156,7 @@ Relevant implementation/provenance paths:
 
 ## Unresolved review questions and handoff boundary
 
-The final stronger reviewer approved the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation for the frozen oracle. That approval freezes the Class C oracle; it does not complete the remaining Section 27 technical entry prerequisites. The operator-provided E590 camera-origin input and target-practicality confirmation remain non-evidence readiness inputs. Any future material oracle finding must be resolved through the retained stronger-review change authority before modifying the frozen procedure.
+The final stronger reviewer approved the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation for the frozen oracle. Section 27 technical prerequisites were reviewed and closed before M0D4-M0D7 implementation. The E590 camera-origin measurement and target-practicality confirmation are Ready prerequisites, but no formal M0D7 physical evidence is claimed. Any future material oracle finding must be resolved through the retained stronger-review change authority before modifying the frozen procedure.
 
 M0D4 and M0D5 estimator candidates and M0D6 replay/metrics/evidence tooling are implemented as host-private pure paths. M0D7 live evidence collection, M0D8 stronger-reasoning interpretation, tracker selection, and ADR-006.01 remain outside this package. No live camera run or formal M0D7 evidence was created.
 
@@ -188,4 +186,4 @@ This opt-in mode opens the visible guided runner but does not start the camera u
 
 ## Escalation conditions
 
-Stop and return to stronger review if the experiment specification, interface contracts, ADRs, or existing evidence disagree; if a prerequisite is promoted from proposed to frozen without an authoritative review; if a material change to the frozen oracle is requested; or if implementation work is requested before the remaining Section 27 technical prerequisites are satisfied.
+Stop and return to stronger review if the experiment specification, interface contracts, ADRs, or existing evidence disagree; if a prerequisite is promoted from proposed to frozen without an authoritative review; if a material change to the frozen oracle is requested; or if implementation work would alter the frozen procedure before formal M0D7 physical evidence collection.
