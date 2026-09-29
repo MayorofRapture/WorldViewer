@@ -687,4 +687,21 @@ mod tests {
         assert_eq!(header.face_id, 7);
         assert_eq!((header.width, header.height, header.got_3d_points, header.pnp_error), (640.0, 360.0, true, 0.25));
     }
+
+    #[test]
+    fn atomic_replace_replaces_existing_profile_file() {
+        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).expect("system clock must be valid").as_nanos();
+        let root = std::env::temp_dir().join(format!("worldviewer-m0e-atomic-{stamp}"));
+        fs::create_dir_all(&root).expect("test temp directory should be created");
+        let target = root.join("display-profiles.json");
+        let replacement = root.join(".display-profiles.json.tmp");
+        fs::write(&target, b"old").expect("test target should be written");
+        fs::write(&replacement, b"new").expect("test replacement should be written");
+
+        atomic_replace(&replacement, &target).expect("native atomic replacement should succeed");
+
+        assert_eq!(fs::read_to_string(&target).expect("test target should remain readable"), "new");
+        assert!(!replacement.exists(), "replacement should be consumed");
+        fs::remove_dir_all(&root).expect("test temp directory should be removable");
+    }
 }
