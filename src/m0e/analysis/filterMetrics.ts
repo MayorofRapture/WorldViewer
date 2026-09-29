@@ -1,6 +1,7 @@
 import type { FilteredViewerPose } from "../../engine/viewer/contracts";
 import type { Vec3Mm } from "../../shared/contracts/primitives";
 import { average, median, rms } from "./calibrationAnalysis";
+import type { RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource";
 
 export const ONE_EURO_GRID = Object.freeze({
   minCutoffHz: Object.freeze([0.25, 0.5, 1, 2, 4]),
@@ -29,6 +30,8 @@ export interface StationaryTrial {
   readonly trialId: string;
   readonly settle: readonly Vec3Mm[];
   readonly capture: readonly Vec3Mm[];
+  /** Preserved source replay input; positions above remain a compact synthetic fixture form. */
+  readonly rawSamples?: readonly { readonly phase: "settle" | "capture"; readonly raw: RawViewerPose }[];
 }
 
 export interface StationaryRms {
@@ -74,6 +77,7 @@ export interface TransitionSample {
   readonly input: number;
   readonly output: number;
   readonly filteredPositionMm: Vec3Mm;
+  readonly rawPositionMm?: Vec3Mm;
 }
 
 export interface MotionTransition {
@@ -147,14 +151,21 @@ export interface CandidateObjective {
   readonly invalidOutputCount: number;
   readonly eligible: boolean;
   readonly jitterObjective: number | null;
+  readonly transitionMetrics?: readonly TransitionMetric[];
+  readonly sourceInvalidCount?: number;
+  readonly filterRejectionCount?: number;
+  readonly nonFiniteOutputCount?: number;
+  readonly stationaryReplayInputs?: readonly StationaryTrial[];
+  readonly stationaryReplayOutputs?: readonly StationaryTrial[];
+  readonly transitionReplayInputs?: readonly MotionTransition[];
 }
 
-export function objectiveForCandidate(candidate: OneEuroCandidateConfiguration, stationaryTrials: readonly StationaryTrialMetric[], p95LagMs: number, invalidOutputCount = 0): CandidateObjective {
+export function objectiveForCandidate(candidate: OneEuroCandidateConfiguration, stationaryTrials: readonly StationaryTrialMetric[], p95LagMs: number, invalidOutputCount = 0, transitionMetrics?: readonly TransitionMetric[], sourceInvalidCount = 0, filterRejectionCount = 0, stationaryReplayInputs?: readonly StationaryTrial[], transitionReplayInputs?: readonly MotionTransition[], stationaryReplayOutputs?: readonly StationaryTrial[]): CandidateObjective {
   const eligible = invalidOutputCount === 0 && stationaryTrials.length === 5 && stationaryTrials.every((trial) => trial.eligible);
   const jitterObjective = eligible
     ? Math.max(...stationaryTrials.flatMap((trial) => [trial.rms.x / 3, trial.rms.y / 3, trial.rms.z / 8]))
     : null;
-  return Object.freeze({ candidate, stationaryTrials: Object.freeze([...stationaryTrials]), p95LagMs, invalidOutputCount, eligible, jitterObjective });
+  return Object.freeze({ candidate, stationaryTrials: Object.freeze([...stationaryTrials]), p95LagMs, invalidOutputCount, eligible, jitterObjective, ...(transitionMetrics === undefined ? {} : { transitionMetrics: Object.freeze([...transitionMetrics]) }), sourceInvalidCount, filterRejectionCount, nonFiniteOutputCount: invalidOutputCount, ...(stationaryReplayInputs === undefined ? {} : { stationaryReplayInputs: Object.freeze([...stationaryReplayInputs]) }), ...(transitionReplayInputs === undefined ? {} : { transitionReplayInputs: Object.freeze([...transitionReplayInputs]) }), ...(stationaryReplayOutputs === undefined ? {} : { stationaryReplayOutputs: Object.freeze([...stationaryReplayOutputs]) }) });
 }
 
 export function dominates(left: CandidateObjective, right: CandidateObjective): boolean {

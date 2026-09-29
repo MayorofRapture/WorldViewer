@@ -2,6 +2,7 @@ import type { RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource"
 import { identityCalibrationTransform, type CalibrationProfile, type CalibratedViewerPose } from "../../shared/contracts/calibration";
 import { OneEuroPoseFilter, type OneEuroFilterConfiguration } from "../../engine/filter/poseFilter";
 import type { FilteredViewerPose } from "../../engine/viewer/contracts";
+import { SELECTED_ESTIMATOR_CONFIG_HASH, SELECTED_ESTIMATOR_VERSION, selectedEstimatorIdentity as selectedEstimatorHandoffIdentity } from "../selectedEstimatorHandoff";
 
 export interface M0EReplayFrame {
   readonly raw: RawViewerPose;
@@ -21,18 +22,22 @@ export interface SelectedEstimatorTraceRecord {
   readonly estimatorConfigHash: string;
   readonly valid: boolean;
   readonly positionMm: { readonly x: number; readonly y: number; readonly z: number } | null;
+  readonly invalidReason?: string;
 }
 
-const SELECTED_ESTIMATOR_ID = "mediapipe-facial-transform-v1";
-const SELECTED_ESTIMATOR_VERSION = "v1";
-const SELECTED_ESTIMATOR_CONFIG_HASH = "fnv1a64-825a99daebb20f6c";
+export type SelectedEstimatorReplayRecord = Readonly<
+  | (SelectedEstimatorTraceRecord & { readonly valid: true; readonly positionMm: { readonly x: number; readonly y: number; readonly z: number } })
+  | (SelectedEstimatorTraceRecord & { readonly valid: false; readonly positionMm: null; readonly invalidReason: string })
+>;
+
+const SELECTED_ESTIMATOR_ID = selectedEstimatorHandoffIdentity().id;
 
 function validPosition(value: unknown): value is { readonly x: number; readonly y: number; readonly z: number } {
   return typeof value === "object" && value !== null && !Array.isArray(value) && Number.isFinite((value as { x?: unknown }).x) && Number.isFinite((value as { y?: unknown }).y) && Number.isFinite((value as { z?: unknown }).z);
 }
 
-export function parseSelectedEstimatorReplayJsonl(text: string): readonly RawViewerPose[] {
-  const poses: RawViewerPose[] = [];
+export function parseSelectedEstimatorReplayRecords(text: string): readonly SelectedEstimatorReplayRecord[] {
+  const records: SelectedEstimatorReplayRecord[] = [];
   let previousTimestamp = -Infinity;
   for (const [index, line] of text.split(/\r?\n/).filter((entry) => entry.trim().length > 0).entries()) {
     let value: unknown;
@@ -44,11 +49,19 @@ export function parseSelectedEstimatorReplayJsonl(text: string): readonly RawVie
     const record = value as Partial<SelectedEstimatorTraceRecord>;
     const timestampMs = record.timestampMs;
     const positionMm = record.positionMm;
-    if (record.schemaVersion !== 1 || record.estimatorId !== SELECTED_ESTIMATOR_ID || record.estimatorConfigHash !== SELECTED_ESTIMATOR_CONFIG_HASH || record.valid !== true || typeof record.observationTraceId !== "string" || typeof timestampMs !== "number" || !Number.isFinite(timestampMs) || timestampMs <= previousTimestamp || !validPosition(positionMm)) throw new RangeError(`selected estimator replay line ${index + 1} does not match the frozen M0D output contract`);
+    const valid = record.valid === true;
+    const validRecord = valid && validPosition(positionMm);
+    const invalidRecord = !valid && positionMm === null && typeof record.invalidReason === "string" && record.invalidReason.length > 0;
+    if (record.schemaVersion !== 1 || record.estimatorId !== SELECTED_ESTIMATOR_ID || record.estimatorConfigHash !== SELECTED_ESTIMATOR_CONFIG_HASH || typeof record.observationTraceId !== "string" || typeof timestampMs !== "number" || !Number.isFinite(timestampMs) || timestampMs <= previousTimestamp || (!validRecord && !invalidRecord)) throw new RangeError(`selected estimator replay line ${index + 1} does not match the frozen M0D output contract`);
     previousTimestamp = timestampMs;
-    poses.push(Object.freeze({ timestampMs, positionMm: Object.freeze({ x: positionMm.x, y: positionMm.y, z: positionMm.z }), confidence: 1, estimatorId: SELECTED_ESTIMATOR_ID }));
+    if (validRecord) records.push(Object.freeze({ schemaVersion: 1, timestampMs, observationTraceId: record.observationTraceId!, estimatorId: SELECTED_ESTIMATOR_ID, estimatorConfigHash: SELECTED_ESTIMATOR_CONFIG_HASH, valid: true, positionMm: Object.freeze({ x: positionMm!.x, y: positionMm!.y, z: positionMm!.z }) }));
+    else records.push(Object.freeze({ schemaVersion: 1, timestampMs, observationTraceId: record.observationTraceId!, estimatorId: SELECTED_ESTIMATOR_ID, estimatorConfigHash: SELECTED_ESTIMATOR_CONFIG_HASH, valid: false, positionMm: null, invalidReason: record.invalidReason! }));
   }
-  return Object.freeze(poses);
+  return Object.freeze(records);
+}
+
+export function parseSelectedEstimatorReplayJsonl(text: string): readonly RawViewerPose[] {
+  return Object.freeze(parseSelectedEstimatorReplayRecords(text).filter((record): record is SelectedEstimatorReplayRecord & { readonly valid: true } => record.valid).map((record) => Object.freeze({ timestampMs: record.timestampMs, positionMm: record.positionMm, confidence: 1, estimatorId: SELECTED_ESTIMATOR_ID })));
 }
 
 export function replayRawViewerPoses(
@@ -67,5 +80,5 @@ export function replayRawViewerPoses(
 }
 
 export function selectedEstimatorIdentity(): { readonly id: typeof SELECTED_ESTIMATOR_ID; readonly version: typeof SELECTED_ESTIMATOR_VERSION; readonly configHash: typeof SELECTED_ESTIMATOR_CONFIG_HASH } {
-  return Object.freeze({ id: SELECTED_ESTIMATOR_ID, version: SELECTED_ESTIMATOR_VERSION, configHash: SELECTED_ESTIMATOR_CONFIG_HASH });
+  return selectedEstimatorHandoffIdentity();
 }

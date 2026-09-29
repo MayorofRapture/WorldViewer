@@ -13,12 +13,22 @@ export interface RepeatabilitySummary {
   readonly rms: number;
 }
 
+export interface CalibrationTargetEvidence {
+  readonly target: number;
+  readonly corrected: readonly number[];
+  readonly residual: ResidualSummary;
+  readonly repeatability: RepeatabilitySummary;
+}
+
 export interface AxisCalibrationFit {
   readonly axis: CalibrationAxis;
   readonly scale: number;
   readonly offset: number;
   readonly residual: ResidualSummary;
   readonly repeatability: RepeatabilitySummary;
+  readonly targetEvidence?: readonly CalibrationTargetEvidence[];
+  readonly identityTargetEvidence?: readonly CalibrationTargetEvidence[];
+  readonly fittedTargetEvidence?: readonly CalibrationTargetEvidence[];
   readonly decision: CalibrationDecision;
 }
 
@@ -86,12 +96,23 @@ function groupedRepeatability(values: readonly number[], groups: readonly string
   return Object.freeze({ center: median(groupSummaries.map((summary) => summary.center)), rms: Math.max(...groupSummaries.map((summary) => summary.rms)) });
 }
 
-function identityPasses(residual: ResidualSummary, repeatability: RepeatabilitySummary): boolean {
-  return Math.abs(residual.medianSigned) <= CALIBRATION_RESIDUAL_TOLERANCE_MM && repeatability.rms <= CALIBRATION_RESIDUAL_TOLERANCE_MM;
+function targetEvidence(corrected: readonly number[], targets: readonly number[]): readonly CalibrationTargetEvidence[] {
+  const grouped = new Map<number, number[]>();
+  corrected.forEach((value, index) => {
+    const target = targets[index]!;
+    grouped.set(target, [...(grouped.get(target) ?? []), value]);
+  });
+  return Object.freeze([...grouped.entries()].sort(([left], [right]) => left - right).map(([target, values]) => Object.freeze({ target, corrected: Object.freeze([...values]), residual: residualSummary(values, Array.from({ length: values.length }, () => target)), repeatability: repeatabilitySummary(values) })));
 }
 
-function fittedPasses(residual: ResidualSummary, repeatability: RepeatabilitySummary, scale: number, offset: number): boolean {
-  return validFit(scale, offset) && residual.absolute.every((value) => value <= CALIBRATION_RESIDUAL_TOLERANCE_MM) && repeatability.rms <= CALIBRATION_RESIDUAL_TOLERANCE_MM;
+function targetCriteriaPasses(evidence: readonly CalibrationTargetEvidence[]): boolean {
+  return evidence.length > 0 && evidence.every((group) => Math.abs(group.residual.medianSigned) <= CALIBRATION_RESIDUAL_TOLERANCE_MM && group.repeatability.rms <= CALIBRATION_RESIDUAL_TOLERANCE_MM);
+}
+
+function repeatabilityOnlyFailure(identityEvidence: readonly CalibrationTargetEvidence[], fittedEvidence: readonly CalibrationTargetEvidence[]): boolean {
+  const identityResidualsPass = identityEvidence.every((group) => Math.abs(group.residual.medianSigned) <= CALIBRATION_RESIDUAL_TOLERANCE_MM);
+  const fittedResidualsPass = fittedEvidence.every((group) => Math.abs(group.residual.medianSigned) <= CALIBRATION_RESIDUAL_TOLERANCE_MM);
+  return validFit(1, 0) && identityEvidence.some((group) => group.repeatability.rms > CALIBRATION_RESIDUAL_TOLERANCE_MM) || (!identityResidualsPass && fittedResidualsPass && fittedEvidence.some((group) => group.repeatability.rms > CALIBRATION_RESIDUAL_TOLERANCE_MM));
 }
 
 export function fitRelativeAxis(axis: "x" | "y", observations: readonly XYCalibrationObservation[]): AxisCalibrationFit {
@@ -109,15 +130,21 @@ export function fitRelativeAxis(axis: "x" | "y", observations: readonly XYCalibr
   const fitted = observations.map((observation) => scale * (observation.measuredTargetMm - observation.measuredCenterMm));
   const fittedResidual = residualSummary(fitted, targets);
   const fittedRepeatability = groupedRepeatability(fitted, groups);
-  const identityOk = identityPasses(identityResidual, identityRepeatability);
-  const fittedOk = fittedPasses(fittedResidual, fittedRepeatability, scale, offset);
+  const identityEvidence = targetEvidence(deltas, targets);
+  const fittedEvidence = targetEvidence(fitted, targets);
+  const identityOk = targetCriteriaPasses(identityEvidence);
+  const fittedOk = validFit(scale, offset) && targetCriteriaPasses(fittedEvidence);
+  const decision = identityOk ? "identity-adequate" : fittedOk ? "fitted-correction-supported" : repeatabilityOnlyFailure(identityEvidence, fittedEvidence) ? "inconclusive-collection-repeatability-problem" : "architecture-escalation-required";
   return Object.freeze({
     axis,
     scale: identityOk ? 1 : scale,
     offset: identityOk ? 0 : offset,
     residual: identityOk ? identityResidual : fittedResidual,
     repeatability: identityOk ? identityRepeatability : fittedRepeatability,
-    decision: identityOk ? "identity-adequate" : fittedOk ? "fitted-correction-supported" : "architecture-escalation-required",
+    targetEvidence: identityOk ? identityEvidence : fittedEvidence,
+    identityTargetEvidence: identityEvidence,
+    fittedTargetEvidence: fittedEvidence,
+    decision,
   });
 }
 
@@ -137,18 +164,28 @@ export function fitZAxisInitial(observations: readonly ZCalibrationObservation[]
   const identityResidual = residualSummary(identityValues, targets);
   const identityRepeatability = groupedRepeatability(identityValues, observations.map((observation) => String(observation.targetMm)));
   const fittedValues = observations.map((observation) => scale * observation.measuredMm + offset);
-  const fittedResidual = residualSummary(fittedValues, targets);
-  const fittedRepeatability = groupedRepeatability(fittedValues, observations.map((observation) => String(observation.targetMm)));
   const centerResidual = Math.abs(median(center600.map((value) => scale * value + offset)) - 600);
-  const identityOk = identityPasses(identityResidual, identityRepeatability);
-  const fittedOk = fittedPasses(fittedResidual, fittedRepeatability, scale, offset) && centerResidual <= CALIBRATION_RESIDUAL_TOLERANCE_MM;
+  const identityEvidence = targetEvidence(identityValues, targets);
+  const fittedEvidence = targetEvidence(fittedValues, targets);
+  const identityOk = targetCriteriaPasses(identityEvidence);
+  const initialFittedOk = validFit(scale, offset) && targetCriteriaPasses(fittedEvidence) && centerResidual <= CALIBRATION_RESIDUAL_TOLERANCE_MM;
+  const leastSquares = initialFittedOk ? fitZAxisLeastSquares(observations) : null;
+  const finalValues = leastSquares === null ? fittedValues : observations.map((observation) => leastSquares.scale * observation.measuredMm + leastSquares.offset);
+  const finalEvidence = targetEvidence(finalValues, targets);
+  const finalResidual = residualSummary(finalValues, targets);
+  const finalRepeatability = groupedRepeatability(finalValues, observations.map((observation) => String(observation.targetMm)));
+  const fittedOk = leastSquares !== null && targetCriteriaPasses(finalEvidence);
+  const decision = identityOk ? "identity-adequate" : fittedOk ? "fitted-correction-supported" : (!targetCriteriaPasses(fittedEvidence) && targetCriteriaPasses(finalEvidence)) ? "fitted-correction-supported" : (fittedEvidence.some((group) => group.repeatability.rms > CALIBRATION_RESIDUAL_TOLERANCE_MM) && fittedEvidence.every((group) => Math.abs(group.residual.medianSigned) <= CALIBRATION_RESIDUAL_TOLERANCE_MM)) ? "inconclusive-collection-repeatability-problem" : "architecture-escalation-required";
   return Object.freeze({
     axis: "z",
-    scale: identityOk ? 1 : scale,
-    offset: identityOk ? 0 : offset,
-    residual: identityOk ? identityResidual : fittedResidual,
-    repeatability: identityOk ? identityRepeatability : fittedRepeatability,
-    decision: identityOk ? "identity-adequate" : fittedOk ? "fitted-correction-supported" : "architecture-escalation-required",
+    scale: identityOk ? 1 : leastSquares?.scale ?? scale,
+    offset: identityOk ? 0 : leastSquares?.offset ?? offset,
+    residual: identityOk ? identityResidual : finalResidual,
+    repeatability: identityOk ? identityRepeatability : finalRepeatability,
+    targetEvidence: identityOk ? identityEvidence : finalEvidence,
+    identityTargetEvidence: identityEvidence,
+    fittedTargetEvidence: finalEvidence,
+    decision,
   });
 }
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { fitRelativeAxis, fitZAxisInitial, fitZAxisLeastSquares } from "../../src/m0e/analysis/calibrationAnalysis";
 import { buildShortlist, calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, nearestRankPercentile, objectiveForCandidate } from "../../src/m0e/analysis/filterMetrics";
+import { runOneEuroCandidate } from "../../src/m0e/analysis/sweep";
+import { createDefaultCalibrationProfile } from "../../src/shared/contracts/calibration";
 
 describe("M0E frozen analysis primitives", () => {
   it("fits X/Y relative displacement and preserves an identity-passing axis", () => {
@@ -13,6 +15,26 @@ describe("M0E frozen analysis primitives", () => {
     expect(fit.offset).toBe(0);
   });
 
+  it("does not let opposite target errors cancel into identity", () => {
+    const fit = fitRelativeAxis("x", [
+      ...[-150, -150, -150].map((targetDisplacementMm, index) => ({ cycleId: `negative-${index}`, targetDisplacementMm, measuredTargetMm: -300, measuredCenterMm: 0 })),
+      ...[150, 150, 150].map((targetDisplacementMm, index) => ({ cycleId: `positive-${index}`, targetDisplacementMm, measuredTargetMm: 300, measuredCenterMm: 0 })),
+    ]);
+    expect(fit.decision).not.toBe("identity-adequate");
+    expect(fit.targetEvidence).toHaveLength(2);
+    expect(fit.identityTargetEvidence?.every((group) => Math.abs(group.residual.medianSigned) > 20)).toBe(true);
+  });
+
+  it("classifies unstable repeatability separately from model escalation", () => {
+    const fit = fitRelativeAxis("x", [
+      { cycleId: "negative-1", targetDisplacementMm: -150, measuredTargetMm: -150, measuredCenterMm: 0 },
+      { cycleId: "negative-2", targetDisplacementMm: -150, measuredTargetMm: -150, measuredCenterMm: 100 },
+      { cycleId: "positive-1", targetDisplacementMm: 150, measuredTargetMm: 150, measuredCenterMm: 0 },
+      { cycleId: "positive-2", targetDisplacementMm: 150, measuredTargetMm: 150, measuredCenterMm: 100 },
+    ]);
+    expect(fit.decision).toBe("inconclusive-collection-repeatability-problem");
+  });
+
   it("supports fitted Z and the frozen least-squares formula", () => {
     const observations = [
       { holdId: "450-1", targetMm: 450 as const, measuredMm: 400 },
@@ -21,6 +43,20 @@ describe("M0E frozen analysis primitives", () => {
     ];
     expect(fitZAxisInitial(observations)).toMatchObject({ scale: 1.5, offset: -150, decision: "fitted-correction-supported" });
     expect(fitZAxisLeastSquares(observations)).toEqual({ scale: 1.5, offset: -150 });
+  });
+
+  it("returns the final Z least-squares fit after held-out support", () => {
+    const observations = [
+      ...[400, 400, 400].map((measuredMm, index) => ({ holdId: `450-${index}`, targetMm: 450 as const, measuredMm })),
+      ...[500, 500, 500].map((measuredMm, index) => ({ holdId: `600-${index}`, targetMm: 600 as const, measuredMm })),
+      ...[600, 620, 620].map((measuredMm, index) => ({ holdId: `750-${index}`, targetMm: 750 as const, measuredMm })),
+    ];
+    const initial = fitZAxisInitial(observations);
+    const final = fitZAxisLeastSquares(observations);
+    expect(final.scale).not.toBeCloseTo(300 / 220);
+    expect(initial.decision).toBe("fitted-correction-supported");
+    expect(initial.scale).toBe(final.scale);
+    expect(initial.offset).toBe(final.offset);
   });
 
   it("implements settling RMS, nearest-rank percentiles, lag, overshoot, and discontinuity", () => {
@@ -47,5 +83,13 @@ describe("M0E frozen analysis primitives", () => {
     const dominated = objectiveForCandidate(grid[0]!, trials, 100);
     const frontier = objectiveForCandidate(grid[1]!, trials, 80);
     expect(buildShortlist([dominated, frontier]).frontier).toEqual([frontier]);
+  });
+
+  it("replays each candidate's stationary source and produces candidate-specific RMS", () => {
+    const rawSamples = Array.from({ length: 40 }, (_, index) => ({ phase: index < 10 ? "settle" as const : "capture" as const, raw: { timestampMs: index * 16, positionMm: { x: index % 2 === 0 ? 0 : 10, y: 0, z: 600 }, confidence: 1, estimatorId: "mediapipe-facial-transform-v1" } }));
+    const input = { rawPoses: [], calibrationProfile: createDefaultCalibrationProfile(), stationaryTrials: [{ trialId: "neutral-stationary-trial-1", settle: [], capture: [], rawSamples }, { trialId: "neutral-stationary-trial-2", settle: [], capture: [], rawSamples }, { trialId: "neutral-stationary-trial-3", settle: [], capture: [], rawSamples }, { trialId: "neutral-stationary-trial-4", settle: [], capture: [], rawSamples }, { trialId: "neutral-stationary-trial-5", settle: [], capture: [], rawSamples }] };
+    const low = runOneEuroCandidate(enumerateOneEuroGrid()[0]!, input);
+    const high = runOneEuroCandidate(enumerateOneEuroGrid()[24]!, input);
+    expect(low.stationaryTrials[0]!.rms.x).not.toBe(high.stationaryTrials[0]!.rms.x);
   });
 });
