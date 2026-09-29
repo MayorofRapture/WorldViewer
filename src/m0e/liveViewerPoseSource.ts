@@ -79,6 +79,10 @@ export class LiveViewerPoseSource implements ViewerPoseSource {
     return this.latestPose;
   }
 
+  public getHealth() {
+    return this.trackingSource.getHealth();
+  }
+
   public subscribe(listener: RawViewerPoseListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
