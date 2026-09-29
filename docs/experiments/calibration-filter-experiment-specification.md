@@ -9,10 +9,10 @@
 Draft version: 0.2
 Date: September 28, 2026
 Artifact: Class C calibration and filter experiment specification
-Review status: pending final stronger-reasoning review
-Freeze status: draft; not frozen
+Review status: approved by GPT-5.6 Sol High stronger-reasoning Class C review
+Freeze status: frozen through `ORC-CALIBRATION-FILTER-001`
 
-This is the first executable candidate procedure for M0E. No M0E evidence has been collected, and Draft v0.1 must not be represented as having produced evidence. Draft v0.2 incorporates the first stronger-review findings but remains a Class C draft and must not be consumed for M0E5 or M0E6 evidence collection until the stronger review approves and freezes it through the Oracle Registry process. Implementation or harness work must not silently redefine criteria that a later review freezes.
+This is the first executable candidate procedure for M0E. No M0E evidence had been collected before this freeze, and Draft v0.1 must not be represented as having produced evidence. GPT-5.6 Sol High completed the stronger-reasoning Class C review of Draft v0.2 at repository baseline `29a978c95bcd2837dcafe63314c7b116effa6f3e`; the final review approved the Class C design after the per-axis-selection, metric-version, and duplicate-formula freeze-record corrections. This record freezes the governing procedure through the Oracle Registry. It does not claim that implementation or evidence collection has occurred. Implementation or harness work must not silently redefine the frozen criteria.
 
 Machine-readable procedure identity:
 
@@ -20,6 +20,7 @@ Machine-readable procedure identity:
 experimentProcedureVersion = 1
 evidenceSchemaVersion = 1
 validatorVersion = 1
+metricVersion = 1
 ```
 
 # 1. Purpose and scope
@@ -36,7 +37,7 @@ It does not redefine the selected M0D estimator, MediaPipe equations, landmark i
 
 # 2. Required provenance and prescribed initial inputs
 
-Every evidence package must identify:
+Every evidence package must identify all four procedure/provenance versions:
 
 - evidence schema, experiment procedure, validator, and metric versions;
 - source commit and timestamps for evidence-generation activity where useful;
@@ -80,7 +81,7 @@ evidence/milestone-0/m0e/
   perceptual-comparison.md
 ```
 
-`manifest.json` and `validation.json` are a small versioned manifest/validation model, not a general evidence framework. The manifest must include, at minimum, the three versions above, repository/source commit, input M0D run ID/path, estimator identity/version/config hash, calibration model/config, selected filter package/version, the exact 25-candidate grid, trace IDs/content hashes, metric version, and useful evidence-generation timestamps.
+`manifest.json` and `validation.json` are a small versioned manifest/validation model, not a general evidence framework. The manifest must include, at minimum, the four versions above, repository/source commit, input M0D run ID/path, estimator identity/version/config hash, calibration model/config, selected filter package/version, the exact 25-candidate grid, trace IDs/content hashes, metric version, and useful evidence-generation timestamps.
 
 # 3. Calibration model under test
 
@@ -235,17 +236,32 @@ abs(median residual) <= 20 mm
 repeatabilityRms <= 20 mm
 ```
 
-For X/Y, evaluated targets are the prescribed relative displacement targets. For Z, they are `450/600/750 mm`. If identity meets these criteria, retain identity; do not apply a non-identity correction merely because a fitted value numerically reduces already-acceptable error.
+Evaluate X, Y, and Z independently. For each axis `A`, use its prescribed targets and applicable identity criteria. If that axis satisfies both frozen identity criteria, retain exactly:
 
-If identity fails one or more criteria, affine correction is supported only if every fitted scale is finite and strictly positive, every target's absolute median residual is at most `20 mm`, every target's repeatability RMS is at most `20 mm`, the Z held-out `600 mm` check satisfies the same residual limit, and no prohibited model behavior is required.
+```text
+scale.A = 1
+offset.A = 0
+```
 
-If repeatability exceeds the physical tolerance but residual structure does not clearly establish model failure, classify the result as:
+Do not replace an identity-passing axis merely because a fitted value would numerically reduce residual error. If identity fails for one axis, only that axis may be evaluated for its permitted fitted correction. Use the fitted scale and offset for that axis only if its permitted affine correction satisfies all applicable frozen criteria: the fitted scale is finite and strictly positive, every applicable target's absolute median residual is at most `20 mm`, every applicable target's repeatability RMS is at most `20 mm`, and, for Z, the held-out `600 mm` check satisfies the same residual limit.
+
+Mixed profiles are valid and expected. For example:
+
+```text
+X passes identity: scale.x = 1, offset.x = 0
+Y fails identity but affine passes: scale.y = fitted, offset.y = fitted
+Z fails identity but affine passes: scale.z = fitted, offset.z = fitted
+```
+
+Do not require all three axes to become non-identity because one axis needs correction. Do not introduce cross-axis compensation or coupled calibration.
+
+If repeatability exceeds the physical tolerance for an individual axis but residual structure does not clearly establish model failure, classify that axis's result as:
 
 ```text
 inconclusive / collection-repeatability problem
 ```
 
-Do not automatically claim that the affine model failed. Escalate for architecture review when valid, repeatable evidence shows a required scale at or below zero, a non-finite fit, Z center-interpolation residual above `20 mm`, systematic residual outside the envelope after affine correction, orientation-dependent error, nonlinear target-dependent behavior, cross-axis behavior requiring coupled correction, or estimator mathematics would need to change. Here, `systematic residual outside the envelope` means the per-target residual/repeatability criteria above fail after valid collection; it is not an undefined subjective judgment.
+Do not automatically claim that the affine model failed. Escalation remains per axis and per evidence/model result. Escalate for architecture review when valid, repeatable evidence shows a required scale at or below zero, a non-finite fit, Z center-interpolation residual above `20 mm`, systematic residual outside the envelope after affine correction, orientation-dependent error, nonlinear target-dependent behavior, cross-axis behavior requiring coupled correction, or estimator mathematics would need to change. Here, `systematic residual outside the envelope` means the per-target residual/repeatability criteria above fail after valid collection; it is not an undefined subjective judgment.
 
 Procedural failure is distinct from calibration-model failure. A documented operator mistake, camera interruption, invalid capture, or out-of-tolerance target placement invalidates the affected collection segment and requires a prescribed rerun; it is not evidence that the model failed.
 
@@ -463,6 +479,6 @@ M0E8 occurs only after the evidence package validates against this oracle once i
 
 Do not force a default when objective and perceptual evidence do not support one. Do not alter frozen criteria after seeing evidence. A need for nonlinear calibration, orientation-dependent calibration, new estimator mathematics, a new filter family, or solvePnP/OpenCV returns to architecture/oracle review.
 
-# 12. Draft status and freeze gate
+# 12. Status and freeze record
 
-This specification is Class C material pending final stronger-reasoning review. It is not approved and is not frozen. `ORC-CALIBRATION-FILTER-001` must remain pending/draft. M0E5/M0E6 evidence collection remains blocked until stronger review approves the governing criteria and the Oracle Registry records the approved/frozen state. A collection or implementation agent may implement a harness only against an approved/frozen revision and may not silently redefine formulas, thresholds, grid, validity rules, shortlist rules, or interpretation boundaries.
+This specification remains `Draft v0.2` and is approved/frozen Class C material through `ORC-CALIBRATION-FILTER-001`. GPT-5.6 Sol High completed the stronger-reasoning review against repository baseline `29a978c95bcd2837dcafe63314c7b116effa6f3e` and approved the design after the three specified freeze-record corrections. The governing executable identity is `Draft v0.2`, `experimentProcedureVersion = 1`, `evidenceSchemaVersion = 1`, `validatorVersion = 1`, and `metricVersion = 1`. No M0E evidence had been collected before freeze; evidence execution remains unperformed and depends on the required implementation, harness, and validator prerequisites. A collection or implementation agent may implement against this approved/frozen revision but may not silently redefine formulas, thresholds, grid, validity rules, shortlist rules, or interpretation boundaries.
