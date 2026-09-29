@@ -1,5 +1,5 @@
 import type { OneEuroCandidateConfiguration, CandidateObjective, MotionTransition, StationaryTrial, StationaryTrialMetric, TransitionMetric } from "../analysis/filterMetrics";
-import type { AxisCalibrationFit, CalibrationDecision } from "../analysis/calibrationAnalysis";
+import type { AxisCalibrationFit, CalibrationDecision, XYCalibrationObservation, ZCalibrationObservation } from "../analysis/calibrationAnalysis";
 
 export const M0E_DRAFT_VERSION = "0.2" as const;
 export const M0E_EXPERIMENT_PROCEDURE_VERSION = 1 as const;
@@ -34,13 +34,14 @@ export interface M0EManifest {
 export interface M0ECalibrationEvidence {
   readonly axes: Readonly<Record<"x" | "y" | "z", AxisCalibrationFit>>;
   readonly decisions: Readonly<Record<"x" | "y" | "z", CalibrationDecision>>;
+  readonly observations: Readonly<{ readonly x: readonly XYCalibrationObservation[]; readonly y: readonly XYCalibrationObservation[]; readonly z: readonly ZCalibrationObservation[] }>;
 }
 
 export interface M0EFilterEvidence {
   readonly stationaryTrials: readonly StationaryTrialMetric[];
-  readonly stationaryTrialInputs?: readonly StationaryTrial[];
+  readonly stationaryTrialInputs: readonly StationaryTrial[];
   readonly transitions: readonly TransitionMetric[];
-  readonly transitionInputs?: readonly MotionTransition[];
+  readonly transitionInputs: readonly MotionTransition[];
   readonly candidates: readonly CandidateObjective[];
   readonly shortlistCandidateIds: readonly string[];
 }
@@ -73,3 +74,9 @@ export const M0E_REQUIRED_GRID = Object.freeze({
 });
 
 export const M0E_REQUIRED_SCENARIO_IDS = Object.freeze(["lateral-movement", "vertical-movement", "approach-retreat"] as const);
+export const M0E_ALLOWED_INVALIDATION_REASONS = Object.freeze([
+  "source-procedural-invalidation",
+  "missing-required-samples",
+  "invalid-non-finite-calibrated-input",
+  "threshold-crossing-not-establishable",
+] as const);

@@ -1,5 +1,6 @@
-import { buildShortlist, calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, type CandidateObjective } from "../analysis/filterMetrics";
-import { M0E_DRAFT_VERSION, M0E_EVIDENCE_SCHEMA_VERSION, M0E_EXPERIMENT_PROCEDURE_VERSION, M0E_METRIC_VERSION, M0E_REQUIRED_FILES, M0E_REQUIRED_GRID, M0E_REQUIRED_SCENARIO_IDS, M0E_VALIDATOR_VERSION, type M0EEvidenceBundle } from "./m0eEvidenceContracts";
+import { buildShortlist, calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, nearestRankPercentile, type CandidateObjective } from "../analysis/filterMetrics";
+import { fitRelativeAxis, fitZAxisInitial } from "../analysis/calibrationAnalysis";
+import { M0E_ALLOWED_INVALIDATION_REASONS, M0E_DRAFT_VERSION, M0E_EVIDENCE_SCHEMA_VERSION, M0E_EXPERIMENT_PROCEDURE_VERSION, M0E_METRIC_VERSION, M0E_REQUIRED_FILES, M0E_REQUIRED_GRID, M0E_REQUIRED_SCENARIO_IDS, M0E_VALIDATOR_VERSION, type M0EEvidenceBundle } from "./m0eEvidenceContracts";
 
 export interface M0EValidationFailure {
   readonly code: string;
@@ -46,7 +47,7 @@ function add(failures: M0EValidationFailure[], code: string, path: string, messa
 function exactCandidateGrid(candidates: readonly { readonly minCutoffHz: number; readonly beta: number; readonly dCutoffHz: number }[]): boolean {
   const expected = enumerateOneEuroGrid();
   if (candidates.length !== expected.length) return false;
-  return expected.every((candidate) => candidates.some((actual) => actual.minCutoffHz === candidate.minCutoffHz && actual.beta === candidate.beta && actual.dCutoffHz === candidate.dCutoffHz));
+  return expected.every((candidate) => candidates.filter((actual) => actual.minCutoffHz === candidate.minCutoffHz && actual.beta === candidate.beta && actual.dCutoffHz === candidate.dCutoffHz).length === 1);
 }
 
 function finiteCandidate(candidate: CandidateObjective): boolean {
@@ -90,6 +91,14 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
       else ids.add(configuration.candidateId);
       if (!record(candidateValue) || !finiteCandidate(candidate as CandidateObjective)) add(failures, "invalid-metric", "filtering.candidates", "candidate metrics must be finite");
     }
+    const expectedGrid = enumerateOneEuroGrid();
+    for (const candidateValue of candidates) {
+      const candidate = record(candidateValue) ? (candidateValue as Partial<CandidateObjective>).candidate : undefined;
+      const expected = expectedGrid.find((entry) => entry.candidateId === candidate?.candidateId);
+      if (expected === undefined || candidate?.minCutoffHz !== expected.minCutoffHz || candidate.beta !== expected.beta || candidate.dCutoffHz !== 1) add(failures, "invalid-candidate-configuration", "filtering.candidates", "candidate evidence configuration must exactly match the frozen grid");
+      if (!record(candidateValue) || !Array.isArray((candidateValue as Partial<CandidateObjective>).stationaryReplayInputs) || !Array.isArray((candidateValue as Partial<CandidateObjective>).transitionReplayInputs)) add(failures, "missing-candidate-replay-inputs", "filtering.candidates", "each candidate must preserve replay inputs for independent metric regeneration");
+      if (!record(candidateValue) || !Array.isArray((candidateValue as Partial<CandidateObjective>).stationaryReplayOutputs)) add(failures, "missing-candidate-filtered-outputs", "filtering.candidates", "each candidate must preserve filtered stationary outputs for metric regeneration");
+    }
     const validCandidates = candidates.filter((candidateValue): candidateValue is CandidateObjective => record(candidateValue) && record((candidateValue as Partial<CandidateObjective>).candidate) && Array.isArray((candidateValue as Partial<CandidateObjective>).stationaryTrials) && typeof (candidateValue as Partial<CandidateObjective>).p95LagMs === "number") as readonly CandidateObjective[];
     const regenerated = buildShortlist(validCandidates);
     if (validCandidates.length !== candidates.length) add(failures, "invalid-candidate-metrics", "filtering.candidates", "all candidate metric records must be complete");
@@ -101,36 +110,53 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
     if (regenerated.status === "shortlist" && !sameIds(storedShortlist, regeneratedIds)) add(failures, "shortlist-regeneration-mismatch", "filtering.shortlistCandidateIds", "shortlist must match deterministic Pareto regeneration");
     if (bundle?.m0e7CandidateIds !== undefined && !sameIds(bundle.m0e7CandidateIds, storedShortlist)) add(failures, "m0e7-boundary-mismatch", "m0e7CandidateIds", "M0E7 candidate IDs must exactly match validated shortlist");
     if (!Array.isArray(filtering.stationaryTrials) || filtering.stationaryTrials.length !== 5) add(failures, "invalid-stationary-trials", "filtering.stationaryTrials", "all five stationary trials must be present");
+    else {
+      const requiredIds = Array.isArray(manifest && (manifest as M0EEvidenceBundle["manifest"]).requiredNeutralTrialIds) ? (manifest as M0EEvidenceBundle["manifest"]).requiredNeutralTrialIds : [];
+      if (new Set(filtering.stationaryTrials.map((trial) => trial.trialId)).size !== filtering.stationaryTrials.length || filtering.stationaryTrials.some((trial) => !requiredIds.includes(trial.trialId))) add(failures, "invalid-stationary-trial-identity", "filtering.stationaryTrials", "stationary trials must use the exact source-derived IDs");
+    }
     if (!Array.isArray(filtering.transitions) || filtering.transitions.length === 0) add(failures, "invalid-transitions", "filtering.transitions", "prescribed complete transitions must be present");
-    if (filtering.stationaryTrialInputs !== undefined) {
-      if (!Array.isArray(filtering.stationaryTrialInputs) || filtering.stationaryTrialInputs.length !== filtering.stationaryTrials.length) add(failures, "stationary-regeneration-mismatch", "filtering.stationaryTrialInputs", "stationary inputs must correspond one-to-one with stored metrics");
-      else filtering.stationaryTrialInputs.forEach((input, index) => {
+    if (!Array.isArray(filtering.stationaryTrialInputs) || filtering.stationaryTrialInputs.length !== filtering.stationaryTrials.length) add(failures, "missing-stationary-regeneration-inputs", "filtering.stationaryTrialInputs", "stationary source inputs are required");
+    else filtering.stationaryTrialInputs.forEach((input, index) => {
         const regeneratedMetric = calculateStationaryTrialMetric(input);
         const stored = filtering.stationaryTrials[index]!;
         if (regeneratedMetric.trialId !== stored.trialId || JSON.stringify(regeneratedMetric.rms) !== JSON.stringify(stored.rms) || regeneratedMetric.eligible !== stored.eligible) add(failures, "stationary-regeneration-mismatch", `filtering.stationaryTrials[${index}]`, "stored stationary metric does not match deterministic regeneration");
       });
-    }
-    if (filtering.transitionInputs !== undefined) {
-      if (!Array.isArray(filtering.transitionInputs) || filtering.transitionInputs.length !== filtering.transitions.length) add(failures, "motion-regeneration-mismatch", "filtering.transitionInputs", "transition inputs must correspond one-to-one with stored metrics");
-      else filtering.transitionInputs.forEach((input, index) => {
+    if (!Array.isArray(filtering.transitionInputs) || filtering.transitionInputs.length !== filtering.transitions.length) add(failures, "missing-motion-regeneration-inputs", "filtering.transitionInputs", "transition source inputs are required");
+    else filtering.transitionInputs.forEach((input, index) => {
         const regeneratedMetric = calculateTransitionMetric(input);
         const stored = filtering.transitions[index]!;
         if (regeneratedMetric.transitionId !== stored.transitionId || regeneratedMetric.axis !== stored.axis || regeneratedMetric.lagMs !== stored.lagMs || regeneratedMetric.overshootMm !== stored.overshootMm || JSON.stringify(regeneratedMetric.discontinuityMm) !== JSON.stringify(stored.discontinuityMm)) add(failures, "motion-regeneration-mismatch", `filtering.transitions[${index}]`, "stored motion metric does not match deterministic regeneration");
       });
+    for (const [index, candidate] of validCandidates.entries()) {
+      if (candidate.stationaryReplayOutputs === undefined) continue;
+      const regeneratedTrials = candidate.stationaryReplayOutputs.map((trial) => calculateStationaryTrialMetric(trial));
+      if (regeneratedTrials.length !== candidate.stationaryTrials.length || regeneratedTrials.some((metric, trialIndex) => JSON.stringify(metric) !== JSON.stringify(candidate.stationaryTrials[trialIndex]))) add(failures, "candidate-stationary-regeneration-mismatch", `filtering.candidates[${index}]`, "candidate stationary RMS does not match preserved filtered output");
+      const transitionMetrics = candidate.transitionMetrics ?? [];
+      const regeneratedP95 = transitionMetrics.length === 0 ? 0 : nearestRankPercentile(transitionMetrics.map((metric) => metric.lagMs), 0.95);
+      if (candidate.p95LagMs !== regeneratedP95) add(failures, "candidate-lag-regeneration-mismatch", `filtering.candidates[${index}].p95LagMs`, "candidate p95 lag does not match generated transition metrics");
+      const regeneratedEligible = candidate.invalidOutputCount === 0 && regeneratedTrials.length === 5 && regeneratedTrials.every((trial) => trial.eligible);
+      const regeneratedJ = regeneratedEligible ? Math.max(...regeneratedTrials.flatMap((trial) => [trial.rms.x / 3, trial.rms.y / 3, trial.rms.z / 8])) : null;
+      if (candidate.eligible !== regeneratedEligible || candidate.jitterObjective !== regeneratedJ) add(failures, "candidate-objective-regeneration-mismatch", `filtering.candidates[${index}]`, "candidate eligibility or J does not match regenerated metrics");
     }
   }
 
   if (!record(bundle?.calibration)) add(failures, "missing-calibration-summary", "calibration", "calibration summary must be present for claim-bearing validation");
   else {
+    if (!record(bundle.calibration) || !record(bundle.calibration.observations)) add(failures, "missing-calibration-regeneration-inputs", "calibration.observations", "raw target-level calibration observations are required");
     for (const axis of ["x", "y", "z"] as const) {
       const fit = bundle.calibration.axes?.[axis];
       const decision = bundle.calibration.decisions?.[axis];
       if (!record(fit) || typeof fit.scale !== "number" || !Number.isFinite(fit.scale) || typeof fit.offset !== "number" || !Number.isFinite(fit.offset) || typeof decision !== "string") add(failures, "invalid-calibration-summary", `calibration.axes.${axis}`, "calibration fit and decision must be finite and present");
       if (decision === "identity-adequate" && (fit?.scale !== 1 || fit?.offset !== 0)) add(failures, "identity-axis-not-preserved", `calibration.axes.${axis}`, "identity-passing axis must retain scale 1 and offset 0");
+      try {
+        const observations = bundle.calibration.observations[axis];
+        const regenerated = axis === "z" ? fitZAxisInitial(observations as never) : fitRelativeAxis(axis, observations as never);
+        if (fit?.scale !== regenerated.scale || fit?.offset !== regenerated.offset || decision !== regenerated.decision) add(failures, "calibration-regeneration-mismatch", `calibration.axes.${axis}`, "stored calibration does not match frozen regeneration");
+      } catch { add(failures, "invalid-calibration-inputs", `calibration.observations.${axis}`, "calibration observations cannot be regenerated"); }
     }
   }
 
-  if (bundle !== null && bundle.invalidations !== undefined && (!Array.isArray(bundle.invalidations) || bundle.invalidations.some((entry) => !record(entry) || typeof entry.reason !== "string" || typeof entry.detail !== "string"))) add(failures, "invalid-invalidation", "invalidations", "invalidations must contain explicit reason/detail records");
+  if (bundle !== null && bundle.invalidations !== undefined && (!Array.isArray(bundle.invalidations) || bundle.invalidations.some((entry) => !record(entry) || typeof entry.reason !== "string" || !M0E_ALLOWED_INVALIDATION_REASONS.includes(entry.reason as typeof M0E_ALLOWED_INVALIDATION_REASONS[number]) || typeof entry.detail !== "string"))) add(failures, "invalid-invalidation", "invalidations", "invalidations must contain an allowed frozen reason and detail");
 
   return Object.freeze({ validatorVersion: M0E_VALIDATOR_VERSION, evidenceSchemaVersion, checksPerformed: CHECKS, passed: failures.length === 0, failures: Object.freeze(failures) });
 }
