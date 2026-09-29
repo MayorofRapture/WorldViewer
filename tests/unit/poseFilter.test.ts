@@ -18,7 +18,7 @@ describe("M0E One Euro adapter", () => {
   });
 
   it("rejects equal/decreasing timestamps without advancing state and reset is deterministic", () => {
-    const filter = new OneEuroPoseFilter();
+    const filter = new OneEuroPoseFilter({ minCutoffHz: 1, beta: 0, dCutoffHz: 1, initialFrequencyHz: 60 });
     filter.update(sample(100, 1));
     expect(() => filter.update(sample(100, 2))).toThrow(/strictly increasing/);
     expect(() => filter.update(sample(90, 2))).toThrow(/strictly increasing/);

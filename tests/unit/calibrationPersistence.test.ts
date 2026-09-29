@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultCalibrationProfile, createDefaultDisplayProfile } from "../../src/shared/contracts/calibration";
 import { MemoryCalibrationRepository } from "../../src/engine/calibration/persistence";
+import { validateEstimatorACalibration } from "../../src/m0d/estimators/mediaPipeFacialTransformEstimator";
 
 describe("M0E profile persistence boundary", () => {
   it("round-trips a paired display/calibration state by stable ID", async () => {
@@ -11,6 +12,8 @@ describe("M0E profile persistence boundary", () => {
     const loaded = await repository.load();
     expect(loaded.displayProfiles[0]?.id).toBe(display.id);
     expect(loaded.calibrationProfiles[0]?.id).toBe(calibration.id);
+    expect(() => validateEstimatorACalibration(loaded.calibrationProfiles[0]!.estimator.parameters)).not.toThrow();
+    expect(loaded.calibrationProfiles[0]!.estimator.parameters).toHaveProperty("zrefCameraMm", 600);
   });
 
   it("rejects an orphan update before admission", async () => {

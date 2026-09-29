@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MediaPipeTrackingSource, type TrackingSource, type TrackingVideoLike } from "../../mediapipe/mediapipeTrackingSource";
 import { createScreenGeometry } from "../../engine/geometry/screenGeometry";
-import { mediaPipeFacialTransformEstimator, validateEstimatorACalibration } from "../../m0d/estimators/mediaPipeFacialTransformEstimator";
-import { PINNED_CANONICAL_FACE_MODEL } from "../../m0d/estimators/canonicalFaceModel";
+import { mediaPipeFacialTransformEstimator } from "../../m0d/estimators/mediaPipeFacialTransformEstimator";
+import { createSelectedEstimatorACalibration } from "../../m0e/selectedEstimatorHandoff";
 import { createDefaultCalibrationProfile, createDefaultDisplayProfile, type CalibrationProfile, type DisplayProfile } from "../../shared/contracts/calibration";
 import type { RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource";
 import { TauriCalibrationRepository, type CalibrationRepository } from "../../engine/calibration/persistence";
@@ -29,17 +29,6 @@ export interface CalibrationWorkflowProps {
 
 const INITIAL_DRAFT: DraftState = Object.freeze({ name: "My display", widthMm: "345.4", heightMm: "194.3", cameraId: "integrated-camera", cameraX: "0", cameraY: "103.188", cameraZ: "0", neutral: null });
 
-function acceptedEstimatorCalibration() {
-  return validateEstimatorACalibration({
-    cameraOriginScreenMm: { x: 0, y: 103.188, z: 0 },
-    zrefScreenMm: 600,
-    zrefCameraMm: 600,
-    canonicalPointCm: PINNED_CANONICAL_FACE_MODEL.cyclopeanPointCm,
-    zMedianRaw: 476.5052488113386,
-    scaleA: 1.259167661839453,
-  });
-}
-
 function parsePositive(value: string): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -63,7 +52,7 @@ export function CalibrationWorkflow({ repository = new TauriCalibrationRepositor
   const previewHost = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<TrackingSource | null>(null);
   const latestPose = useRef<RawViewerPose | null>(null);
-  const estimatorCalibration = useMemo(() => acceptedEstimatorCalibration(), []);
+  const estimatorCalibration = useMemo(() => createSelectedEstimatorACalibration(), []);
 
   useEffect(() => {
     if (step !== "camera" && step !== "neutral") return;

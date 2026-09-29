@@ -67,8 +67,10 @@ export class TauriCalibrationRepository implements CalibrationRepository {
     const validated = validateCalibrationDocuments(documents);
     try {
       await invoke("write_calibration_documents", {
-        displayProfiles: document(validated.displayProfiles),
-        calibrationProfiles: document(validated.calibrationProfiles),
+        documents: {
+          displayProfiles: document(validated.displayProfiles),
+          calibrationProfiles: document(validated.calibrationProfiles),
+        },
       });
     } catch (error) {
       throw new CalibrationPersistenceError("native-write-failed", "native", error instanceof Error ? error.message : String(error));

@@ -12,7 +12,7 @@ export interface OneEuroFilterConfiguration {
   readonly initialFrequencyHz: number;
 }
 
-export const DEFAULT_ONE_EURO_CONFIGURATION: OneEuroFilterConfiguration = Object.freeze({
+export const REFERENCE_TEST_ONE_EURO_CONFIGURATION: OneEuroFilterConfiguration = Object.freeze({
   minCutoffHz: 1,
   beta: 0,
   dCutoffHz: 1,
@@ -60,7 +60,7 @@ export class OneEuroPoseFilter {
   private previousTimestampMs: MonotonicMs | null = null;
   private previousPositionMm: Vec3Mm | null = null;
 
-  constructor(configuration: OneEuroFilterConfiguration = DEFAULT_ONE_EURO_CONFIGURATION) {
+  constructor(configuration: OneEuroFilterConfiguration) {
     this.configuration = validateConfiguration(configuration);
     this.x = this.createUpstreamFilter();
     this.y = this.createUpstreamFilter();

@@ -1,6 +1,7 @@
 import type { RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource";
 import type { JsonObject } from "./json";
 import type { MonotonicMs, Vec3Mm } from "./primitives";
+import { createSelectedEstimatorACalibration, SELECTED_ESTIMATOR_VERSION } from "../../m0e/selectedEstimatorHandoff";
 
 export const CALIBRATION_SCHEMA_VERSION = 1 as const;
 
@@ -237,8 +238,9 @@ export function validateProfileDocument<TProfile>(
 export function validateCalibrationDocuments(value: unknown): CalibrationDocuments {
   if (!isRecord(value)) throw new CalibrationValidationError("invalid-documents", "documents", "calibration documents must be an object");
   assertExactKeys(value, ["displayProfiles", "calibrationProfiles"], "documents");
-  const displayDocument = validateProfileDocument(required(value, "displayProfiles", "documents"), validateDisplayProfile, "displayProfiles");
-  const calibrationDocument = validateProfileDocument(required(value, "calibrationProfiles", "documents"), validateCalibrationProfile, "calibrationProfiles");
+  const asDocumentValue = (entry: unknown): unknown => Array.isArray(entry) ? { schemaVersion: CALIBRATION_SCHEMA_VERSION, profiles: entry } : entry;
+  const displayDocument = validateProfileDocument(asDocumentValue(required(value, "displayProfiles", "documents")), validateDisplayProfile, "displayProfiles");
+  const calibrationDocument = validateProfileDocument(asDocumentValue(required(value, "calibrationProfiles", "documents")), validateCalibrationProfile, "calibrationProfiles");
   const displays = new Map(displayDocument.profiles.map((profile) => [profile.id, profile]));
   const calibrations = new Map(calibrationDocument.profiles.map((profile) => [profile.id, profile]));
   for (const profile of displayDocument.profiles) {
@@ -267,14 +269,8 @@ export function createDefaultCalibrationProfile(
     neutralViewerPositionMm: { x: 0, y: 0, z: 600 },
     estimator: {
       id: "mediapipe-facial-transform-v1",
-      version: "v1",
-      parameters: {
-        cameraOriginScreenMm: { x: 0, y: 103.188, z: 0 },
-        zrefScreenMm: 600,
-        zMedianRaw: 476.5052488113386,
-        scaleA: 1.259167661839453,
-        canonicalPointCm: { x: 0, y: 2.6246179342269897, z: 3.4656630754470825 },
-      },
+      version: SELECTED_ESTIMATOR_VERSION,
+      parameters: createSelectedEstimatorACalibration() as unknown as JsonObject,
     },
     poseCorrection: { scale: { x: 1, y: 1, z: 1 }, offsetMm: { x: 0, y: 0, z: 0 } },
   });
