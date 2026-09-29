@@ -26,7 +26,7 @@ The generic packaged-launch Class B oracle was created and frozen through M0A-3 
 | ORC-PACKAGED-SYNTHETIC-001 | Class B | Packaged `synthetic` smoke proves the bounded controller/projection/renderer/diagnostic-world path and fixed synthetic sequence | M0C2 roadmap; TDS M0C packaged synthetic smoke and packaged-smoke architecture; Interface & Contract Specification packaged smoke contract; Testing Strategy §19 | `scripts/run-packaged-smoke.ps1 -Mode synthetic` | not-required | frozen | Explicit change to the governing contract, task authority, or reviewed oracle procedure |
 | ORC-POSE-ESTIMATOR-001 | Class C | M0D estimator-comparison methods, shared observation requirements, metrics, live procedure, evidence validity, rerun rules, and interpretation boundary | Pose Estimator Experiment Specification Draft v0.4, experimentProcedureVersion 3, §§6–27; ADR-003; ADR-004; ADR-005; ADR-006; ADR-009; M0D roadmap; Testing Strategy Class C oracle policy | `docs/experiments/pose-estimator-experiment-specification.md` §§6–27; frozen review package `docs/handoff/m0d-estimator-class-c-review.md` | approved | frozen | Stronger-reasoning Class C review must approve semantic changes to this frozen oracle before any future material modification |
 
-| ORC-CALIBRATION-FILTER-001 | Class C | M0E calibration-model sufficiency, physical reference procedure, fit/residual interpretation, filter metrics, parameter grid, shortlist, perceptual boundary, and M0E8 interpretation | Draft v0.1 `docs/experiments/calibration-filter-experiment-specification.md`; ADR-007; ADR-009; ADR-014; M0E roadmap; Testing Strategy §§3A, 10A, 23-29 | `docs/experiments/calibration-filter-experiment-specification.md` | pending | draft | Stronger-reasoning Class C review must approve and freeze the draft before M0E5/M0E6 evidence collection; semantic changes require the same review |
+| ORC-CALIBRATION-FILTER-001 | Class C | M0E calibration-model sufficiency, physical reference procedure, fit/residual interpretation, filter metrics, parameter grid, shortlist, perceptual boundary, and M0E8 interpretation | Calibration and Filter Experiment Specification Draft v0.2, `experimentProcedureVersion 1`, `evidenceSchemaVersion 1`, `validatorVersion 1`; ADR-007; ADR-009; ADR-014; M0E roadmap; Testing Strategy §§3A, 10A, 23-29 | `docs/experiments/calibration-filter-experiment-specification.md` | pending | draft | Draft v0.2 incorporates the first stronger-review findings and awaits final stronger-reasoning audit/freeze; M0E5/M0E6 evidence collection remains blocked; semantic changes require the same review |
 
 ## ORC-PACKAGED-SMOKE-001
 
@@ -168,14 +168,14 @@ Oracle ID: ORC-CALIBRATION-FILTER-001
 Subsystem: M0E calibration, filtering, shortlist, and default-selection experiment
 Governed behavior: The initial independent per-axis calibration model, physical reference procedure, fit and residual interpretation, One Euro metric formulas, parameter grid, shortlist rules, M0E7 perceptual boundary, and M0E8 interpretation boundary.
 Classification: Class C
-Governing authority: `docs/experiments/calibration-filter-experiment-specification.md` Draft v0.1; ADR-007; ADR-009; ADR-014; M0E roadmap; Testing Strategy sections 3A, 10A, and 23-29
+Governing authority: `docs/experiments/calibration-filter-experiment-specification.md` Draft v0.2, `experimentProcedureVersion 1`, `evidenceSchemaVersion 1`, `validatorVersion 1`; ADR-007; ADR-009; ADR-014; M0E roadmap; Testing Strategy sections 3A, 10A, and 23-29
 Authoritative test / procedure: `docs/experiments/calibration-filter-experiment-specification.md`
 Supporting fixtures / evidence: `evidence/milestone-0/m0e/` layout defined by the governing specification; none collected by this planning task
 Review status: pending
-Review owner / result: Pending stronger-reasoning Class C review; no approval result yet
+Review owner / result: Draft v0.2 incorporates the first stronger-review findings and awaits final stronger-reasoning audit/freeze; no approval result yet
 Freeze status: draft
-Frozen baseline: not yet frozen; Draft v0.1 is the current planning source only
+Frozen baseline: not yet frozen; Draft v0.2 is the current planning source only
 Change authority: Stronger-reasoning Class C review must approve and freeze semantic changes to formulas, thresholds, target interpretation, procedure, parameter grid, validity rules, shortlist rules, or M0E8 interpretation before dependent evidence collection
 Milestone applicability: M0E5-M0E8
 Handoff references: none yet; a later M0E handoff may consume this record only after approval/freeze
-Notes / limitations: M0E5/M0E6 evidence collection is blocked until this Class C oracle is approved and frozen. The draft does not redefine the M0D estimator and does not authorize physical collection, filter sweeps, or production implementation.
+Notes / limitations: M0E5/M0E6 evidence collection is blocked until this Class C oracle is approved and frozen. Draft v0.2 does not redefine the M0D estimator and does not authorize physical collection, filter sweeps, or production implementation.

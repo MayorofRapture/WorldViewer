@@ -9,7 +9,7 @@
 Draft version: 0.1
 Date: September 28, 2026
 Artifact: Calibration UX/UI Specification
-Status: Draft/readiness artifact for M0E2; pending stronger readiness review and not approved or frozen.
+Status: Draft/readiness artifact for M0E2; the GPT-5.6 Sol High stronger readiness review found the calibration-flow design sufficient for M0E2 implementation authority within its declared scope. This document does not claim that M0E2 implementation has been verified, and it is not a general M0G UX approval or freeze.
 
 This first revision specifies the user-observable M0E calibration flow only. It does not attempt to define the complete future application UI, M0G settings/diagnostics, or a specialist camera-calibration product.
 
@@ -134,4 +134,4 @@ This revision excludes:
 
 # 9. Readiness status and implementation handoff
 
-This is a draft/readiness artifact for M0E2. It has not received stronger review and is not approved or frozen merely because it has been authored. The next readiness review should determine whether this flow is sufficiently concrete for implementation without inventing product behavior. M0E2 remains blocked until that review establishes the repository's required readiness state.
+The GPT-5.6 Sol High stronger readiness review found the substantive calibration-flow design sufficient to serve as M0E2 implementation authority within the scope declared here. This status records readiness of the specification only; it does not claim that M0E2 implementation or verification has occurred. Later M0G expansion and revalidation remain required for general settings/diagnostics UX and recovery flows. Do not add filter-tuning UI or broaden this specification under this status.

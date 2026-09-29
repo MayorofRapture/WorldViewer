@@ -2,17 +2,25 @@
 
 ## Calibration and Filter Experiment Specification
 
-## Draft v0.1
+## Draft v0.2
 
 # Document Status
 
-Draft version: 0.1
+Draft version: 0.2
 Date: September 28, 2026
 Artifact: Class C calibration and filter experiment specification
-Review status: pending stronger-reasoning review
-Freeze status: not frozen
+Review status: pending final stronger-reasoning review
+Freeze status: draft; not frozen
 
-This document is a draft Class C oracle source. It must not be consumed for M0E5 or M0E6 evidence collection until stronger reasoning approves and freezes it through the Oracle Registry process. Implementation or harness work must not silently redefine the criteria that a later review freezes.
+This is the first executable candidate procedure for M0E. No M0E evidence has been collected, and Draft v0.1 must not be represented as having produced evidence. Draft v0.2 incorporates the first stronger-review findings but remains a Class C draft and must not be consumed for M0E5 or M0E6 evidence collection until the stronger review approves and freezes it through the Oracle Registry process. Implementation or harness work must not silently redefine criteria that a later review freezes.
+
+Machine-readable procedure identity:
+
+```text
+experimentProcedureVersion = 1
+evidenceSchemaVersion = 1
+validatorVersion = 1
+```
 
 # 1. Purpose and scope
 
@@ -26,22 +34,41 @@ This specification governs the draft procedure for:
 
 It does not redefine the selected M0D estimator, MediaPipe equations, landmark interpretation, or the canonical `RawViewerPose` contract. M0D supplies canonical screen-relative millimeters and representative recorded traces.
 
-# 2. Required provenance and inputs
+# 2. Required provenance and prescribed initial inputs
 
 Every evidence package must identify:
 
-- source commit;
+- evidence schema, experiment procedure, validator, and metric versions;
+- source commit and timestamps for evidence-generation activity where useful;
+- source M0D run ID/path;
 - estimator ID, version, and configuration hash;
-- calibration profile and host correction;
-- filter implementation and version;
-- candidate parameters;
+- calibration model/configuration;
+- selected filter package/version and the exact candidate grid;
 - trace IDs and content hashes; and
-- metric and procedure versions.
+- all metric, shortlist, invalidation, and transition-result records needed for deterministic regeneration.
+
+The prescribed initial input is the validated M0D evidence at:
+
+```text
+evidence/m0d/estimator-experiment-v3/run-1790638307359/
+```
+
+Use the selected Estimator A replay/output:
+
+```text
+estimatorId = mediapipe-facial-transform-v1
+estimatorVersion = v1
+estimatorConfigHash = fnv1a64-825a99daebb20f6c
+```
+
+The M0E analysis must consume this selected-estimator output. New physical collection is not required by default. Recollection is permitted only when the required selected-estimator trace is missing, required scenario/segment metadata is absent or invalid, a required input cannot be deterministically reconstructed, evidence validation fails for a reason that prevents the M0E metric, or a later approved/frozen procedure requires a measurement absent from the M0D run. Poor calibration or filter results alone are not a reason to recollect.
 
 The initial evidence layout is:
 
 ```text
 evidence/milestone-0/m0e/
+  manifest.json
+  validation.json
   calibration/
     raw-samples.csv
     fit-summary.json
@@ -53,7 +80,7 @@ evidence/milestone-0/m0e/
   perceptual-comparison.md
 ```
 
-Additional machine-readable metadata is limited to what is needed to reproduce the procedure, such as a small manifest containing the provenance fields above. No oversized evidence framework is introduced by this draft.
+`manifest.json` and `validation.json` are a small versioned manifest/validation model, not a general evidence framework. The manifest must include, at minimum, the three versions above, repository/source commit, input M0D run ID/path, estimator identity/version/config hash, calibration model/config, selected filter package/version, the exact 25-candidate grid, trace IDs/content hashes, metric version, and useful evidence-generation timestamps.
 
 # 3. Calibration model under test
 
@@ -74,11 +101,17 @@ ox = oy = oz = 0
 
 There are no cross-axis terms, rotations, nonlinear corrections, orientation-conditioned corrections, lens-distortion terms, or new estimator mathematics. Any need for such a model returns to architecture/oracle review.
 
-# 4. Physical reference collection
+# 4. Physical reference collection and prescribed scenarios
 
-The procedure begins with identity host correction. It records the user's actual neutral physical X/Y reference rather than assuming an unknown neutral offset is zero. The operator records the physical reference used for the neutral cyclopean-eye position and then positions the viewer relative to that established reference.
+The approximately +/-20 mm physical positioning envelope is a measurement-procedure criterion, not a product-wide absolute-pose NFR. M0D's lateral and vertical references are relative movement from neutral because the user's absolute physical neutral X/Y screen coordinate is not measured precisely. M0E must not force ordinary neutral eye position onto the physical screen origin.
 
-Manual positioning tolerance is approximately +/-20 mm, matching the practical basis established during M0D. This is an operator positioning tolerance, not laboratory ground truth and not a new product-wide absolute-pose accuracy NFR.
+Use the existing selected-estimator M0D scenarios when their segment and timing metadata satisfy this procedure:
+
+- `lateral-movement`: three cycles with relative X holds at `-150 mm`, `0`, `+150 mm`;
+- `vertical-movement`: three cycles with relative Y holds at `-100 mm`, `0`, `+100 mm`; and
+- `approach-retreat`: three cycles with absolute Z holds at `450`, `600`, `750`, `600`, `450 mm`.
+
+The existing five neutral stationary trials, near stationary trials, and far stationary trials may be used when their segment/timing metadata satisfies this procedure. All complete consecutive target-to-target transitions from the three movement scenarios are the prescribed motion/filter-lag input; the implementation agent must not select transitions after viewing results.
 
 ## 4.1 Reference targets
 
@@ -112,46 +145,64 @@ X and Y target coordinates are offsets from the recorded neutral physical refere
 
 Collect three complete cycles for each axis/range. A cycle visits the low, center, and high targets for that axis and returns to the center before the next cycle. Hold the other axes at their neutral references while collecting one axis.
 
-At each target, allow a two-second settle, then collect a five-second stationary segment. Record transitions separately from the settled stationary samples. Use actual monotonic timestamps and retain unfavorable but valid samples. A known procedural mistake is marked as a procedural invalidation with its reason; it is not silently discarded or converted into model-failure evidence.
+At each target, the source procedure must retain monotonic timestamps, target/segment/cycle IDs, the physical target interpretation, and the recorded samples. Invalid or non-finite samples are counted and reported. A documented procedural mistake is recorded as a procedural invalidation with its reason rather than silently discarded or converted to model-failure evidence.
+
+For newly collected or explicitly approved replacement stationary traces, allow a two-second settle and then collect a five-second stationary segment. Record transitions separately from settled stationary samples. Existing M0D traces are acceptable only when their metadata proves the required M0E segments/timing are present.
 
 The required neutral stationary evidence for final filter acceptance consists of five complete neutral-position five-second trials after settling. The calibration reference cycles and the stationary filter trials may share valid traces only when the trace metadata proves that the required procedure was followed.
 
-# 5. Calibration fit and interpretation
+# 5. Deterministic calibration fit and aggregation
 
-Let `m_i` be the target-level median of the accepted raw pose samples for one axis at a physical target, and let `t_i` be that target's canonical reference coordinate. The host correction maps measured raw coordinates to target coordinates.
+## 5.1 X/Y relative-displacement fit
 
-## 5.1 Initial outer-pair fit
-
-For each axis, use the two outer reference positions as the initial fit pair:
-
-- X: -150 and +150 relative to the established neutral reference;
-- Y: -100 and +100 relative to the established neutral reference; and
-- Z: 450 and 750.
-
-For low and high observations `(m_low, t_low)` and `(m_high, t_high)`, calculate:
+For each X or Y movement cycle, let `m_center` be the estimator median at that cycle's neutral hold and `m_target` the estimator median at an outer target. Define:
 
 ```text
-s = (t_high - t_low) / (m_high - m_low)
-o = t_low - s * m_low
+delta_m = m_target - m_center
+delta_t = commanded physical displacement
 ```
 
-If the denominator is zero or the resulting scale/offset is non-finite, the fit is invalid. A zero or negative required scale is not accepted as a normal calibration result; it is an escalation condition requiring stronger review.
-
-## 5.2 Held-out center check and final fit
-
-The center target is held out from the initial fit:
-
-- X: 0;
-- Y: 0; and
-- Z: 600.
-
-Apply the outer-pair fit to the center target-level median and report the center residual:
+Use `delta_t = -150 mm` or `+150 mm` for X and `delta_t = -100 mm` or `+100 mm` for Y. Fit scale only in relative displacement space across all six accepted outer observations, three in each direction:
 
 ```text
-residual = corrected_median - center_target
+s = sum(delta_m_i * delta_t_i) / sum(delta_m_i^2)
 ```
 
-If the held-out center check succeeds, regenerate the final production affine parameters from all accepted target-level medians using ordinary per-axis least-squares affine fitting. For one axis with accepted pairs `(m_i, t_i)`, let:
+The denominator must be finite and greater than zero. The resulting scale must be finite and strictly positive.
+
+Preserve the neutral absolute anchor. Let `a` be the median of the three accepted associated center-hold medians for that axis. Set:
+
+```text
+o = a - s * a
+  = (1 - s) * a
+```
+
+Thus `corrected(a) = a`; M0E corrects movement scale around the estimator's neutral anchor and does not redefine neutral as physical screen origin.
+
+For every accepted outer observation, report `cycleId`, target displacement, signed residual, and absolute residual for:
+
+```text
+corrected_displacement = s * delta_m
+residual = corrected_displacement - delta_t
+```
+
+Repeat the same calculation for the identity baseline with `s = 1` and `o = 0`.
+
+## 5.2 Z absolute affine fit
+
+Z uses genuine absolute screen-plane references at `450 mm`, `600 mm`, and `750 mm`. For the initial adequacy check, aggregate the outer observations deterministically:
+
+```text
+m_450 = median(all accepted 450 mm hold medians)
+m_750 = median(all accepted 750 mm hold medians)
+
+s = (750 - 450) / (m_750 - m_450)
+o = 450 - s * m_450
+```
+
+Use all accepted `600 mm` hold medians for the held-out center validation. Apply the fit and report each signed and absolute residual. Scale must be finite and strictly positive.
+
+When the center validation passes, final production Z parameters may be obtained by ordinary least-squares affine fitting over all accepted individual `450/600/750` hold-median observations:
 
 ```text
 m_bar = average(m_i)
@@ -160,24 +211,41 @@ s = sum((m_i - m_bar) * (t_i - t_bar)) / sum((m_i - m_bar)^2)
 o = t_bar - s * m_bar
 ```
 
-The final fit is invalid when the denominator is zero, the scale/offset is non-finite, or the required scale is zero or negative. No robust, nonlinear, or orientation-conditioned fit is introduced by this draft.
+Each accepted hold median remains an individual `(m_i, t_i)` observation for final residual and repeatability reporting. Do not average away the observations before those reports. No robust, nonlinear, orientation-conditioned, or cross-axis fit is authorized.
 
-## 5.3 Identity and affine decision logic
+## 5.3 Residual and repeatability reporting
 
-Report identity results before fitting a non-identity correction.
+For every evaluated target, report individual signed residuals, individual absolute residuals, median signed residual, and maximum absolute residual. X/Y residuals are relative-displacement residuals. Z residuals are absolute target-coordinate residuals.
 
-Identity is adequate when measured residual behavior is within the approximately +/-20 mm physical precision supported by the reference procedure and does not show a material systematic scale or offset pattern across repeated targets/cycles. The +/-20 mm comparison is a procedure-envelope interpretation, not a laboratory accuracy claim.
+For repeated corrected measurements at the same physical target/displacement, let corrected values be `c_j` and:
 
-Affine correction is supported when identity shows a systematic scale/offset error and the independent per-axis affine model materially explains it within that same physical measurement envelope, including a successful held-out center check and valid repeated-cycle behavior.
+```text
+G = median(c_j)
+repeatabilityRms = sqrt(average((c_j - G)^2))
+```
 
-The simple model is not demonstrated sufficient, and the experiment must escalate, if any of the following occurs:
+For X/Y, compute repeatability on corrected relative displacements separately for negative and positive targets. For Z, compute it separately at `450`, `600`, and `750 mm`. Record repeatability even when the model otherwise passes. This is the established trial-median repeatability concept used by M0D.
 
-- a required scale is non-finite, zero, or negative;
-- the held-out center has a systematic residual outside the procedure envelope;
-- residual behavior is nonlinear;
-- residual behavior depends materially on head pose/orientation;
-- cross-axis behavior indicates independent per-axis correction is insufficient; or
-- acceptable calibration would require changing estimator mathematics.
+## 5.4 Deterministic interpretation
+
+Identity host correction is adequate only if, for every evaluated target, both conditions hold:
+
+```text
+abs(median residual) <= 20 mm
+repeatabilityRms <= 20 mm
+```
+
+For X/Y, evaluated targets are the prescribed relative displacement targets. For Z, they are `450/600/750 mm`. If identity meets these criteria, retain identity; do not apply a non-identity correction merely because a fitted value numerically reduces already-acceptable error.
+
+If identity fails one or more criteria, affine correction is supported only if every fitted scale is finite and strictly positive, every target's absolute median residual is at most `20 mm`, every target's repeatability RMS is at most `20 mm`, the Z held-out `600 mm` check satisfies the same residual limit, and no prohibited model behavior is required.
+
+If repeatability exceeds the physical tolerance but residual structure does not clearly establish model failure, classify the result as:
+
+```text
+inconclusive / collection-repeatability problem
+```
+
+Do not automatically claim that the affine model failed. Escalate for architecture review when valid, repeatable evidence shows a required scale at or below zero, a non-finite fit, Z center-interpolation residual above `20 mm`, systematic residual outside the envelope after affine correction, orientation-dependent error, nonlinear target-dependent behavior, cross-axis behavior requiring coupled correction, or estimator mathematics would need to change. Here, `systematic residual outside the envelope` means the per-target residual/repeatability criteria above fail after valid collection; it is not an undefined subjective judgment.
 
 Procedural failure is distinct from calibration-model failure. A documented operator mistake, camera interruption, invalid capture, or out-of-tolerance target placement invalidates the affected collection segment and requires a prescribed rerun; it is not evidence that the model failed.
 
@@ -191,7 +259,7 @@ The filter family is fixed to One Euro through the approved reuse decision:
 
 The sweep does not compare filter families. Filtering is independent on X/Y/Z. Use actual monotonic sample timestamps and convert milliseconds to seconds only at the approved adapter boundary; do not force a fixed update frequency when timestamps are available. Each candidate starts with reset filter state for each replayed trace.
 
-## 6.1 Draft parameter grid
+## 6.1 Fixed parameter grid
 
 The draft grid contains 25 candidates:
 
@@ -201,18 +269,27 @@ beta:        0, 0.001, 0.003, 0.01, 0.03
 dCutoffHz:   1.0
 ```
 
-This is draft Class C material. It may change only during stronger-reasoning review before freeze. After freeze, M0E6 must not alter the grid after seeing results.
+The unfiltered calibrated trace is a baseline, not a 26th One Euro candidate. No candidate may be added or removed after viewing results.
 
-## 6.2 Required traces
+## 6.2 Stationary settling and required traces
+
+For each stationary trial:
+
+1. reset the candidate filter at the start of the recorded settle segment;
+2. replay the entire two-second settle segment through `CalibrationTransform` and `PoseFilter`;
+3. exclude all settle-segment samples from stationary RMS; and
+4. calculate RMS only over the following five-second capture segment.
+
+If a source trace lacks the required two-second pre-roll/settle segment, it cannot satisfy this stationary acceptance trial without an explicitly approved alternative procedure. All candidates receive the same settle and capture samples. The required neutral set is all five complete neutral trials; near/far stationary trials remain visible evidence and do not replace the neutral gate.
 
 The evidence set includes:
 
 - five required neutral stationary five-second trials;
 - near and far stationary spot checks that remain visible in evidence;
 - representative normal head-motion trace(s); and
-- controlled transitions sufficient to calculate filter-induced response lag.
+- all complete consecutive target-to-target transitions from `lateral-movement`, `vertical-movement`, and `approach-retreat`.
 
-Accepted M0D `RawViewerPose` traces may be reused where their metadata satisfies the new procedure. The existing M0D run alone must not be presumed to satisfy every M0E trace requirement. Any new physical collection must be explicitly prescribed before use. Every parameter candidate replays the same calibrated input traces.
+The prescribed initial source is the selected Estimator A output from M0D run `run-1790638307359`. Accepted M0D `RawViewerPose` traces may be reused where their metadata satisfies this procedure. Every parameter candidate replays the same calibrated input traces and exactly the same transition IDs.
 
 # 7. Deterministic metrics
 
@@ -243,20 +320,22 @@ Positive values indicate reduction; negative values remain visible as increased 
 
 This metric is filter-induced response lag, not motion-to-photon latency.
 
+Use all complete valid consecutive target-to-target transitions from `lateral-movement` for X, `vertical-movement` for Y, and `approach-retreat` for Z. Measure only the relevant axis. Every candidate uses exactly the same transition IDs. A transition may be non-evaluable only for a frozen deterministic reason: missing required samples, invalid/non-finite calibrated input, threshold crossing not establishable under this rule, or procedural invalidation already present in source evidence. Do not remove a transition because a candidate performs poorly. Preserve per-transition IDs and results, including invalidation reasons.
+
 For each evaluable transition and axis:
 
 1. Determine the start and final levels from the transition fixture's defined initial and final stationary levels.
 2. Set the 50% threshold to `(start + final) / 2`.
 3. Let direction be `sign(final - start)`.
-4. The first sustained input crossing is the timestamp of the first valid input sample on the final-level side of the threshold followed by at least two more consecutive valid input samples on that same side.
-5. The first sustained output crossing is defined identically for the filtered output.
+4. A sustained crossing is the first sample reaching/passing the threshold on the final-target side followed by two consecutive valid samples remaining on that side, three qualifying samples total.
+5. Define the first sustained input and output crossings identically for the input and filtered output.
 6. Lag is `output_crossing_timestamp - input_crossing_timestamp` using the original monotonic timestamps.
 
-If either crossing cannot be established, the transition is not evaluable and the reason is recorded. Report every evaluable transition, the median lag, and p95 lag. Do not interpolate a crossing or substitute wall-clock frame periods.
+If either crossing cannot be established, the transition is not evaluable and the reason is recorded. Report every evaluable transition, per-transition lag, the median lag, and p95 lag. Do not interpolate a crossing or substitute assumed frame periods.
 
 ## 7.4 Overshoot
 
-For a transition with final level `F` and direction `d = sign(F - start)`, inspect the filtered samples after the output crossing through the transition observation window. The overshoot is:
+Use the same prescribed transition set as lag. For a transition with final level `F` and direction `d = sign(F - start)`, inspect the filtered samples after the output crossing through the transition observation window. The overshoot is:
 
 ```text
 max(max(d * (filtered_sample - F), 0))
@@ -278,7 +357,15 @@ distance = sqrt(
 
 Report median, p95, p99, and maximum over the trace. Timestamp gaps and rejected samples are reported separately and must not be silently treated as zero-distance samples.
 
-## 7.6 Validity and processing time
+## 7.6 Percentiles, validity, and processing time
+
+All M0E percentiles use the WorldViewer/M0D nearest-rank convention. For sorted values of length `n`:
+
+```text
+rank = ceil(p * n)
+```
+
+Clamp the rank to valid array bounds. Use this convention for p95 filter lag, p95 discontinuity, p99 discontinuity, processing p95, and every other M0E percentile unless a different frozen formula is explicitly stated. Library-default interpolation is not permitted to change results.
 
 Record counts and locations of non-finite outputs, rejected samples, and invalid input samples. A valid finite calibrated trace must never produce a valid filtered pose containing NaN or Infinity.
 
@@ -286,7 +373,7 @@ Where practical, measure filter-only processing time around the filter operation
 
 # 8. Stationary acceptance and shortlist
 
-For each required neutral five-second stationary trial after settling, use the existing NFR-VIS-009 target:
+For all five required neutral stationary capture segments after the recorded settle, use the existing NFR-VIS-009 target:
 
 ```text
 X RMS <= 3 mm
@@ -339,7 +426,32 @@ Logan's human judgment remains the perceptual evidence. Record observations arou
 
 The collection process may structure and record these observations, but it must not replace them with an automated preference score.
 
-# 10. M0E8 interpretation boundary
+# 10. Minimum evidence validation
+
+The versioned validator represented by `validation.json` must deterministically check at least:
+
+1. required files are present;
+2. schema, procedure, and validator versions match;
+3. required estimator identity/configuration matches the prescribed selected estimator;
+4. referenced input trace IDs/content hashes match source evidence;
+5. required calibration scenarios and segments exist;
+6. required stationary trials exist;
+7. required movement transitions exist;
+8. all 25 unique filter candidates are represented exactly once;
+9. parameter combinations exactly match the frozen grid;
+10. required metric inputs/results are finite;
+11. calibration fit summary can be regenerated from preserved inputs;
+12. stationary filter metrics can be regenerated from preserved traces;
+13. lag, overshoot, and discontinuity metrics can be regenerated from preserved traces;
+14. the shortlist can be regenerated deterministically from sweep results;
+15. no candidate absent from the sweep was inserted into the shortlist;
+16. no Pareto-dominated candidate was retained when the frozen rule removes it;
+17. invalidations and non-evaluable transitions are explicitly recorded with allowed reasons; and
+18. M0E7 candidate IDs correspond exactly to the validated shortlist.
+
+Validation failure prevents M0E8 from treating the package as claim-bearing evidence. This task defines the requirement only; it does not create validator implementation code.
+
+# 11. M0E8 interpretation boundary
 
 M0E8 occurs only after the evidence package validates against this oracle once it is approved/frozen. Stronger reasoning interprets the objective and perceptual evidence. Possible outcomes are:
 
@@ -351,6 +463,6 @@ M0E8 occurs only after the evidence package validates against this oracle once i
 
 Do not force a default when objective and perceptual evidence do not support one. Do not alter frozen criteria after seeing evidence. A need for nonlinear calibration, orientation-dependent calibration, new estimator mathematics, a new filter family, or solvePnP/OpenCV returns to architecture/oracle review.
 
-# 11. Draft status and freeze gate
+# 12. Draft status and freeze gate
 
-This specification is Class C material pending stronger-reasoning review. It is not frozen. M0E5/M0E6 evidence collection is blocked until the stronger review approves the governing criteria and the Oracle Registry records the approved/frozen state. A collection or implementation agent may implement a harness only against an approved/frozen revision and may not silently redefine formulas, thresholds, grid, validity rules, shortlist rules, or interpretation boundaries.
+This specification is Class C material pending final stronger-reasoning review. It is not approved and is not frozen. `ORC-CALIBRATION-FILTER-001` must remain pending/draft. M0E5/M0E6 evidence collection remains blocked until stronger review approves the governing criteria and the Oracle Registry records the approved/frozen state. A collection or implementation agent may implement a harness only against an approved/frozen revision and may not silently redefine formulas, thresholds, grid, validity rules, shortlist rules, or interpretation boundaries.

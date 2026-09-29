@@ -46,7 +46,7 @@ Each document has this v1 envelope:
 }
 ```
 
-`profiles` contains the corresponding profile objects. A document must contain exactly one supported top-level `schemaVersion` and a `profiles` array. Unknown top-level fields may be retained only if the implementation has an explicit preservation policy; they must not change the meaning of known fields.
+`profiles` contains the corresponding profile objects. A v1 document must contain exactly the owned top-level fields `schemaVersion` and `profiles`; unknown semantic fields are rejected. There is no unspecified preservation policy for v1 owned document/profile structures.
 
 # 3. Identity and version semantics
 
@@ -108,7 +108,7 @@ interface CalibrationProfile {
   estimator: {
     id: string;
     version: string;
-    parameters: Record<string, unknown>;
+    parameters: JsonObject;
   };
   poseCorrection: {
     scale: { x: number; y: number; z: number };
@@ -151,7 +151,9 @@ scale = { x: 1, y: 1, z: 1 }
 offsetMm = { x: 0, y: 0, z: 0 }
 ```
 
-Every scale and offset component must be a finite number. The model does not contain cross-axis matrices, rotations, polynomials, nonlinear fitting, orientation-dependent terms, lens distortion, or arbitrary camera models. Those changes require evidence and architecture review. The calibration experiment separately defines when a zero or negative fitted scale is an invalid result requiring escalation; persistence validation must still reject every non-finite value.
+Every scale component must be finite and strictly positive: `scale.x > 0`, `scale.y > 0`, and `scale.z > 0`. Every offset component must be finite. Zero and negative persisted scale values are invalid at the persistence boundary; this is not deferred to a later experiment. The model does not contain cross-axis matrices, rotations, polynomials, nonlinear fitting, orientation-dependent terms, lens distortion, or arbitrary camera models. Those changes require evidence and architecture review.
+
+For schema v1, validation is strict for owned document/profile structures. Unknown semantic fields are rejected in the document envelope, display profile, calibration profile, `cameraGeometry`, and `poseCorrection`. The estimator's opaque `parameters: JsonObject` is intentionally extensible according to estimator ownership; this exception does not extend to host-owned profile semantics.
 
 CalibrationTransform is pure and deterministic. It does not alter tracking state, confidence, timestamps, or estimator identity.
 
@@ -164,9 +166,10 @@ Validation occurs on read and before a new or updated profile is admitted to act
 - non-empty IDs and uniqueness within each document;
 - finite, strictly positive physical display dimensions;
 - finite `perspectiveStrength` without inventing an unapproved artistic range;
-- finite camera position, neutral pose, scale, and offset components;
+- finite camera position, neutral pose, and offset components;
+- finite, strictly positive `scale.x`, `scale.y`, and `scale.z`;
 - non-empty camera and estimator identity/version values;
-- estimator parameters are a JSON object and remain opaque to host calibration;
+- estimator parameters are a `JsonObject` and remain opaque to host calibration;
 - optional FOV and capture values are finite when present, with positive dimensions/FPS when present; and
 - cross-document profile references resolve to the corresponding profile before the combined state becomes active.
 
@@ -193,7 +196,7 @@ Write behavior is deterministic:
 5. Atomically replace or rename the target document.
 6. Re-read and validate the resulting document before reporting success when the native boundary supports that check.
 
-If validation or atomic replacement fails, the prior target file and prior active runtime state remain authoritative. A failed write must not leave a partially written target presented as valid state.
+Each JSON document receives its own atomic temp-write plus replace/rename operation. M0E1 does not claim an ACID transaction spanning both JSON files. Active runtime state is not replaced until the requested save operation has completed and the resulting combined state validates, including all cross-document references. An interrupted multi-document operation must remain diagnosable: a successfully written calibration document does not make an orphan calibration profile active, and no partial target file is treated as valid. If a document write or combined-state validation fails, the previously active valid runtime state remains authoritative; the two-file architecture does not claim stronger crash-consistency than these per-file operations provide.
 
 # 9. Profile lifecycle boundaries
 
@@ -203,4 +206,4 @@ This revision does not define M0G app-state persistence, world settings, history
 
 # 10. Readiness status and implementation handoff
 
-This is a focused M0E1 readiness artifact, not an approval or freeze record. The next stronger review should confirm that the field shapes, validation categories, atomic-write behavior, and explicit rejection/recovery semantics are sufficient for implementation. M0E1 remains blocked until the repository's normal readiness process determines that this specification is sufficiently frozen.
+This is a focused M0E1 readiness artifact, not an approval or freeze record. The next stronger review should confirm that the field shapes, validation categories, strict unknown-field rejection, two-file atomicity boundary, and explicit rejection/recovery semantics are sufficient for implementation. M0E1 remains pending final stronger-review confirmation and blocked until the repository's normal readiness process determines that this specification is sufficiently frozen. The implementation handoff must reference the Testing Strategy's requirement for native/packaged integration verification of Windows filesystem atomic replacement; this specification does not implement that test here.
