@@ -52,13 +52,6 @@ function document<TProfile>(profiles: readonly TProfile[]): ProfileDocument<TPro
   return Object.freeze({ schemaVersion: CALIBRATION_SCHEMA_VERSION, profiles: Object.freeze([...profiles]) });
 }
 
-function stableJson(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right));
-  return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`).join(",")}}`;
-}
-
 export class TauriCalibrationRepository implements CalibrationRepository {
   async load(): Promise<CalibrationDocuments> {
     let raw: NativeCalibrationDocuments;
@@ -76,8 +69,6 @@ export class TauriCalibrationRepository implements CalibrationRepository {
       await invoke("write_calibration_documents", {
         displayProfiles: document(validated.displayProfiles),
         calibrationProfiles: document(validated.calibrationProfiles),
-        serializedDisplayProfiles: stableJson(document(validated.displayProfiles)),
-        serializedCalibrationProfiles: stableJson(document(validated.calibrationProfiles)),
       });
     } catch (error) {
       throw new CalibrationPersistenceError("native-write-failed", "native", error instanceof Error ? error.message : String(error));
