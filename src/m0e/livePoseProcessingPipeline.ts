@@ -35,7 +35,7 @@ export interface LivePoseSource {
   start(): Promise<void>;
   stop(): Promise<void>;
   sample(timestampMs: MonotonicMs): RawViewerPose | null;
-  subscribe(listener: (pose: RawViewerPose) => void): () => void;
+  subscribe(listener: (pose: RawViewerPose | null) => void): () => void;
   getHealth(): Readonly<TrackingHealth>;
 }
 
@@ -87,6 +87,7 @@ export class LivePoseProcessingPipeline {
   private stopPromise: Promise<void> | undefined;
   private lastRawTimestampMs: number | null = null;
   private latestPose: FilteredViewerPose | null = null;
+  private processingFailureReason: string | null = null;
 
   public constructor(options: LivePoseProcessingPipelineOptions) {
     this.profile = validateSelectedEstimatorProfile(options.calibrationProfile);
@@ -111,6 +112,7 @@ export class LivePoseProcessingPipeline {
 
     const filtered = applyCalibrationAndFilter(sample, this.profile, this.calibrationTransform, this.filter);
     this.latestPose = filtered;
+    this.processingFailureReason = null;
     return filtered;
   }
 
@@ -172,8 +174,17 @@ export class LivePoseProcessingPipeline {
 
   public updateViewerState(): ReturnType<ViewerStateControllerContract["update"]> | null {
     if (this.controller === undefined || this.source === undefined) return null;
+    const sourceHealth = this.source.getHealth();
+    const tracking = this.processingFailureReason === null || sourceHealth.status !== "tracked"
+      ? sourceHealth
+      : Object.freeze({
+        status: "degraded" as const,
+        confidence: sourceHealth.confidence,
+        sinceMonotonicMs: sourceHealth.sinceMonotonicMs,
+        reasonCode: this.processingFailureReason,
+      });
     return this.controller.update({
-      tracking: this.source.getHealth(),
+      tracking,
       filteredPose: this.latestPose,
       neutralPositionMm: this.profile.neutralViewerPositionMm,
     });
@@ -190,7 +201,17 @@ export class LivePoseProcessingPipeline {
     const generation = this.sourceGeneration;
     this.sourceUnsubscribe = source.subscribe((pose) => {
       if (this.disposed || generation !== this.sourceGeneration || source !== this.source || !this.started) return;
-      this.ingest(pose);
+      if (pose === null) {
+        this.latestPose = null;
+        this.processingFailureReason = "pose-processing-failed";
+        return;
+      }
+      try {
+        this.ingest(pose);
+      } catch {
+        this.latestPose = null;
+        this.processingFailureReason = "pose-processing-failed";
+      }
     });
   }
 
@@ -202,6 +223,7 @@ export class LivePoseProcessingPipeline {
   private clearPoseHistory(): void {
     this.lastRawTimestampMs = null;
     this.latestPose = null;
+    this.processingFailureReason = null;
     this.filter.reset();
     this.controller?.reset(this.profile.neutralViewerPositionMm);
   }

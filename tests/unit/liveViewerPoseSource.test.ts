@@ -51,7 +51,7 @@ describe("LiveViewerPoseSource", () => {
     expect(pose?.positionMm).toEqual({ x: 0, y: 136.23634027462495, z: 629.5838309197264 });
   });
 
-  it("does not emit null estimates, duplicate timestamps, or stale observations", async () => {
+  it("emits an invalidation for a new null estimate and ignores duplicate or stale observations", async () => {
     const { source, tracking } = sourceFixture();
     const emitted: unknown[] = [];
     source.subscribe((pose) => emitted.push(pose));
@@ -61,8 +61,9 @@ describe("LiveViewerPoseSource", () => {
     tracking.emit(observation(99, -63.46566307544708));
     tracking.emit(estimatorAObservation({ timestampMs: 101, missingMatrix: true }));
 
-    expect(emitted).toHaveLength(1);
-    expect(source.sample(101)?.timestampMs).toBe(100);
+    expect(emitted).toHaveLength(2);
+    expect(emitted[1]).toBeNull();
+    expect(source.sample(101)).toBeNull();
   });
 
   it("unsubscribes and starts with clean pose history after restart", async () => {

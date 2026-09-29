@@ -14,7 +14,7 @@ export interface LiveViewerPoseSourceOptions {
   readonly camera: Readonly<CameraGeometry>;
 }
 
-export type RawViewerPoseListener = (pose: RawViewerPose) => void;
+export type RawViewerPoseListener = (pose: RawViewerPose | null) => void;
 
 /** Host-private M0E4 composition of live tracking and the selected M0D estimator. */
 export class LiveViewerPoseSource implements ViewerPoseSource {
@@ -94,8 +94,6 @@ export class LiveViewerPoseSource implements ViewerPoseSource {
     this.lastObservationTimestampMs = observation.timestampMs;
 
     const pose = mediaPipeFacialTransformEstimator.estimate(observation, this.context);
-    if (pose === null) return;
-
     this.latestPose = pose;
     for (const listener of this.listeners) listener(pose);
   }
