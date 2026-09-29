@@ -1,0 +1,1 @@
+{"calibration":{"cameraOriginScreenMm":{"x":0,"y":103.188,"z":0},"canonicalPointCm":{"x":0,"y":2.6246179342269897,"z":3.4656630754470825},"scaleA":1.259167661839453,"zMedianRaw":476.5052488113386,"zrefCameraMm":600,"zrefScreenMm":600},"configHash":"fnv1a64-825a99daebb20f6c","estimatorId":"mediapipe-facial-transform-v1","estimatorVersion":"v1"}

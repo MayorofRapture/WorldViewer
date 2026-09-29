@@ -38,9 +38,11 @@ Document: https://docs.google.com/document/d/1p-HSB3\_484CFXyKvKI89ihpuFPsDZohqc
 ADR-005 | Accepted — validate in Milestone 0 | Worker-Based MediaPipe Tracking with Latest-Frame Backpressure  
 Repo-local record: [ADR-005](ADR-005%20%E2%80%94%20Worker-Based%20MediaPipe%20Tracking%20with%20Latest-Frame%20Backpressure.md)
 Document: https://docs.google.com/document/d/1x5kTtCnB3\_NDnR0OVcnJ0LPb2-OTNBpO6DuzLg3cb7g/edit?usp=drivesdk  
-ADR-006 | Experimental | Pose Estimator Selected by Measurement, Not Assumption  
+ADR-006 | Superseded | Pose Estimator Selected by Measurement, Not Assumption
 Repo-local record: [ADR-006](ADR-006%20%E2%80%94%20Pose%20Estimator%20Selected%20by%20Measurement%2C%20Not%20Assumption.md)
 Document: https://docs.google.com/document/d/1zfuWKr7bmWbFHxS6lbmZeS50bhORUbI\_TZp\_TKtnrfo/edit?usp=drivesdk  
+ADR-006.01 | Accepted | Production Pose Estimator Selection; supersedes ADR-006
+Repo-local record: [ADR-006.01](ADR-006.01%20%E2%80%94%20Production%20Pose%20Estimator%20Selection.md)
 ADR-007 | Accepted — tune in Milestone 0 | One Euro Filtering as Baseline Pose Smoothing  
 Repo-local record: [ADR-007](ADR-007%20%E2%80%94%20One%20Euro%20Filtering%20as%20Baseline%20Pose%20Smoothing.md)
 Document: https://docs.google.com/document/d/1U9guWE4Yg7SemU84T310B62qpFMYx46fiZGcopEyGX4/edit?usp=drivesdk  

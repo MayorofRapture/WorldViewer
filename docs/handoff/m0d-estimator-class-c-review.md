@@ -18,36 +18,36 @@
 - Freeze status: frozen
 - Reviewed baseline: `aef3e7c8280784db3e878757338c073cbce45a81`
 - Class C oracle: approved/frozen. Section 27 technical prerequisites for M0D4-M0D7 were reviewed and closed before implementation.
-- M0D7 runner readiness is Ready for operator physical evidence collection; formal M0D7 physical evidence collection is the next milestone activity and has not yet been performed. M0D8 interpretation/selection is not started.
-- Section 27 readiness inputs include the actual E590 `cameraOriginScreenMm = { x: 0, y: 103.188, z: 0 }` mm measurement and confirmed target practicality; these prerequisites are Ready, while they do not constitute formal M0D7 experiment evidence.
-- M0D4/M0D5/M0D6: Ready; M0D7 runner: Ready for operator physical evidence collection.
+- M0D7 formal evidence collection is completed and validated; M0D8 interpretation/selection is completed with Estimator A selected for production. See ADR-006.01 and the durable evidence path below.
+- Section 27 readiness inputs include the actual E590 `cameraOriginScreenMm = { x: 0, y: 103.188, z: 0 }` mm measurement and confirmed target practicality; these prerequisites were consumed by the completed formal M0D7 run.
+- M0D4/M0D5/M0D6: Ready; M0D7: Completed; M0D8: Completed; production estimator selection: Accepted through ADR-006.01.
 - This note records the approved/frozen oracle and the current implementation boundary. It does not change experiment semantics.
 
 ### Current M0D7 physical-evidence correction boundary
 
 The focused implementation correction preserves the accepted lifecycle and frozen procedure while making evidence semantics explicit: invalidation is scoped to an `(attemptId, unitId)` pair; the verified negotiated camera configuration is persisted before source shutdown; depth ordering uses the prescribed 450/600/750 mm values; repeatability and movement errors are grouped by physical target and same-cycle neutral reference; hold completeness requires accepted hold/capture observations plus start/end markers; replacement attempts require their own evidence and markers; and scenario summaries are serialized as exact regenerable metrics without score or rank.
 
-These corrections preserve the approved lifecycle and closed Section 27 readiness state. They do not complete the physical experiment: formal M0D7 physical evidence collection has not yet been performed.
+These corrections preserve the approved lifecycle and closed Section 27 readiness state. The subsequent formal M0D7 run was collected under the frozen procedure and is preserved below; this historical section does not alter that evidence or the frozen experiment semantics.
 
 ## Handoff record
 
-- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization, M0D3B's opt-in packaged matrix diagnostic, the M0D3 production MediaPipe TrackingObservation path, the M0D v3 evidence contracts/validator, M0D4/M0D5 estimator candidates, M0D6 replay/metrics/evidence tooling, and the opt-in M0D7 guided runner are implemented and verified; live formal evidence collection remains an operator activity and has not been performed.
+- Subsystem status and supported scope: M0D3A pure TrackingObservation normalization, M0D3B's opt-in packaged matrix diagnostic, the M0D3 production MediaPipe TrackingObservation path, the M0D v3 evidence contracts/validator, M0D4/M0D5 estimator candidates, M0D6 replay/metrics/evidence tooling, and the opt-in M0D7 guided runner are implemented and verified; formal M0D7 evidence collection and M0D8 selection are complete.
 - Stable public contract/interface paths: `docs/architecture/interface-contract-specification.md` §§8–11; `src/mediapipe/mediapipeTrackingSource.ts` is the host-private `TrackingSource`, `src/mediapipe/mediapipeTrackingWorker.ts` owns MediaPipe inference, and `src/mediapipe/mediapipeBenchmarkWorker.ts` remains benchmark/diagnostic-only.
 - Oracle IDs: `ORC-POSE-ESTIMATOR-001` (approved/frozen).
 - Authoritative tests/oracles: The approved and frozen Class C procedure is the experiment specification §§6–27; existing package/unit checks do not constitute estimator-comparison evidence.
-- M1 oracle freeze status and classification: Not M1-ready; the Class C oracle is approved/frozen and M0D4/M0D5/M0D6 tooling is present, but M0D7/M0D8 completion and production selection are not established.
-- Known-good reference implementation: Packaged MediaPipe benchmark path in `src/mediapipe/`, with the M0D3B diagnostic reusing its pinned worker configuration; no production estimator has been selected.
+- M1 oracle freeze status and classification: The Class C oracle remains approved/frozen; the M0D7 evidence gate and M0D8 production-selection gate are complete, while M0E has its own contracts and Class C review gates.
+- Known-good reference implementation: `mediapipe-facial-transform-v1` is the accepted production estimator through ADR-006.01; the packaged MediaPipe path in `src/mediapipe/` remains the pinned worker/reference basis.
 - REUSE IDs: None applicable to this review-preparation artifact.
-- Approved dependency/reference implementation: MediaPipe package/model provenance is recorded for the spike only; no estimator reference implementation is approved.
+- Approved dependency/reference implementation: `@mediapipe/tasks-vision@1.0.1` and the pinned canonical task/model provenance remain owned by the frozen experiment; Estimator A is the accepted production estimator, with its identity and configuration recorded in ADR-006.01.
 - Authoritative Approval Source: Final GPT-5.6 Sol High Class C review and governing-source reconciliation recorded in `docs/testing/oracle-registry.md` against reviewed baseline `aef3e7c8280784db3e878757338c073cbce45a81`.
-- Reuse Mode: Not applicable to the frozen oracle; no production estimator reuse decision is made.
-- Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.4, experimentProcedureVersion 3, and future evidence namespace `evidence/m0d/estimator-experiment-v3/` remain navigation facts only. The earlier v2 artifact/directory is historical and is not renamed or rewritten.
+- Reuse Mode: Not applicable to the frozen oracle; the production estimator selection is an evidence-backed architecture decision, not a dependency reuse approval.
+- Version/source/provenance constraints: `@mediapipe/tasks-vision@1.0.1`, package lock integrity, pinned task model/WASM provenance, Draft v0.4, experimentProcedureVersion 3, and `evidence/m0d/estimator-experiment-v3/run-1790638307359/` are the accepted provenance/evidence references. The earlier v2 artifact/directory is historical and is not renamed or rewritten.
 - Remaining project-specific custom-code boundary: Future M0D replay, metrics, and evidence code must consume the frozen contracts and may not author new experiment semantics.
 - Prohibited Reinvention: Do not replace the prescribed methods, invent canonical constants, transpose matrices by appearance, or tune/rerun evidence outside the frozen procedure.
 - Deterministic tests and fixture paths for M0D6 include `src/m0d/evidence/m0dEvidenceContracts.ts`, `src/m0d/evidence/m0dEvidenceValidator.ts`, `src/m0d/evidence/m0dSerialization.ts`, `src/m0d/replay/m0dReplay.ts`, `src/m0d/metrics/m0dMetrics.ts`, `src/m0d/scenarios/m0dScenarioModel.ts`, the estimator modules, `tests/unit/m0dEvidenceContracts.test.ts`, `tests/unit/m0dEstimators.test.ts`, `tests/unit/m0dReplay.test.ts`, `tests/unit/m0dMetrics.test.ts`, `tests/unit/m0dSerialization.test.ts`, and `tests/unit/m0dScenarios.test.ts`; the replay and metric tests are synthetic and create no formal evidence.
-- Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006, ADR-009.
-- Evidence references: `evidence/spikes/m0d-mediapipe-packaged-performance/`; `evidence/spikes/m0d-openseeface-physical-pose/`; the local M0D3B diagnostic output is intentionally not referenced or committed, and none of these is a validated estimator-comparison bundle.
-- Known limitations / unsupported behavior: The production path emits normalized observations, while the host-private M0D4/M0D5 candidates produce pure RawViewerPose results without selecting a production estimator. M0D6 tooling replays saved traces and does not rank candidates or select a production estimator. The M0D7 runner performs one live normalized capture followed by deterministic A/B replay and validation, but no physical run has been performed and no evidence bundle is claimed. M0D3B remains a separate diagnostic-only worker path. The completed physical diagnostic supports the reviewed matrix consumption but is not formal M0D7 evidence; the recorded E590 camera-origin input and target-practicality confirmation are readiness inputs, not M0D7 evidence.
+- Governing ADR references: ADR-003, ADR-004, ADR-005, ADR-006 (historical), ADR-006.01, ADR-009.
+- Evidence references: `evidence/m0d/estimator-experiment-v3/run-1790638307359/`; validated source ZIP SHA-256 `872A833671004173F40A966B68095D65911252F1261EE902A84434267BB48EDE`; experiment run `m0d7-20260928232502757`; the local M0D3B diagnostic output remains intentionally unreferenced and uncommitted.
+- Known limitations / unsupported behavior: Estimator A (`mediapipe-facial-transform-v1`, v1, config `fnv1a64-825a99daebb20f6c`) is selected. Its intrinsic calibration is `scaleA = 1.259167661839453`, `zMedianRaw = 476.5052488113386`, `ZrefCameraMm = 600`, with camera origin `{ x: 0, y: 103.188, z: 0 }` mm. A has significant raw scale/bias before M0E calibration, weaker far-depth repeatability than neutral, transient repositioning jitter, and approximately 15.63 Hz useful cadence (above minimum, below preferred 20–30 Hz). Physical target placement is manually measured, and M0D selection does not prove final filtered/calibrated NFR compliance. Candidate B's partial-head-turn Z range was approximately 191.9 mm versus approximately 18.4 mm for A; its yaw-correlated depth behavior is not correctable by independent per-axis scale/offset. SolvePnP/OpenCV remains deferred. The evidence build SHA is `add62305be364912f735bf3ad7171a2a3e2bf71c`, accepted as a provenance caveat against the later UI-clarification commit `a006652569d2e8e3d2b19f87b77fdacf9c405fca`.
 - Exact verification commands: `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `cargo check --locked --manifest-path src-tauri/Cargo.toml`; `cargo test --locked --manifest-path src-tauri/Cargo.toml`; `git diff --check`. Rust formatting remains unverified because `cargo-fmt.exe` is unavailable in the installed toolchain.
 - Escalation conditions: Any semantic conflict, missing prerequisite, proposed formula/procedure change, or request to alter the frozen oracle returns to stronger review; M0D6/M0D7 work must remain within its own bounded implementation and evidence gates.
 
@@ -93,7 +93,7 @@ The requested high-risk review questions are: matrix layout/handedness and canon
 
 ## Prerequisite readiness
 
-Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguous`, `Blocked`, and `Not yet performed`.
+Status meanings are limited to this review package: `Ready`, `Completed`, `Missing`, `Ambiguous`, `Blocked`, and `Not yet performed`.
 
 | Required prerequisite | Status | Current repository basis / gap |
 | --- | --- | --- |
@@ -115,8 +115,8 @@ Status meanings are limited to this review package: `Ready`, `Missing`, `Ambiguo
 | Evidence schema/validator implementation/readiness | Ready | v3 `schemaVersion = 1` contracts and `validatorVersion = 1` validate the frozen manifest, context files, traces, replay outputs, camera-origin, numeric, identity, scenario, invalidation, anomaly, configuration-consistency, completeness, and metric-regeneration rules. Historical v2 artifacts remain unchanged. |
 | Live worker-to-TrackingObservation integration | Ready | `MediaPipeTrackingSource` owns camera/frame lifecycle and consumes protocol-versioned observations from `mediapipeTrackingWorker.ts`; deterministic lifecycle, normalization, timestamp, and boundary tests pass. |
 | `RawViewerPose` requirements | Ready | Interface Contract and ADR-003 define finite screen-relative millimeter output; both frozen M0D4/M0D5 candidates emit finite values or null with diagnostics. |
-| Physical-target practicality | Ready | The frozen 450/600/750 mm depth, ±150 mm lateral, ±100 mm vertical, and approximately 25–30° head-turn targets were reviewed as practical on the E590 setup. This does not mean the physical experiment has been performed. |
-| Formal M0D7 physical evidence collection | Not yet performed | The visible operator collection and formal evidence bundle have not yet been performed or claimed. |
+| Physical-target practicality | Ready | The frozen 450/600/750 mm depth, ±150 mm lateral, ±100 mm vertical, and approximately 25–30° head-turn targets were reviewed as practical on the E590 setup and were used by the completed run. |
+| Formal M0D7 physical evidence collection | Completed | Validated run `run-1790638307359` is preserved under `evidence/m0d/estimator-experiment-v3/run-1790638307359/`; the validator passed 21/21 checks with zero failures, warnings, procedural invalidations, or anomalies. |
 
 Exact-package matrix conclusion: The completed physical diagnostic supports the existing WorldViewer column-major/column-vector consumption of the exact returned array, with translation at indices 12, 13, and 14 and no transpose/reorder. This finding is recorded in the approved and frozen Class C oracle.
 
@@ -128,9 +128,9 @@ The operator completed the visible packaged diagnostic using build `ff285467382c
 
 The physical diagnostic review is complete, but its output is diagnostic evidence only and is not formal M0D7 estimator-comparison evidence. M0D3B's standalone visible operator flow remains the bounded collection mechanism; it records asymmetric 4 × 4 results (`rows`, `columns`, all 16 returned `data` values in order), package/version and task hashes, monotonic timestamps, frame dimensions, and required indexed landmarks without storing frames or personal identifiers. No raw diagnostic output is committed.
 
-## Current provisional MediaPipe baseline
+## Historical MediaPipe baseline
 
-For continued M0D development, the provisional capture baseline is the known-good visible packaged configuration:
+The known-good visible packaged configuration used as the M0D development baseline was:
 
 - `@mediapipe/tasks-vision@1.0.1`
 - Face Landmarker, CPU delegate, `VIDEO` mode, one face
@@ -154,11 +154,15 @@ Relevant implementation/provenance paths:
 - `evidence/spikes/m0d-mediapipe-packaged-performance/README.md`
 - `evidence/spikes/m0d-openseeface-physical-pose/README.md`
 
-## Unresolved review questions and handoff boundary
+## M0D8 closeout and M0E handoff boundary
 
-The final stronger reviewer approved the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation for the frozen oracle. Section 27 technical prerequisites were reviewed and closed before M0D4-M0D7 implementation. The E590 camera-origin measurement and target-practicality confirmation are Ready prerequisites, but no formal M0D7 physical evidence is claimed. Any future material oracle finding must be resolved through the retained stronger-review change authority before modifying the frozen procedure.
+The final stronger reviewer approved the proposed formulas, matrix interpretation, canonical-model derivation requirements, shared-observation fairness, metrics, structural-failure rules, physical procedure, tolerances, invalidation/rerun rules, evidence schema, and M0D8 interpretation for the frozen oracle. Section 27 technical prerequisites were reviewed and closed before M0D4-M0D7 implementation. The E590 camera-origin measurement and target-practicality confirmation are preserved in the completed run. Any future material oracle finding must be resolved through the retained stronger-review change authority before modifying the frozen procedure.
 
-M0D4 and M0D5 estimator candidates and M0D6 replay/metrics/evidence tooling are implemented as host-private pure paths. M0D7 live evidence collection, M0D8 stronger-reasoning interpretation, tracker selection, and ADR-006.01 remain outside this package. No live camera run or formal M0D7 evidence was created.
+M0D8 selected Estimator A, `mediapipe-facial-transform-v1` v1, with configuration hash `fnv1a64-825a99daebb20f6c`. Estimator A's intrinsic calibration is `scaleA = 1.259167661839453`, `zMedianRaw = 476.5052488113386`, and `ZrefCameraMm = 600`, using camera origin `{ x: 0, y: 103.188, z: 0 }` mm. The accepted package is `@mediapipe/tasks-vision@1.0.1`; the pinned canonical model provenance remains owned by the frozen experiment specification. Candidate B had no frozen structural failure but its approximately 191.9 mm partial-head-turn Z range and yaw-correlated depth behavior are not compatible with the approved independent per-axis scale/offset correction model. SolvePnP/OpenCV remains deferred.
+
+M0E may measure/apply the already-approved downstream independent per-axis scale and offset and pose filtering. M0E must not reinterpret MediaPipe matrix layout, change canonical landmarks or estimator equations, add orientation-conditioned/nonlinear correction, replace the selected estimator, or introduce solvePnP/OpenCV without the appropriate new architecture review. No production estimator redesign is authorized downstream.
+
+M0D4 and M0D5 estimator candidates and M0D6 replay/metrics/evidence tooling are implemented as host-private pure paths. M0D7 live evidence collection and M0D8 stronger-reasoning interpretation are complete. Estimator A is selected through ADR-006.01; no production estimator redesign is authorized downstream.
 
 ## M0D7 runner boundary
 
@@ -170,7 +174,7 @@ The operator launch command after the packaged executable is built is:
 
 `$env:WORLD_VIEWER_SMOKE_MODE = "m0d7-runner"; & .\src-tauri\target\release\worldviewer.exe; Remove-Item Env:WORLD_VIEWER_SMOKE_MODE`
 
-This opt-in mode opens the visible guided runner but does not start the camera until the operator presses the start button. The native writer accepts only the runner's JSON/JSONL files, stages them under the application data `m0d\evidence` directory, allocates a unique `run-<epoch>` directory, and publishes it only after all files are written. Incomplete staging directories remain visibly marked `.incomplete`; prior run directories are never overwritten. The runner stores normalized observations, timing, dropped-frame counts, markers, anomalies, metrics, and validator output only; it does not store images, frames, screenshots, or identifiers. M0D8 remains a not-started placeholder.
+This opt-in mode opens the visible guided runner but does not start the camera until the operator presses the start button. The native writer accepts only the runner's JSON/JSONL files, stages them under the application data `m0d\evidence` directory, allocates a unique `run-<epoch>` directory, and publishes it only after all files are written. Incomplete staging directories remain visibly marked `.incomplete`; prior run directories are never overwritten. The runner stores normalized observations, timing, dropped-frame counts, markers, anomalies, metrics, and validator output only; it does not store images, frames, screenshots, or identifiers. The validated source bundle is preserved in the repository at `evidence/m0d/estimator-experiment-v3/run-1790638307359/`; its generated `m0d8-review.json` remains the runner-produced not-started placeholder, while the accepted Sol review is recorded in ADR-006.01 and this handoff.
 
 ## Verification performed for this package
 
@@ -178,11 +182,12 @@ This opt-in mode opens the visible guided runner but does not start the camera u
 - Verified `ORC-POSE-ESTIMATOR-001` is present as Class C with `Review status: approved` and `Freeze status: frozen` against reviewed baseline `aef3e7c8280784db3e878757338c073cbce45a81`.
 - Verified current source contains the production normalized-observation worker/source path, benchmark/diagnostic worker output remains separate, and the M0D4/M0D5 estimator candidates consume only normalized `TrackingObservation` values.
 - Initial Sol High review: changes required. Remediation audit: substantive design accepted; final GPT-5.6 Sol High Class C review approved and froze the reconciled Draft v0.4 / procedure 3 baseline. No production estimator code is introduced here.
-- M0D3 implementation verification: production protocol/versioning, worker normalization, monotonic timestamp rejection, latest-frame backpressure, lifecycle cleanup, and host consumption boundary pass deterministic tests; packaged diagnostic wiring and pinned task/archive provenance remain verified. Raw diagnostic JSON remains local and uncommitted; no formal estimator-comparison evidence was created.
-- M0D evidence-readiness verification: schemaVersion 1 contracts, validatorVersion 1 structural checks, synthetic no-face/face/matrix/replay fixtures, finite camera-origin validation, and positive `ZrefCameraMm` derivation pass deterministic tests; no physical measurement or fabricated evidence was created.
-- M0D4/M0D5 implementation verification: both candidates use the shared neutral calibration input, preserve the frozen matrix/axis/depth formulas, emit confidence `1.0` for finite valid poses, return null with deterministic reasons for invalid samples, and pass synthetic replay-compatible estimator tests. No live camera run or experiment evidence was created.
-- M0D6 implementation verification: deterministic schema-1 observation reconstruction, shared-trace dual-candidate replay, injected estimator-only timing, stable candidate identity, frozen metric helpers, cadence attribution, structural status, scenario/invalidation/anomaly models, deterministic JSON/JSONL serialization, strict bundle validation, and metric regeneration checks pass synthetic tests. No live camera run or formal M0D7 evidence was created.
-- M0D7 runner implementation verification: the scripted procedure, automatic markers, fake-source orchestration, cancellation retention, and replacement-attempt identity pass deterministic tests. No physical experiment was performed.
+- M0D3 implementation verification: production protocol/versioning, worker normalization, monotonic timestamp rejection, latest-frame backpressure, lifecycle cleanup, and host consumption boundary pass deterministic tests; packaged diagnostic wiring and pinned task/archive provenance remain verified. Raw diagnostic JSON remains local and uncommitted.
+- M0D evidence-readiness verification: schemaVersion 1 contracts, validatorVersion 1 structural checks, synthetic no-face/face/matrix/replay fixtures, finite camera-origin validation, and positive `ZrefCameraMm` derivation pass deterministic tests.
+- M0D4/M0D5 implementation verification: both candidates use the shared neutral calibration input, preserve the frozen matrix/axis/depth formulas, emit confidence `1.0` for finite valid poses, return null with deterministic reasons for invalid samples, and pass synthetic replay-compatible estimator tests.
+- M0D6 implementation verification: deterministic schema-1 observation reconstruction, shared-trace dual-candidate replay, injected estimator-only timing, stable candidate identity, frozen metric helpers, cadence attribution, structural status, scenario/invalidation/anomaly models, deterministic JSON/JSONL serialization, strict bundle validation, and metric regeneration checks pass synthetic tests.
+- M0D7 evidence verification: the source ZIP SHA-256 matches `872A833671004173F40A966B68095D65911252F1261EE902A84434267BB48EDE`; the extracted repository run has 20/20 matching files and content hashes; `validation.json` reports validator version 1, 21/21 checks passed, zero failures and warnings, and 14 included trials.
+- M0D8 closeout: stronger reasoning selected Estimator A under the frozen criteria; ADR-006.01 records the selection, intrinsic calibration, measured limitations, provenance caveat, and M0E boundary. No production estimator code or frozen experiment semantics were changed.
 
 ## Escalation conditions
 
