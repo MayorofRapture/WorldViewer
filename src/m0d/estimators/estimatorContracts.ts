@@ -1,19 +1,11 @@
 import type { ScreenGeometry } from "../../engine/geometry/screenGeometry";
 import type { RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource";
 import type { MonotonicMs, Vec3Mm } from "../../shared/contracts/primitives";
+import type { CameraGeometry as SharedCameraGeometry } from "../../shared/contracts/calibration";
 import type { TrackingObservation } from "../../mediapipe/trackingObservationNormalizer";
 
 export type { RawViewerPose } from "../../engine/pose/SyntheticViewerPoseSource";
-
-export interface CameraGeometry {
-  readonly cameraId: string;
-  readonly positionScreenMm: Vec3Mm;
-  readonly horizontalFovRad?: number;
-  readonly verticalFovRad?: number;
-  readonly captureWidthPx?: number;
-  readonly captureHeightPx?: number;
-  readonly captureFps?: number;
-}
+export type CameraGeometry = SharedCameraGeometry;
 
 export interface PoseEstimationContext<TCalibration> {
   readonly display: Readonly<ScreenGeometry>;

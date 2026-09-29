@@ -12,6 +12,11 @@ use tauri::{Manager, State};
 use tauri_plugin_shell::ShellExt;
 
 #[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
+#[cfg(windows)]
+use windows::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH};
+
+#[cfg(windows)]
 use webview2_com::{
     CoTaskMemPWSTR, Microsoft::Web::WebView2::Win32::*, PermissionRequestedEventHandler,
 };
@@ -384,6 +389,99 @@ fn m0d_evidence_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(root)
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CalibrationDocumentsResponse {
+    display_profiles: serde_json::Value,
+    calibration_profiles: serde_json::Value,
+}
+
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CalibrationDocumentsWrite {
+    display_profiles: serde_json::Value,
+    calibration_profiles: serde_json::Value,
+}
+
+fn calibration_config_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let root = app.path().app_data_dir().map_err(|error| format!("could not resolve application data directory: {error}"))?;
+    fs::create_dir_all(&root).map_err(|error| format!("could not create application data directory: {error}"))?;
+    Ok(root)
+}
+
+fn empty_profile_document() -> serde_json::Value {
+    serde_json::json!({ "schemaVersion": 1, "profiles": [] })
+}
+
+fn read_profile_document(path: &Path) -> Result<serde_json::Value, String> {
+    if !path.exists() {
+        return Ok(empty_profile_document());
+    }
+    let text = fs::read_to_string(path).map_err(|error| format!("could not read {}: {error}", path.display()))?;
+    serde_json::from_str(&text).map_err(|error| format!("malformed JSON in {}: {error}", path.display()))
+}
+
+fn validate_profile_document_shape(value: &serde_json::Value, label: &str) -> Result<(), String> {
+    let Some(object) = value.as_object() else { return Err(format!("{label} document must be an object")); };
+    if object.len() != 2 || object.get("schemaVersion") != Some(&serde_json::json!(1)) || !object.get("profiles").is_some_and(serde_json::Value::is_array) {
+        return Err(format!("{label} document must contain only schemaVersion 1 and profiles"));
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn atomic_replace(temp: &Path, target: &Path) -> Result<(), String> {
+    let source: Vec<u16> = temp.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let destination: Vec<u16> = target.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    unsafe { MoveFileExW(windows::core::PCWSTR(source.as_ptr()), windows::core::PCWSTR(destination.as_ptr()), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) }
+        .map_err(|error| format!("could not atomically replace {}: {error}", target.display()))
+}
+
+#[cfg(not(windows))]
+fn atomic_replace(temp: &Path, target: &Path) -> Result<(), String> {
+    fs::rename(temp, target).map_err(|error| format!("could not atomically replace {}: {error}", target.display()))
+}
+
+fn write_profile_document(root: &Path, filename: &str, value: &serde_json::Value) -> Result<(), String> {
+    let text = serde_json::to_string_pretty(value).map_err(|error| format!("could not serialize {filename}: {error}"))? + "\n";
+    let target = root.join(filename);
+    let stamp = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|error| error.to_string())?.as_nanos();
+    let temp = root.join(format!(".{filename}.{stamp}.tmp"));
+    let result = (|| {
+        let mut file = OpenOptions::new().create_new(true).write(true).open(&temp).map_err(|error| format!("could not create temporary {filename}: {error}"))?;
+        file.write_all(text.as_bytes()).map_err(|error| format!("could not write temporary {filename}: {error}"))?;
+        file.sync_all().map_err(|error| format!("could not flush temporary {filename}: {error}"))?;
+        drop(file);
+        atomic_replace(&temp, &target)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&temp);
+    }
+    result
+}
+
+#[tauri::command]
+fn read_calibration_documents(app: tauri::AppHandle) -> Result<CalibrationDocumentsResponse, String> {
+    let root = calibration_config_root(&app)?;
+    let display_profiles = read_profile_document(&root.join("display-profiles.json"))?;
+    let calibration_profiles = read_profile_document(&root.join("calibration-profiles.json"))?;
+    validate_profile_document_shape(&display_profiles, "display-profiles")?;
+    validate_profile_document_shape(&calibration_profiles, "calibration-profiles")?;
+    Ok(CalibrationDocumentsResponse { display_profiles, calibration_profiles })
+}
+
+#[tauri::command]
+fn write_calibration_documents(app: tauri::AppHandle, documents: CalibrationDocumentsWrite) -> Result<(), String> {
+    validate_profile_document_shape(&documents.display_profiles, "display-profiles")?;
+    validate_profile_document_shape(&documents.calibration_profiles, "calibration-profiles")?;
+    let root = calibration_config_root(&app)?;
+    write_profile_document(&root, "display-profiles.json", &documents.display_profiles)?;
+    if let Err(error) = write_profile_document(&root, "calibration-profiles.json", &documents.calibration_profiles) {
+        return Err(format!("calibration document was not written; previous active state remains authoritative: {error}"));
+    }
+    Ok(())
+}
+
 fn validate_m0d_relative_path(relative_path: &str) -> Result<&Path, String> {
     let path = Path::new(relative_path);
     if relative_path.trim().is_empty() || path.is_absolute() || path.extension().and_then(|extension| extension.to_str()) != Some("json") && path.extension().and_then(|extension| extension.to_str()) != Some("jsonl") {
@@ -456,7 +554,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(StartupMode(startup_mode_from_environment()))
-        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event, get_m0d_evidence_root, write_m0d_evidence_bundle])
+        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event, get_m0d_evidence_root, write_m0d_evidence_bundle, read_calibration_documents, write_calibration_documents])
         .setup(|app| {
             #[cfg(windows)]
             if media_pipe_benchmark_mode(startup_mode_from_environment()) || startup_mode_from_environment() == Some(SmokeMode::M0D7Runner) {
