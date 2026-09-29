@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { RendererFoundation } from "../engine/rendering/RendererFoundation";
 import { SYNTHETIC_MOTION_SCRIPTS } from "../engine/pose/syntheticMotionScripts";
@@ -6,6 +6,7 @@ import { SyntheticProjectionRuntime, type SyntheticProjectionRuntimeObservation 
 import { runPackagedMediaPipeBenchmark, type MediaPipeBenchmarkMode } from "../mediapipe/packagedMediaPipeBenchmark";
 import { runPackagedMediaPipeMatrixDiagnostic } from "../mediapipe/packagedMediaPipeMatrixDiagnostic";
 import { runM0D7Runner } from "../m0d/runner/m0d7RunnerUi";
+import { CalibrationWorkflow } from "./calibration/CalibrationWorkflow";
 
 type SmokeMode = "launch" | "synthetic" | "tracking-sidecar" | "tracking-sustained" | "mediapipe-matrix-diagnostic" | "m0d7-runner" | "m0d7-runner-smoke" | MediaPipeBenchmarkMode;
 type SmokeStatus = "pass" | "fail";
@@ -93,6 +94,7 @@ function syntheticFailureResult(startedAt: number, message: string): SmokeResult
 export default function App() {
   const smokeCompleted = useRef(false);
   const rendererHost = useRef<HTMLDivElement>(null);
+  const [calibrationOpen, setCalibrationOpen] = useState(false);
 
   useEffect(() => {
     let foundation: RendererFoundation | undefined;
@@ -212,6 +214,8 @@ export default function App() {
     <main>
       <h1>WorldViewer</h1>
       <p>Application foundation.</p>
+      {!calibrationOpen && <button type="button" onClick={() => setCalibrationOpen(true)}>Start calibration</button>}
+      {calibrationOpen && <CalibrationWorkflow onClose={() => setCalibrationOpen(false)} />}
       <div className="renderer-host" ref={rendererHost} aria-label="WorldViewer renderer" />
     </main>
   );

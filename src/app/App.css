@@ -24,3 +24,167 @@ main {
   height: 100%;
   width: 100%;
 }
+
+.calibration-workflow {
+  max-width: 52rem;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid #d6d9df;
+  border-radius: 0.75rem;
+}
+
+.calibration-workflow header,
+.calibration-footer,
+.button-row,
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calibration-workflow header {
+  justify-content: space-between;
+}
+
+.calibration-workflow h2,
+.calibration-workflow p {
+  margin-top: 0;
+}
+
+.eyebrow {
+  margin-bottom: 0.25rem;
+  color: #59636f;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.calibration-steps {
+  display: flex;
+  gap: 1.2rem;
+  margin: 1.25rem 0;
+  padding: 0;
+  color: #7a838e;
+  font-size: 0.85rem;
+  list-style: none;
+}
+
+.calibration-steps li.active {
+  color: #1f5fbf;
+  font-weight: 700;
+}
+
+.calibration-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #f7f9fb;
+  border-radius: 0.5rem;
+}
+
+.calibration-panel label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.calibration-panel input {
+  min-width: 0;
+  padding: 0.6rem;
+  border: 1px solid #aeb7c2;
+  border-radius: 0.35rem;
+  font: inherit;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.field-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hint {
+  color: #59636f;
+  font-size: 0.9rem;
+}
+
+.camera-preview {
+  min-height: 14rem;
+  overflow: hidden;
+  background: #20252b;
+  border-radius: 0.5rem;
+}
+
+.camera-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.status-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: #8b949e;
+}
+
+.status-dot.active { background: #218739; }
+.status-dot.permission-denied,
+.status-dot.failed { background: #c0392b; }
+
+.pose-summary,
+.review-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.pose-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pose-summary div,
+.review-list div {
+  padding: 0.75rem;
+  background: white;
+  border-radius: 0.35rem;
+}
+
+dt { color: #59636f; font-size: 0.8rem; }
+dd { margin: 0.2rem 0 0; }
+
+.calibration-footer {
+  margin-top: 1rem;
+}
+
+.calibration-footer span { flex: 1; }
+
+button {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #1f5fbf;
+  border-radius: 0.35rem;
+  color: white;
+  background: #1f5fbf;
+  cursor: pointer;
+  font: inherit;
+}
+
+button.secondary,
+.calibration-workflow header button,
+.calibration-footer button:not(:last-child) {
+  color: #1f5fbf;
+  background: white;
+}
+
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+@media (max-width: 42rem) {
+  .field-grid,
+  .field-grid.three,
+  .pose-summary { grid-template-columns: 1fr; }
+  .calibration-steps { flex-wrap: wrap; gap: 0.5rem 1rem; }
+}
