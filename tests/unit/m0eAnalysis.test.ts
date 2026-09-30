@@ -101,6 +101,48 @@ describe("M0E frozen analysis primitives", () => {
     expect(buildShortlist([candidate]).frontier).toEqual([]);
   });
 
+  it("excludes null-lag candidates from the Pareto comparison set", () => {
+    const grid = enumerateOneEuroGrid();
+    const eligibleTrials = Array.from({ length: 5 }, (_, index) => ({ trialId: `trial-${index}`, rms: { x: 1, y: 1, z: 2 }, eligible: true }));
+    const candidate = objectiveForCandidate(grid[0]!, eligibleTrials, null);
+    const result = buildShortlist([candidate]);
+    expect(result.candidates).toEqual([candidate]);
+    expect(result.frontier).toEqual([]);
+    expect(result.status).toBe("no-shortlist");
+  });
+
+  it("does not let a null-lag candidate become an undominated frontier member", () => {
+    const grid = enumerateOneEuroGrid();
+    const betterTrials = Array.from({ length: 5 }, (_, index) => ({ trialId: `better-${index}`, rms: { x: 0, y: 0, z: 0 }, eligible: true }));
+    const validTrials = Array.from({ length: 5 }, (_, index) => ({ trialId: `valid-${index}`, rms: { x: 1, y: 1, z: 2 }, eligible: true }));
+    const nullLag = objectiveForCandidate(grid[0]!, betterTrials, null);
+    const valid = objectiveForCandidate(grid[1]!, validTrials, 100);
+    const result = buildShortlist([nullLag, valid]);
+    expect(result.frontier).toEqual([valid]);
+    expect(result.frontier).not.toContain(nullLag);
+  });
+
+  it("preserves null-lag candidates while calculating the frontier among comparable candidates", () => {
+    const grid = enumerateOneEuroGrid();
+    const trials = Array.from({ length: 5 }, (_, index) => ({ trialId: `trial-${index}`, rms: { x: 1, y: 1, z: 2 }, eligible: true }));
+    const first = objectiveForCandidate(grid[0]!, trials, 100);
+    const second = objectiveForCandidate(grid[1]!, trials, 80);
+    const nullLag = objectiveForCandidate(grid[2]!, trials, null);
+    const result = buildShortlist([first, second, nullLag]);
+    expect(result.frontier).toEqual([second]);
+    expect(result.candidates).toEqual([first, second, nullLag]);
+    expect(result.candidates).toContain(nullLag);
+  });
+
+  it("returns no-shortlist when every eligible candidate lacks lag", () => {
+    const grid = enumerateOneEuroGrid();
+    const trials = Array.from({ length: 5 }, (_, index) => ({ trialId: `trial-${index}`, rms: { x: 1, y: 1, z: 2 }, eligible: true }));
+    const candidates = [objectiveForCandidate(grid[0]!, trials, null), objectiveForCandidate(grid[1]!, trials, null)];
+    const result = buildShortlist(candidates);
+    expect(result.status).toBe("no-shortlist");
+    expect(result.frontier).toHaveLength(0);
+  });
+
   it("enumerates exactly 25 candidates and applies Pareto shortlist rules", () => {
     const grid = enumerateOneEuroGrid();
     expect(grid).toHaveLength(25);

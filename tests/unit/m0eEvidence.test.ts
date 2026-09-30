@@ -39,5 +39,10 @@ describe("M0E evidence contracts", () => {
     const tamperedResult = validateM0EEvidenceBundle(tampered);
     expect(tamperedResult.passed).toBe(false);
     expect(tamperedResult.failures.map((failure) => failure.code)).toEqual(expect.arrayContaining(["candidate-output-trace-mismatch", "candidate-lag-regeneration-mismatch"]));
+
+    const nonEvaluableTransition = { transitionId: transitionInput.transitionId, axis: transitionInput.axis, start: 0, final: 10, samples: [{ timestampMs: 0, input: 0, output: 0, filteredPositionMm: { x: 0, y: 0, z: 600 } }, { timestampMs: 10, input: 4, output: 1, filteredPositionMm: { x: 1, y: 0, z: 600 } }, { timestampMs: 20, input: 4, output: 2, filteredPositionMm: { x: 2, y: 0, z: 600 } }] };
+    const nullLagResult = validateM0EEvidenceBundle({ ...bundle, filtering: { ...bundle.filtering, candidates: bundle.filtering.candidates.map((candidate, index) => index === 0 ? { ...candidate, p95LagMs: null, lagSummary: { evaluableTransitionCount: 0, medianLagMs: null, p95LagMs: null }, transitionMetrics: [], transitionReplayOutputs: [nonEvaluableTransition], transitionResults: [evaluateTransition(nonEvaluableTransition)] } : candidate) } });
+    expect(nullLagResult.passed).toBe(false);
+    expect(nullLagResult.failures.map((failure) => failure.code)).toContain("missing-lag-objective");
   });
 });

@@ -260,8 +260,8 @@ export interface ShortlistResult {
 }
 
 export function buildShortlist(candidates: readonly CandidateObjective[]): ShortlistResult {
-  const eligible = candidates.filter((candidate) => candidate.eligible);
-  const frontier = eligible.filter((candidate) => !eligible.some((other) => other !== candidate && dominates(other, candidate)));
+  const comparable = candidates.filter((candidate) => candidate.eligible && candidate.jitterObjective !== null && Number.isFinite(candidate.jitterObjective) && candidate.p95LagMs !== null && Number.isFinite(candidate.p95LagMs));
+  const frontier = comparable.filter((candidate) => !comparable.some((other) => other !== candidate && dominates(other, candidate)));
   const status = frontier.length === 0 ? "no-shortlist" : frontier.length > 6 ? "requires-stronger-review" : "shortlist";
   return Object.freeze({ status, frontier: Object.freeze(frontier), candidates: Object.freeze([...candidates]) });
 }
