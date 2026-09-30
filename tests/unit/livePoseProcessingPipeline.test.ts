@@ -27,9 +27,11 @@ class FakeSource implements LivePoseSource {
   readonly callbacks = new Set<(pose: RawViewerPose | null) => void>();
   starts = 0;
   stops = 0;
+  startError: unknown;
+  stopError: unknown;
   health: TrackingHealth = Object.freeze({ status: "acquiring", confidence: null, sinceMonotonicMs: 0 });
-  async start(): Promise<void> { this.starts += 1; }
-  async stop(): Promise<void> { this.stops += 1; }
+  async start(): Promise<void> { this.starts += 1; if (this.startError !== undefined) throw this.startError; }
+  async stop(): Promise<void> { this.stops += 1; if (this.stopError !== undefined) throw this.stopError; }
   sample(): RawViewerPose | null { return null; }
   subscribe(listener: (pose: RawViewerPose | null) => void): () => void {
     this.callbacks.add(listener);
@@ -131,6 +133,71 @@ describe("LivePoseProcessingPipeline", () => {
     expect(pipeline.getLatestFilteredPose()).toMatchObject({ timestampMs: 50, positionMm: { x: 2 }, velocityMmPerSec: { x: 0 } });
     await pipeline.dispose();
     expect(second.stops).toBe(1);
+  });
+
+  it("does not install a replacement when stopping the active source fails", async () => {
+    const first = new FakeSource();
+    const second = new FakeSource();
+    const stopError = new Error("old source stop failed");
+    first.stopError = stopError;
+    const pipeline = new LivePoseProcessingPipeline({ calibrationProfile: createDefaultCalibrationProfile(), oneEuroConfiguration: REFERENCE_TEST_ONE_EURO_CONFIGURATION, source: first });
+    await pipeline.start();
+    first.emit(raw(100, 10));
+
+    await expect(pipeline.replaceSource(second)).rejects.toBe(stopError);
+    expect(second.starts).toBe(0);
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    second.emit(raw(50, 2));
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    first.stopError = undefined;
+    await pipeline.dispose();
+    expect(first.stops).toBe(2);
+  });
+
+  it("cleans up a failed replacement, restores the old source, and starts with clean history", async () => {
+    const first = new FakeSource();
+    const second = new FakeSource();
+    const controller = new RecordingController();
+    const replacementError = new Error("new source start failed");
+    second.startError = replacementError;
+    const pipeline = new LivePoseProcessingPipeline({ calibrationProfile: createDefaultCalibrationProfile(), oneEuroConfiguration: REFERENCE_TEST_ONE_EURO_CONFIGURATION, source: first, controller });
+    await pipeline.start();
+    first.emit(raw(100, 10));
+
+    await expect(pipeline.replaceSource(second)).rejects.toThrow(/previous source was restored/);
+    expect(first.stops).toBe(1);
+    expect(second.starts).toBe(1);
+    expect(second.stops).toBe(1);
+    expect(first.starts).toBe(2);
+    expect(second.callbacks).toHaveLength(0);
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    second.emit(raw(200, 999));
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    first.emit(raw(50, 2));
+    expect(pipeline.getLatestFilteredPose()).toMatchObject({ timestampMs: 50, positionMm: { x: 2 }, velocityMmPerSec: { x: 0 } });
+    expect(controller.resets.at(-1)).toEqual({ x: 0, y: 0, z: 600 });
+    await pipeline.dispose();
+  });
+
+  it("leaves no active source when replacement and restoration both fail", async () => {
+    const first = new FakeSource();
+    const second = new FakeSource();
+    const replacementError = new Error("new source start failed");
+    const restoreError = new Error("old source restart failed");
+    second.startError = replacementError;
+    const pipeline = new LivePoseProcessingPipeline({ calibrationProfile: createDefaultCalibrationProfile(), oneEuroConfiguration: REFERENCE_TEST_ONE_EURO_CONFIGURATION, source: first });
+    await pipeline.start();
+    first.emit(raw(100, 10));
+    first.startError = restoreError;
+
+    await expect(pipeline.replaceSource(second)).rejects.toThrow(/restoring the previous source also failed/);
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    expect(first.callbacks).toHaveLength(0);
+    expect(second.callbacks).toHaveLength(0);
+    first.emit(raw(50, 2));
+    second.emit(raw(50, 3));
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    await pipeline.dispose();
   });
 
   it("validates calibration before replacement and resets the controller to the new neutral", () => {

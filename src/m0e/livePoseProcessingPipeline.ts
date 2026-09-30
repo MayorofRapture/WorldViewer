@@ -153,15 +153,63 @@ export class LivePoseProcessingPipeline {
     this.assertUsable();
     if (source === this.source) return;
     const wasStarted = this.started;
-    this.started = false;
     const oldSource = this.source;
+
+    // Stop the current source before installing the replacement.  While the
+    // stop is pending, callbacks from the old generation are blocked without
+    // destroying the current pose/filter state prematurely.
+    this.started = false;
     this.sourceGeneration += 1;
     this.clearSourceSubscription();
+    try {
+      if (oldSource !== undefined && wasStarted) await oldSource.stop();
+    } catch (error) {
+      this.clearPoseHistory();
+      throw error;
+    }
+
     this.clearPoseHistory();
-    if (oldSource !== undefined) await oldSource.stop();
     this.source = source;
     this.attachSource(source);
-    if (wasStarted) await this.start();
+    if (!wasStarted) return;
+
+    this.started = true;
+    try {
+      await source.start();
+    } catch (replacementError) {
+      this.started = false;
+      this.sourceGeneration += 1;
+      this.clearSourceSubscription();
+      let cleanupError: unknown;
+      try {
+        await source.stop();
+      } catch (error) {
+        cleanupError = error;
+      }
+      this.clearPoseHistory();
+
+      if (oldSource === undefined) {
+        throw this.replacementFailure(replacementError, cleanupError);
+      }
+
+      this.source = oldSource;
+      this.attachSource(oldSource);
+      this.started = true;
+      try {
+        await oldSource.start();
+      } catch (restoreError) {
+        this.started = false;
+        this.sourceGeneration += 1;
+        this.clearSourceSubscription();
+        this.clearPoseHistory();
+        throw new AggregateError(
+          [replacementError, ...(cleanupError === undefined ? [] : [cleanupError]), restoreError],
+          "source replacement failed and restoring the previous source also failed",
+        );
+      }
+
+      throw this.replacementFailure(replacementError, cleanupError);
+    }
   }
 
   public replaceCalibrationProfile(profile: Readonly<CalibrationProfile>): void {
@@ -226,6 +274,16 @@ export class LivePoseProcessingPipeline {
     this.processingFailureReason = null;
     this.filter.reset();
     this.controller?.reset(this.profile.neutralViewerPositionMm);
+  }
+
+  private replacementFailure(replacementError: unknown, cleanupError: unknown): Error {
+    if (cleanupError === undefined) {
+      return new Error("source replacement failed; previous source was restored", { cause: replacementError });
+    }
+    return new AggregateError(
+      [replacementError, cleanupError],
+      "source replacement failed and stopping the replacement source also failed; previous source was restored",
+    );
   }
 
   private assertUsable(): void {
