@@ -40,4 +40,36 @@ describe("M0E selected-estimator replay", () => {
     expect(context.transitions.filter((transition) => transition.axis === "y").length).toBeGreaterThan(0);
     expect(context.transitions.filter((transition) => transition.axis === "z").length).toBeGreaterThan(0);
   });
+
+  it("derives claim-bearing readiness from the prescribed source and rejects M0D X/Y reuse", () => {
+    const root = "evidence/m0d/estimator-experiment-v3/run-1790638307359";
+    const replay = parseSelectedEstimatorReplayRecords(readFileSync(`${root}/estimator-a/outputs/replay.jsonl`, "utf8"));
+    const trace = readFileSync(`${root}/observations/trace.jsonl`, "utf8").trim().split(/\r?\n/).map((line) => JSON.parse(line) as M0DObservationTraceRecord);
+    const source = {
+      sourceM0DRunId: "run-1790638307359",
+      sourceM0DPath: root,
+      manifest: { schemaVersion: 1, experimentSpecVersion: "0.4", experimentProcedureVersion: 3, estimatorA: { estimatorId: "mediapipe-facial-transform-v1", configHash: "fnv1a64-825a99daebb20f6c" } },
+      validation: { passed: true, validatorVersion: 1 },
+    } as const;
+    const readiness = reconstructM0ESourceContext(trace, replay, source).readiness!;
+    expect(readiness.replayAlignment.status).toBe("verified");
+    expect(readiness.calibration.x.status).toBe("not-proven-reusable");
+    expect(readiness.calibration.y.status).toBe("not-proven-reusable");
+    expect(readiness.calibration.x.issues.map((entry) => entry.code)).toContain("invalid-calibration-target-order");
+    expect(readiness.calibration.y.issues.map((entry) => entry.code)).toContain("invalid-calibration-target-order");
+    expect(readiness.calibration.z.status).toBe("verified");
+    expect(readiness.neutralStationary.status).toBe("not-proven-reusable");
+    expect(readiness.motionTransitions.status).toBe("verified");
+    expect(readiness.m0dValidation.passed).toBe(true);
+  });
+
+  it("rejects a replay row that is no longer aligned to the source observation", () => {
+    const identity = selectedEstimatorIdentity();
+    const common = { schemaVersion: 1, estimatorId: identity.id, estimatorConfigHash: identity.configHash };
+    const trace = [{ observation: { timestampMs: 1 }, envelope: { traceId: "source" } }] as unknown as M0DObservationTraceRecord[];
+    const replay = parseSelectedEstimatorReplayRecords(JSON.stringify({ ...common, timestampMs: 2, observationTraceId: "source", valid: true, positionMm: { x: 0, y: 0, z: 600 } }));
+    const readiness = reconstructM0ESourceContext(trace, replay, { sourceM0DRunId: "run-1790638307359", sourceM0DPath: "evidence/m0d/estimator-experiment-v3/run-1790638307359", manifest: { schemaVersion: 1, experimentSpecVersion: "0.4", experimentProcedureVersion: 3, estimatorA: { estimatorId: identity.id, configHash: identity.configHash } }, validation: { passed: true, validatorVersion: 1 } }).readiness!;
+    expect(readiness.replayAlignment.status).toBe("blocked");
+    expect(readiness.replayAlignment.issues.map((entry) => entry.code)).toContain("replay-source-misalignment");
+  });
 });

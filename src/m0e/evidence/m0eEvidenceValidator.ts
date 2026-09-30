@@ -89,6 +89,22 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
     if (!exactCandidateGrid(Array.isArray(manifest.candidateGrid) ? manifest.candidateGrid : [])) add(failures, "invalid-candidate-grid", "manifest.candidateGrid", "manifest must contain exactly the frozen 25-candidate grid");
   }
 
+  const sourceReadiness = bundle?.sourceReadiness;
+  const fixtureBundle = record(manifest) && manifest.sourceCommit === "fixture";
+  if (sourceReadiness === undefined && !fixtureBundle) add(failures, "missing-source-readiness", "sourceReadiness", "claim-bearing M0E validation requires source-derived readiness proof");
+  if (sourceReadiness !== undefined) {
+    if (sourceReadiness.sourceM0DRunId !== "run-1790638307359") add(failures, "wrong-m0d-run-id", "sourceReadiness.sourceM0DRunId", "source readiness must identify the prescribed M0D run");
+    if (sourceReadiness.sourceM0DPath !== "evidence/m0d/estimator-experiment-v3/run-1790638307359") add(failures, "wrong-m0d-source-path", "sourceReadiness.sourceM0DPath", "source readiness must identify the prescribed M0D source path");
+    if (!sourceReadiness.m0dValidation.passed) add(failures, "m0d-validation-failed", "sourceReadiness.m0dValidation", "M0D validation must have passed");
+    if (sourceReadiness.selectedEstimator.id !== "mediapipe-facial-transform-v1" || sourceReadiness.selectedEstimator.configHash !== "fnv1a64-825a99daebb20f6c") add(failures, "source-estimator-mismatch", "sourceReadiness.selectedEstimator", "source estimator identity/configuration does not match the frozen selected Estimator A");
+    if (!Array.isArray(manifest?.traceIds) || JSON.stringify(manifest.traceIds) !== JSON.stringify(sourceReadiness.traceIds) || new Set(manifest.traceIds).size !== manifest.traceIds.length) add(failures, "source-trace-mismatch", "manifest.traceIds", "manifest trace IDs must exactly match source-derived trace IDs without duplicates");
+    if (sourceReadiness.replayAlignment.status !== "verified") add(failures, "replay-source-misalignment", "sourceReadiness.replayAlignment", sourceReadiness.replayAlignment.issues.map((entry) => entry.detail).join("; "));
+    if (sourceReadiness.contentHashStatus !== "verified") add(failures, "unproven-trace-content-identity", "sourceReadiness.contentHashStatus", "the frozen requirement needs an authoritative content-hash convention; claim-bearing validation remains blocked until it exists");
+    for (const axis of ["x", "y", "z"] as const) if (sourceReadiness.calibration[axis].status !== "verified") add(failures, "source-procedural-invalidation", `sourceReadiness.calibration.${axis}`, sourceReadiness.calibration[axis].issues.map((entry) => entry.detail).join("; "));
+    if (sourceReadiness.neutralStationary.status !== "verified") add(failures, "unproven-neutral-stationary", "sourceReadiness.neutralStationary", sourceReadiness.neutralStationary.issues.map((entry) => entry.detail).join("; "));
+    if (sourceReadiness.motionTransitions.status !== "verified") add(failures, "incomplete-motion-transitions", "sourceReadiness.motionTransitions", sourceReadiness.motionTransitions.issues.map((entry) => entry.detail).join("; "));
+  }
+
   const filtering = bundle?.filtering;
   if (!record(filtering)) {
     add(failures, "missing-filtering-evidence", "filtering", "filtering evidence is required for claim-bearing validation");

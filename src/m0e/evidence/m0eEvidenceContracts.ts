@@ -1,5 +1,6 @@
 import type { OneEuroCandidateConfiguration, CandidateObjective, MotionTransition, StationaryTrial, StationaryTrialMetric, TransitionMetric } from "../analysis/filterMetrics";
 import type { AxisCalibrationFit, CalibrationDecision, XYCalibrationObservation, ZCalibrationObservation } from "../analysis/calibrationAnalysis";
+import type { M0ESourceReadiness } from "../replay/m0eSourceContext";
 
 export const M0E_DRAFT_VERSION = "0.2" as const;
 export const M0E_EXPERIMENT_PROCEDURE_VERSION = 1 as const;
@@ -53,6 +54,8 @@ export interface M0EEvidenceBundle {
   readonly filesIncluded: readonly string[];
   readonly invalidations?: readonly { readonly reason: string; readonly detail: string }[];
   readonly m0e7CandidateIds?: readonly string[];
+  /** Host-private source proof; required for non-fixture claim-bearing bundles. */
+  readonly sourceReadiness?: M0ESourceReadiness;
 }
 
 export const M0E_REQUIRED_FILES = Object.freeze([

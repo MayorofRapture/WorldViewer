@@ -48,7 +48,10 @@ function calibrationCsv(calibration: M0ECalibrationEvidence | undefined): string
 function stationaryCsv(filter: M0EFilterEvidence | undefined): string {
   const rows: (readonly unknown[])[] = [["trialId", "phase", "index", "x", "y", "z", "timestampMs"]];
   for (const trial of filter?.stationaryTrialInputs ?? []) {
-    for (const [phase, positions] of [["settle", trial.settle], ["capture", trial.capture]] as const) for (const [index, position] of positions.entries()) rows.push([trial.trialId, phase, index, position.x, position.y, position.z, trial.rawSamples?.find((sample) => sample.phase === phase)?.raw.timestampMs ?? ""]);
+    for (const [phase, positions] of [["settle", trial.settle], ["capture", trial.capture]] as const) {
+      const rawSamples = trial.rawSamples?.filter((sample) => sample.phase === phase);
+      for (const [index, position] of positions.entries()) rows.push([trial.trialId, phase, index, position.x, position.y, position.z, rawSamples?.[index]?.raw.timestampMs ?? ""]);
+    }
   }
   return csv(rows);
 }

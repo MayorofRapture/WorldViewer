@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { createM0EManifest } from "../../src/m0e/evidence/m0eSerialization";
+import { createM0EManifest, serializeM0EEvidenceFiles } from "../../src/m0e/evidence/m0eSerialization";
 import { M0E_REQUIRED_FILES } from "../../src/m0e/evidence/m0eEvidenceContracts";
 import { validateM0EEvidenceBundle } from "../../src/m0e/evidence/m0eEvidenceValidator";
 import { calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, evaluateTransition } from "../../src/m0e/analysis/filterMetrics";
 
 describe("M0E evidence contracts", () => {
+  it("serializes the timestamp for each stationary sample, not the first phase sample", () => {
+    const manifest = createM0EManifest({ sourceCommit: "fixture", sourceM0DRunId: "fixture", sourceM0DPath: "fixture", estimatorId: "mediapipe-facial-transform-v1", estimatorVersion: "v1", estimatorConfigHash: "fnv1a64-825a99daebb20f6c", traceIds: ["fixture"], traceContentHashes: ["fixture"], calibrationModel: "independent-per-axis-scale-offset", filterPackage: "1eurofilter", filterPackageVersion: "1.3.0" });
+    const positions = [{ x: 0, y: 0, z: 600 }, { x: 1, y: 1, z: 601 }, { x: 2, y: 2, z: 602 }];
+    const input = { trialId: "neutral-stationary-trial-1", settle: positions, capture: positions, rawSamples: [...[100, 200, 300].map((timestampMs, index) => ({ phase: "settle" as const, raw: { timestampMs, positionMm: positions[index]!, confidence: 1, estimatorId: "mediapipe-facial-transform-v1" } })), ...[400, 500, 600].map((timestampMs, index) => ({ phase: "capture" as const, raw: { timestampMs, positionMm: positions[index]!, confidence: 1, estimatorId: "mediapipe-facial-transform-v1" } }))] };
+    const file = serializeM0EEvidenceFiles({ manifest, filesIncluded: [], filtering: { stationaryTrials: [], stationaryTrialInputs: [input], transitions: [], transitionInputs: [], candidates: [], shortlistCandidateIds: [] } }, {} as never).find((entry) => entry.relativePath === "filtering/stationary-trace.csv")!;
+    const timestamps = file.contents.split(/\r?\n/).slice(1, 7).map((row) => row.split(",").at(-1));
+    expect(timestamps).toEqual(["100", "200", "300", "400", "500", "600"]);
+    expect(timestamps).not.toEqual(["100", "100", "100", "400", "400", "400"]);
+  });
+
   it("pins the four frozen versions and exact grid", () => {
     const manifest = createM0EManifest({ sourceCommit: "fixture", sourceM0DRunId: "run-1790638307359", sourceM0DPath: "evidence/m0d/estimator-experiment-v3/run-1790638307359", estimatorId: "mediapipe-facial-transform-v1", estimatorVersion: "v1", estimatorConfigHash: "fnv1a64-825a99daebb20f6c", traceIds: ["trace"], traceContentHashes: ["hash"], calibrationModel: "independent-per-axis-scale-offset", filterPackage: "1eurofilter", filterPackageVersion: "1.3.0" });
     expect(manifest).toMatchObject({ draftVersion: "0.2", experimentProcedureVersion: 1, evidenceSchemaVersion: 1, validatorVersion: 1, metricVersion: 1 });
