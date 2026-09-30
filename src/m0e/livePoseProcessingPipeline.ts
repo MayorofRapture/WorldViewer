@@ -188,6 +188,13 @@ export class LivePoseProcessingPipeline {
       }
       this.clearPoseHistory();
 
+      if (cleanupError !== undefined) {
+        throw new AggregateError(
+          [replacementError, cleanupError],
+          "source replacement failed and replacement cleanup also failed; previous source was not restored",
+        );
+      }
+
       if (oldSource === undefined) {
         throw this.replacementFailure(replacementError, cleanupError);
       }

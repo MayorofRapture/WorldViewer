@@ -200,6 +200,41 @@ describe("LivePoseProcessingPipeline", () => {
     await pipeline.dispose();
   });
 
+  it("does not restore the old source when replacement cleanup fails", async () => {
+    const first = new FakeSource();
+    const second = new FakeSource();
+    const controller = new RecordingController();
+    const replacementError = new Error("new source start failed");
+    const cleanupError = new Error("new source cleanup failed");
+    second.startError = replacementError;
+    second.stopError = cleanupError;
+    const pipeline = new LivePoseProcessingPipeline({ calibrationProfile: createDefaultCalibrationProfile(), oneEuroConfiguration: REFERENCE_TEST_ONE_EURO_CONFIGURATION, source: first, controller });
+    await pipeline.start();
+    first.emit(raw(100, 10));
+
+    const failure = await pipeline.replaceSource(second).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual([replacementError, cleanupError]);
+    expect((failure as Error).message).not.toMatch(/previous source was restored/);
+    expect(first.starts).toBe(1);
+    expect(first.callbacks).toHaveLength(0);
+    expect(second.callbacks).toHaveLength(0);
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    expect(controller.resets.at(-1)).toEqual({ x: 0, y: 0, z: 600 });
+
+    pipeline.updateViewerState();
+    first.emit(raw(50, 2));
+    second.emit(raw(50, 3));
+    expect(pipeline.getLatestFilteredPose()).toBeNull();
+    expect(first.starts).toBe(1);
+
+    await expect(pipeline.dispose()).rejects.toBe(cleanupError);
+    await pipeline.dispose();
+    expect(first.starts).toBe(1);
+    expect(first.callbacks).toHaveLength(0);
+    expect(second.callbacks).toHaveLength(0);
+  });
+
   it("validates calibration before replacement and resets the controller to the new neutral", () => {
     const controller = new RecordingController();
     const pipeline = new LivePoseProcessingPipeline({ calibrationProfile: profileWithNeutral(0), oneEuroConfiguration: REFERENCE_TEST_ONE_EURO_CONFIGURATION, controller });
