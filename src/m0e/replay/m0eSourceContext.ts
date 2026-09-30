@@ -4,7 +4,7 @@ import type { SelectedEstimatorReplayRecord } from "./recordedReplay";
 export type M0EReadinessStatus = "verified" | "not-proven-reusable" | "blocked";
 export type M0ECalibrationAxis = "x" | "y" | "z";
 export interface M0EStationaryWindow { readonly trialId: string; readonly scenarioId?: string; readonly settleTimestampsMs: readonly number[]; readonly captureTimestampsMs: readonly number[]; }
-export interface M0EMotionTransitionWindow { readonly transitionId: string; readonly axis: M0ECalibrationAxis; readonly scenarioId: "lateral-movement" | "vertical-movement" | "approach-retreat"; readonly cycleId?: string; readonly targetMm?: number; readonly timestampsMs: readonly number[]; }
+export interface M0EMotionTransitionWindow { readonly transitionId: string; readonly unitId?: string; readonly axis: M0ECalibrationAxis; readonly scenarioId: "lateral-movement" | "vertical-movement" | "approach-retreat"; readonly cycleId?: string; readonly targetMm?: number; readonly timestampsMs: readonly number[]; }
 export interface M0ESourceReadinessIssue { readonly code: string; readonly detail: string; }
 export interface M0ECalibrationReadiness { readonly axis: M0ECalibrationAxis; readonly status: M0EReadinessStatus; readonly cycles: number; readonly issues: readonly M0ESourceReadinessIssue[]; }
 export interface M0ESourceReadiness {
@@ -20,7 +20,7 @@ export interface M0ESourceContext { readonly validReplayRecords: readonly Select
 export interface M0ESourceBundle { readonly sourceM0DRunId: string; readonly sourceM0DPath: string; readonly manifest: { readonly schemaVersion: number; readonly experimentSpecVersion: string; readonly experimentProcedureVersion: number; readonly estimatorA: { readonly estimatorId: string; readonly configHash: string } }; readonly validation: { readonly passed: boolean; readonly validatorVersion: number }; readonly traceContentHashes?: readonly string[]; }
 
 const scenarios = ["lateral-movement", "vertical-movement", "approach-retreat"] as const;
-const axes = ["x", "y", "z"] as const;
+const REQUIRED_NEUTRAL_TRIAL_IDS = Object.freeze(["neutral-stationary-trial-1", "neutral-stationary-trial-2", "neutral-stationary-trial-3", "neutral-stationary-trial-4", "neutral-stationary-trial-5"] as const);
 const problem = (code: string, detail: string): M0ESourceReadinessIssue => Object.freeze({ code, detail });
 const monotonic = (values: readonly number[]): boolean => values.every((value, index) => index === 0 || value > values[index - 1]!);
 function axisFor(scenario: string): M0ECalibrationAxis | undefined { return scenario === "lateral-movement" ? "x" : scenario === "vertical-movement" ? "y" : scenario === "approach-retreat" ? "z" : undefined; }
@@ -60,14 +60,45 @@ function makeReadiness(trace: readonly M0DObservationTraceRecord[], replay: read
   }
   const context = reconstructM0ESourceContext(trace, replay);
   const stationaryIssues: M0ESourceReadinessIssue[] = [];
-  const required = axes.map((_, index) => `neutral-stationary-trial-${index + 1}`);
-  if (context.stationaryTrials.length !== 5 || new Set(context.stationaryTrials.map((trial) => trial.trialId)).size !== 5 || required.some((id) => !context.stationaryTrials.some((trial) => trial.trialId === id))) stationaryIssues.push(problem("missing-neutral-trial", "exactly five unique neutral stationary trials are required"));
+  const actualNeutralTrialIds = context.stationaryTrials.map((trial) => trial.trialId);
+  const requiredNeutralTrialIdSet = new Set<string>(REQUIRED_NEUTRAL_TRIAL_IDS);
+  const actualNeutralTrialIdSet = new Set(actualNeutralTrialIds);
+  if (actualNeutralTrialIds.length !== REQUIRED_NEUTRAL_TRIAL_IDS.length || actualNeutralTrialIdSet.size !== actualNeutralTrialIds.length || actualNeutralTrialIdSet.size !== requiredNeutralTrialIdSet.size || [...requiredNeutralTrialIdSet].some((id) => !actualNeutralTrialIdSet.has(id)) || [...actualNeutralTrialIdSet].some((id) => !requiredNeutralTrialIdSet.has(id))) stationaryIssues.push(problem("invalid-neutral-trial-identity", "the neutral stationary trial IDs must exactly equal the five frozen identities"));
   for (const trial of context.stationaryTrials) {
     if (!trial.settleTimestampsMs.length || !trial.captureTimestampsMs.length || !monotonic(trial.settleTimestampsMs) || !monotonic(trial.captureTimestampsMs) || trial.settleTimestampsMs.at(-1)! >= trial.captureTimestampsMs[0]!) stationaryIssues.push(problem("invalid-neutral-segments", `${trial.trialId} has missing, unordered, or overlapping settle/capture segments`));
     if (trial.settleTimestampsMs.at(-1)! - trial.settleTimestampsMs[0]! < 2000 || trial.captureTimestampsMs.at(-1)! - trial.captureTimestampsMs[0]! < 5000) stationaryIssues.push(problem("unproven-neutral-duration", `${trial.trialId} does not prove the frozen 2-second settle and 5-second capture durations`));
   }
   const transitionIssues: M0ESourceReadinessIssue[] = [];
-  if (new Set(context.transitions.map((transition) => transition.transitionId)).size !== context.transitions.length) transitionIssues.push(problem("duplicate-transition-id", "transition IDs must be unique"));
+  const rawTransitionRows = trace.filter((row) => scenarios.includes(row.envelope.scenarioId as typeof scenarios[number]) && row.envelope.stepKind === "transition" && row.envelope.segmentId);
+  const rawDefinitions = new Map<string, typeof rawTransitionRows>();
+  for (const row of rawTransitionRows) (rawDefinitions.get(row.envelope.segmentId) ?? (rawDefinitions.set(row.envelope.segmentId, []), rawDefinitions.get(row.envelope.segmentId)!)).push(row);
+  for (const [transitionId, rows] of rawDefinitions) {
+    const first = rows[0]!;
+    const firstAxis = axisFor(first.envelope.scenarioId);
+    const firstTarget = typeof first.envelope.diagnostics.targetMm === "number" ? first.envelope.diagnostics.targetMm : undefined;
+    if (rows.some((row) => axisFor(row.envelope.scenarioId) !== firstAxis || row.envelope.scenarioId !== first.envelope.scenarioId || row.envelope.cycleId !== first.envelope.cycleId || (typeof row.envelope.diagnostics.targetMm === "number" ? row.envelope.diagnostics.targetMm : undefined) !== firstTarget)) transitionIssues.push(problem("conflicting-transition-identity", `${transitionId} has conflicting scenario, axis, cycle, or target metadata across raw transition rows`));
+    if (new Set(rows.map((row) => row.envelope.unitId)).size > 1) transitionIssues.push(problem("duplicate-transition-definition", `${transitionId} is associated with more than one transition definition`));
+  }
+  const expectedTransitionDefinitions = new Map<string, { scenarioId: string; cycleId: string; unitId: string; targetMm?: number }>();
+  const holdRows = trace.filter((row) => scenarios.includes(row.envelope.scenarioId as typeof scenarios[number]) && row.envelope.stepKind === "hold" && row.envelope.cycleId && row.envelope.unitId);
+  for (const row of holdRows) {
+    const scenarioId = row.envelope.scenarioId;
+    const cycleId = row.envelope.cycleId!;
+    const unitId = row.envelope.unitId!;
+    const key = `${scenarioId}|${cycleId}|${unitId}`;
+    const targetMm = typeof row.envelope.diagnostics.targetMm === "number" ? row.envelope.diagnostics.targetMm : undefined;
+    const prior = expectedTransitionDefinitions.get(key);
+    if (prior && (prior.targetMm !== targetMm || prior.scenarioId !== scenarioId || prior.cycleId !== cycleId)) transitionIssues.push(problem("conflicting-transition-identity", `${unitId} has conflicting source hold metadata`));
+    else expectedTransitionDefinitions.set(key, { scenarioId, cycleId, unitId, ...(targetMm === undefined ? {} : { targetMm }) });
+  }
+  const actualTransitionDefinitions = new Map<string, M0EMotionTransitionWindow>();
+  for (const transition of context.transitions) if (transition.cycleId && transition.unitId) {
+    const key = `${transition.scenarioId}|${transition.cycleId}|${transition.unitId}`;
+    if (actualTransitionDefinitions.has(key)) transitionIssues.push(problem("duplicate-transition-definition", `${transition.unitId} has multiple reconstructed transition definitions`));
+    else actualTransitionDefinitions.set(key, transition);
+  }
+  for (const [key, expected] of expectedTransitionDefinitions) if (!actualTransitionDefinitions.has(key)) transitionIssues.push(problem("missing-expected-transition", `${expected.unitId} is required by the source cycle metadata but has no complete transition rows`));
+  for (const [key, transition] of actualTransitionDefinitions) if (!expectedTransitionDefinitions.has(key)) transitionIssues.push(problem("extra-transition", `${transition.transitionId} is not a complete transition represented by source cycle metadata`));
   for (const transition of context.transitions) if (axisFor(transition.scenarioId) !== transition.axis || transition.timestampsMs.length < 2 || !monotonic(transition.timestampsMs)) transitionIssues.push(problem("invalid-transition-structure", `${transition.transitionId} has invalid scenario/axis mapping or timestamps`));
   for (const scenario of scenarios) if (!context.transitions.some((transition) => transition.scenarioId === scenario)) transitionIssues.push(problem("missing-transition-family", `${scenario} transition family is missing`));
   return Object.freeze({ sourceM0DRunId: source.sourceM0DRunId, sourceM0DPath: source.sourceM0DPath, m0dSchemaVersion: source.manifest.schemaVersion, m0dExperimentSpecVersion: source.manifest.experimentSpecVersion, m0dExperimentProcedureVersion: source.manifest.experimentProcedureVersion, m0dValidation: Object.freeze({ passed: source.validation.passed, validatorVersion: source.validation.validatorVersion }), selectedEstimator: Object.freeze({ id: source.manifest.estimatorA.estimatorId, configHash: source.manifest.estimatorA.configHash }), traceIds: Object.freeze(traceIds), traceContentHashes: Object.freeze(source.traceContentHashes ?? []), contentHashStatus: "unresolved-authority", replayAlignment: Object.freeze({ status: replayIssues.length ? "blocked" : "verified", issues: Object.freeze(replayIssues) }), calibration: Object.freeze({ x: calibrationReadiness(trace, "x"), y: calibrationReadiness(trace, "y"), z: calibrationReadiness(trace, "z") }), neutralStationary: Object.freeze({ status: stationaryIssues.length ? "not-proven-reusable" : "verified", trialIds: Object.freeze(context.stationaryTrials.map((trial) => trial.trialId)), issues: Object.freeze(stationaryIssues) }), motionTransitions: Object.freeze({ status: transitionIssues.length ? "not-proven-reusable" : "verified", transitionIds: Object.freeze(context.transitions.map((transition) => transition.transitionId)), issues: Object.freeze(transitionIssues) }) });
@@ -77,17 +108,13 @@ export function reconstructM0ESourceContext(trace: readonly M0DObservationTraceR
   const grouped = new Map<string, { scenarioId: string; trialId: string; settle: number[]; capture: number[] }>();
   for (const row of trace) { const scenarioId = row.envelope.scenarioId; if (!["neutral-stationary", "near-stationary-450", "far-stationary-750"].includes(scenarioId) || typeof row.envelope.trialId !== "string") continue; const key = `${scenarioId}|${row.envelope.trialId}`; const group = grouped.get(key) ?? { scenarioId, trialId: row.envelope.trialId, settle: [], capture: [] }; if (row.envelope.stepKind === "settle") group.settle.push(row.observation.timestampMs); if (row.envelope.stepKind === "capture") group.capture.push(row.observation.timestampMs); grouped.set(key, group); }
   const stationary = [...grouped.values()].map((group) => Object.freeze({ trialId: group.trialId, scenarioId: group.scenarioId, settleTimestampsMs: Object.freeze(group.settle), captureTimestampsMs: Object.freeze(group.capture) }));
-  const transitionMap = new Map<string, { transitionId: string; axis: M0ECalibrationAxis; scenarioId: M0EMotionTransitionWindow["scenarioId"]; cycleId?: string; targetMm?: number; timestampsMs: number[] }>();
+  const transitionMap = new Map<string, { transitionId: string; unitId?: string; axis: M0ECalibrationAxis; scenarioId: M0EMotionTransitionWindow["scenarioId"]; cycleId?: string; targetMm?: number; timestampsMs: number[] }>();
   for (const row of trace) {
     const axis = axisFor(row.envelope.scenarioId);
     if (!axis || row.envelope.stepKind !== "transition" || !row.envelope.segmentId) continue;
-    let transition = transitionMap.get(row.envelope.segmentId);
-    if (!transition) {
-      transition = { transitionId: row.envelope.segmentId, axis, scenarioId: row.envelope.scenarioId as M0EMotionTransitionWindow["scenarioId"], timestampsMs: [] };
-      if (row.envelope.cycleId !== undefined) transition.cycleId = row.envelope.cycleId;
-      if (typeof row.envelope.diagnostics.targetMm === "number") transition.targetMm = row.envelope.diagnostics.targetMm;
-    }
-    transition.timestampsMs.push(row.observation.timestampMs);
+    const existing = transitionMap.get(row.envelope.segmentId);
+    if (existing) { existing.timestampsMs.push(row.observation.timestampMs); continue; }
+    const transition = { transitionId: row.envelope.segmentId, ...(row.envelope.unitId === undefined ? {} : { unitId: row.envelope.unitId }), axis, scenarioId: row.envelope.scenarioId as M0EMotionTransitionWindow["scenarioId"], ...(row.envelope.cycleId === undefined ? {} : { cycleId: row.envelope.cycleId }), ...(typeof row.envelope.diagnostics.targetMm === "number" ? { targetMm: row.envelope.diagnostics.targetMm } : {}), timestampsMs: [row.observation.timestampMs] };
     transitionMap.set(row.envelope.segmentId, transition);
   }
   const context = Object.freeze({ validReplayRecords: Object.freeze(replay.filter((row) => row.valid)), invalidReplayRecords: Object.freeze(replay.filter((row) => !row.valid)), stationaryTrials: Object.freeze(stationary.filter((window) => window.scenarioId === "neutral-stationary")), nearFarStationaryWindows: Object.freeze(stationary.filter((window) => window.scenarioId !== "neutral-stationary")), transitions: Object.freeze([...transitionMap.values()].map((transition) => Object.freeze({ ...transition, timestampsMs: Object.freeze(transition.timestampsMs) }))) });

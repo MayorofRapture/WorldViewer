@@ -5,6 +5,31 @@ import { readFileSync } from "node:fs";
 import { reconstructM0ESourceContext } from "../../src/m0e/replay/m0eSourceContext";
 import type { M0DObservationTraceRecord } from "../../src/m0d/evidence/m0dEvidenceContracts";
 
+const readinessSource = {
+  sourceM0DRunId: "run-1790638307359",
+  sourceM0DPath: "evidence/m0d/estimator-experiment-v3/run-1790638307359",
+  manifest: { schemaVersion: 1, experimentSpecVersion: "0.4", experimentProcedureVersion: 3, estimatorA: { estimatorId: "mediapipe-facial-transform-v1", configHash: "fnv1a64-825a99daebb20f6c" } },
+  validation: { passed: true, validatorVersion: 1 },
+} as const;
+
+function syntheticTrace(rows: Array<{ scenarioId: string; stepKind: "settle" | "capture" | "transition" | "hold"; trialId?: string; cycleId?: string; unitId?: string; segmentId: string; targetMm?: number; targetAxis?: string }>): M0DObservationTraceRecord[] {
+  return rows.map((row, index) => ({ observation: { timestampMs: index + 1 }, envelope: { schemaVersion: 1, sequenceNumber: index, traceId: "synthetic", scenarioId: row.scenarioId, segmentId: row.segmentId, unitId: row.unitId, trialId: row.trialId, cycleId: row.cycleId, stepKind: row.stepKind, experimentRunId: "synthetic", configurationIds: [], configurationHashes: [], workerTiming: {}, diagnostics: { targetMm: row.targetMm, targetAxis: row.targetAxis } } } as unknown as M0DObservationTraceRecord));
+}
+
+function readinessFor(trace: readonly M0DObservationTraceRecord[]) {
+  const replay = parseSelectedEstimatorReplayRecords(trace.map((row) => JSON.stringify({ schemaVersion: 1, timestampMs: row.observation.timestampMs, observationTraceId: row.envelope.traceId, estimatorId: "mediapipe-facial-transform-v1", estimatorConfigHash: "fnv1a64-825a99daebb20f6c", valid: true, positionMm: { x: 0, y: 0, z: 600 } })).join("\n"));
+  return reconstructM0ESourceContext(trace, replay, readinessSource).readiness!;
+}
+
+function syntheticMovementRows(): Array<{ scenarioId: string; stepKind: "transition" | "hold"; cycleId: string; unitId: string; segmentId: string; targetMm: number; targetAxis: string }> {
+  return ([
+    ["lateral-movement", "x", -150], ["vertical-movement", "y", -100], ["approach-retreat", "z", 450],
+  ] as const).flatMap(([scenarioId, axis, targetMm]) => {
+    const unitId = `${scenarioId}-cycle-1-hold-1`;
+    return [{ scenarioId, stepKind: "transition" as const, cycleId: `${scenarioId}-cycle-1`, unitId, segmentId: `${unitId}-transition`, targetMm, targetAxis: axis }, { scenarioId, stepKind: "hold" as const, cycleId: `${scenarioId}-cycle-1`, unitId, segmentId: `${unitId}-hold`, targetMm, targetAxis: axis }];
+  });
+}
+
 describe("M0E selected-estimator replay", () => {
   it("preserves valid and invalid source rows", () => {
     const identity = selectedEstimatorIdentity();
@@ -71,5 +96,34 @@ describe("M0E selected-estimator replay", () => {
     const readiness = reconstructM0ESourceContext(trace, replay, { sourceM0DRunId: "run-1790638307359", sourceM0DPath: "evidence/m0d/estimator-experiment-v3/run-1790638307359", manifest: { schemaVersion: 1, experimentSpecVersion: "0.4", experimentProcedureVersion: 3, estimatorA: { estimatorId: identity.id, configHash: identity.configHash } }, validation: { passed: true, validatorVersion: 1 } }).readiness!;
     expect(readiness.replayAlignment.status).toBe("blocked");
     expect(readiness.replayAlignment.issues.map((entry) => entry.code)).toContain("replay-source-misalignment");
+  });
+
+  it("requires the exact frozen neutral trial identity set", () => {
+    const neutral = Array.from({ length: 5 }, (_, index) => ({ scenarioId: "neutral-stationary", stepKind: "capture" as const, trialId: `neutral-stationary-trial-${index + 1}`, segmentId: `neutral-${index}` }));
+    expect(readinessFor(syntheticTrace(neutral)).neutralStationary.issues.map((issue) => issue.code)).not.toContain("invalid-neutral-trial-identity");
+    for (const replacement of ["wrong-neutral-trial", "near-stationary-trial-1", "far-stationary-trial-1"]) {
+      const replaced = neutral.map((row, index) => index === 3 ? { ...row, trialId: replacement } : row);
+      expect(readinessFor(syntheticTrace(replaced)).neutralStationary.issues.map((issue) => issue.code)).toContain("invalid-neutral-trial-identity");
+    }
+    const duplicate = neutral.map((row, index) => index === 4 ? { ...row, trialId: "neutral-stationary-trial-1" } : row);
+    expect(readinessFor(syntheticTrace(duplicate)).neutralStationary.issues.map((issue) => issue.code)).toContain("invalid-neutral-trial-identity");
+  });
+
+  it("accepts repeated samples for one transition but rejects raw identity conflicts", () => {
+    const rows = syntheticMovementRows();
+    const repeated = [...rows, { ...rows[0]!, stepKind: "transition" as const, segmentId: rows[0]!.segmentId }];
+    expect(readinessFor(syntheticTrace(repeated)).motionTransitions.issues.map((issue) => issue.code)).not.toContain("duplicate-transition-definition");
+    const conflictingScenario = [...rows, { ...rows[0]!, stepKind: "transition" as const, scenarioId: "vertical-movement", targetAxis: "y" }];
+    expect(readinessFor(syntheticTrace(conflictingScenario)).motionTransitions.issues.map((issue) => issue.code)).toContain("conflicting-transition-identity");
+    const conflictingCycle = [...rows, { ...rows[0]!, stepKind: "transition" as const, cycleId: "lateral-movement-cycle-2" }];
+    expect(readinessFor(syntheticTrace(conflictingCycle)).motionTransitions.issues.map((issue) => issue.code)).toContain("conflicting-transition-identity");
+  });
+
+  it("requires every source hold definition and rejects unsupported extra transitions", () => {
+    const rows = syntheticMovementRows();
+    const missing = rows.filter((row) => row.segmentId !== "vertical-movement-cycle-1-hold-1-transition");
+    expect(readinessFor(syntheticTrace(missing)).motionTransitions.issues.map((issue) => issue.code)).toContain("missing-expected-transition");
+    const extra = [...rows, { ...rows[0]!, stepKind: "transition" as const, unitId: "lateral-movement-cycle-1-hold-extra", segmentId: "lateral-movement-cycle-1-hold-extra-transition", targetMm: 150 }];
+    expect(readinessFor(syntheticTrace(extra)).motionTransitions.issues.map((issue) => issue.code)).toContain("extra-transition");
   });
 });
