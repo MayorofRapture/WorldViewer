@@ -1,4 +1,4 @@
-import { buildShortlist, calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, nearestRankPercentile, type CandidateObjective } from "../analysis/filterMetrics";
+import { buildShortlist, calculateStationaryTrialMetric, enumerateOneEuroGrid, evaluateTransition, type CandidateObjective, type MotionTransition, type CandidateTransitionResult } from "../analysis/filterMetrics";
 import { fitRelativeAxis, fitZAxisInitial } from "../analysis/calibrationAnalysis";
 import { M0E_ALLOWED_INVALIDATION_REASONS, M0E_DRAFT_VERSION, M0E_EVIDENCE_SCHEMA_VERSION, M0E_EXPERIMENT_PROCEDURE_VERSION, M0E_METRIC_VERSION, M0E_REQUIRED_FILES, M0E_REQUIRED_GRID, M0E_REQUIRED_SCENARIO_IDS, M0E_VALIDATOR_VERSION, type M0EEvidenceBundle } from "./m0eEvidenceContracts";
 
@@ -51,7 +51,19 @@ function exactCandidateGrid(candidates: readonly { readonly minCutoffHz: number;
 }
 
 function finiteCandidate(candidate: CandidateObjective): boolean {
-  return finite(candidate.p95LagMs) && candidate.invalidOutputCount >= 0 && (candidate.jitterObjective === null || finite(candidate.jitterObjective)) && candidate.stationaryTrials.every((trial) => finite(trial.rms.x) && finite(trial.rms.y) && finite(trial.rms.z));
+  return (candidate.p95LagMs === null || finite(candidate.p95LagMs)) && candidate.invalidOutputCount >= 0 && (candidate.jitterObjective === null || finite(candidate.jitterObjective)) && candidate.stationaryTrials.every((trial) => finite(trial.rms.x) && finite(trial.rms.y) && finite(trial.rms.z));
+}
+
+function transitionInputShape(transition: MotionTransition): unknown {
+  return { transitionId: transition.transitionId, axis: transition.axis, start: transition.start, final: transition.final, sourceInvalidationReason: transition.sourceInvalidationReason, samples: transition.samples.map((sample) => ({ timestampMs: sample.timestampMs, input: sample.input, rawPositionMm: sample.rawPositionMm })) };
+}
+
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function candidateValueAsCandidate(value: unknown): CandidateObjective | null {
+  return record(value) ? value as unknown as CandidateObjective : null;
 }
 
 export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
@@ -89,7 +101,11 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
       const configuration = candidate.candidate as Partial<CandidateObjective["candidate"]> | undefined;
       if (!record(candidateValue) || typeof configuration?.candidateId !== "string" || ids.has(configuration.candidateId)) add(failures, "invalid-candidate-identity", "filtering.candidates", "candidate IDs must be unique and well formed");
       else ids.add(configuration.candidateId);
-      if (!record(candidateValue) || !finiteCandidate(candidate as CandidateObjective)) add(failures, "invalid-metric", "filtering.candidates", "candidate metrics must be finite");
+      if (!record(candidateValue) || !finiteCandidate(candidate as CandidateObjective)) add(failures, "invalid-metric", "filtering.candidates", "candidate metrics must be finite or explicitly null when no evaluable lag exists");
+      if (candidate.p95LagMs === null) add(failures, "missing-lag-objective", "filtering.candidates", "undefined p95 lag cannot participate in Pareto shortlist generation");
+      if (Array.isArray(candidate.invalidSampleLocations)) for (const [locationIndex, location] of candidate.invalidSampleLocations.entries()) {
+        if (location.candidateId !== configuration?.candidateId || !finite(location.timestampMs) || !["stationary", "transition", "raw"].includes(location.traceKind) || !["filter-rejection", "non-finite-output", "non-finite-input"].includes(location.classification) || typeof location.reason !== "string") add(failures, "invalid-sample-location", `filtering.candidates[${ids.size - 1}].invalidSampleLocations[${locationIndex}]`, "invalid sample location record");
+      }
     }
     const expectedGrid = enumerateOneEuroGrid();
     for (const candidateValue of candidates) {
@@ -98,6 +114,7 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
       if (expected === undefined || candidate?.minCutoffHz !== expected.minCutoffHz || candidate.beta !== expected.beta || candidate.dCutoffHz !== 1) add(failures, "invalid-candidate-configuration", "filtering.candidates", "candidate evidence configuration must exactly match the frozen grid");
       if (!record(candidateValue) || !Array.isArray((candidateValue as Partial<CandidateObjective>).stationaryReplayInputs) || !Array.isArray((candidateValue as Partial<CandidateObjective>).transitionReplayInputs)) add(failures, "missing-candidate-replay-inputs", "filtering.candidates", "each candidate must preserve replay inputs for independent metric regeneration");
       if (!record(candidateValue) || !Array.isArray((candidateValue as Partial<CandidateObjective>).stationaryReplayOutputs)) add(failures, "missing-candidate-filtered-outputs", "filtering.candidates", "each candidate must preserve filtered stationary outputs for metric regeneration");
+      if (!record(candidateValue) || !Array.isArray((candidateValue as Partial<CandidateObjective>).transitionReplayOutputs) || !Array.isArray((candidateValue as Partial<CandidateObjective>).transitionResults)) add(failures, "missing-candidate-transition-evidence", "filtering.candidates", "each candidate must preserve filtered transition traces and one result for every prescribed transition");
     }
     const validCandidates = candidates.filter((candidateValue): candidateValue is CandidateObjective => record(candidateValue) && record((candidateValue as Partial<CandidateObjective>).candidate) && Array.isArray((candidateValue as Partial<CandidateObjective>).stationaryTrials) && typeof (candidateValue as Partial<CandidateObjective>).p95LagMs === "number") as readonly CandidateObjective[];
     const regenerated = buildShortlist(validCandidates);
@@ -123,17 +140,40 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
       });
     if (!Array.isArray(filtering.transitionInputs) || filtering.transitionInputs.length !== filtering.transitions.length) add(failures, "missing-motion-regeneration-inputs", "filtering.transitionInputs", "transition source inputs are required");
     else filtering.transitionInputs.forEach((input, index) => {
-        const regeneratedMetric = calculateTransitionMetric(input);
-        const stored = filtering.transitions[index]!;
-        if (regeneratedMetric.transitionId !== stored.transitionId || regeneratedMetric.axis !== stored.axis || regeneratedMetric.lagMs !== stored.lagMs || regeneratedMetric.overshootMm !== stored.overshootMm || JSON.stringify(regeneratedMetric.discontinuityMm) !== JSON.stringify(stored.discontinuityMm)) add(failures, "motion-regeneration-mismatch", `filtering.transitions[${index}]`, "stored motion metric does not match deterministic regeneration");
-      });
+      const stored = filtering.transitions[index]!;
+      const regenerated = evaluateTransition(input);
+      if (regenerated.status !== "evaluable" || stored.transitionId !== regenerated.transitionId || stored.axis !== regenerated.axis) add(failures, "motion-regeneration-mismatch", `filtering.transitions[${index}]`, "stored source transition metric does not match deterministic regeneration");
+    });
+    const prescribedTransitions = filtering.transitionInputs ?? [];
+    const prescribedShape = prescribedTransitions.map(transitionInputShape);
+    for (const [candidateIndex, candidate] of candidates.entries()) {
+      const inputTraces = candidateValueAsCandidate(candidate)?.transitionReplayInputs;
+      if (!Array.isArray(inputTraces) || !sameJson(inputTraces.map(transitionInputShape), prescribedShape)) add(failures, "candidate-input-mismatch", `filtering.candidates[${candidateIndex}].transitionReplayInputs`, "every candidate must use exactly the prescribed transition IDs, timestamps, and calibrated inputs");
+    }
     for (const [index, candidate] of validCandidates.entries()) {
       if (candidate.stationaryReplayOutputs === undefined) continue;
       const regeneratedTrials = candidate.stationaryReplayOutputs.map((trial) => calculateStationaryTrialMetric(trial));
       if (regeneratedTrials.length !== candidate.stationaryTrials.length || regeneratedTrials.some((metric, trialIndex) => JSON.stringify(metric) !== JSON.stringify(candidate.stationaryTrials[trialIndex]))) add(failures, "candidate-stationary-regeneration-mismatch", `filtering.candidates[${index}]`, "candidate stationary RMS does not match preserved filtered output");
-      const transitionMetrics = candidate.transitionMetrics ?? [];
-      const regeneratedP95 = transitionMetrics.length === 0 ? 0 : nearestRankPercentile(transitionMetrics.map((metric) => metric.lagMs), 0.95);
-      if (candidate.p95LagMs !== regeneratedP95) add(failures, "candidate-lag-regeneration-mismatch", `filtering.candidates[${index}].p95LagMs`, "candidate p95 lag does not match generated transition metrics");
+      const outputTraces = candidate.transitionReplayOutputs ?? [];
+      const transitionResults = candidate.transitionResults ?? [];
+      if (outputTraces.length !== prescribedTransitions.length || transitionResults.length !== prescribedTransitions.length) add(failures, "missing-transition-result", `filtering.candidates[${index}]`, "candidate must retain exactly one output trace and result per prescribed transition");
+      const regeneratedResults: CandidateTransitionResult[] = [];
+      for (let transitionIndex = 0; transitionIndex < prescribedTransitions.length; transitionIndex += 1) {
+        const source = prescribedTransitions[transitionIndex]!;
+        const output = outputTraces[transitionIndex];
+        const storedResult = transitionResults[transitionIndex];
+        if (output === undefined || !sameJson(transitionInputShape(output), transitionInputShape(source)) || output.samples.length !== source.samples.length || output.samples.some((sample, sampleIndex) => sample.timestampMs !== source.samples[sampleIndex]!.timestampMs || sample.input !== source.samples[sampleIndex]!.input)) add(failures, "candidate-output-trace-mismatch", `filtering.candidates[${index}].transitionReplayOutputs[${transitionIndex}]`, "candidate output trace must retain the prescribed transition identity, timestamps, and inputs");
+        if (output === undefined) continue;
+        const regeneratedResult = evaluateTransition(output);
+        regeneratedResults.push(regeneratedResult);
+        if (!sameJson(regeneratedResult, storedResult)) add(failures, "candidate-transition-regeneration-mismatch", `filtering.candidates[${index}].transitionResults[${transitionIndex}]`, "stored transition result does not match regeneration from the candidate filtered trace");
+      }
+      const lags = regeneratedResults.filter((result): result is Extract<CandidateTransitionResult, { status: "evaluable" }> => result.status === "evaluable").map((result) => result.lagMs);
+      const regeneratedMetrics = regeneratedResults.filter((result): result is Extract<CandidateTransitionResult, { status: "evaluable" }> => result.status === "evaluable").map((result) => ({ transitionId: result.transitionId, axis: result.axis, lagMs: result.lagMs, overshootMm: result.overshootMm, discontinuityMm: result.discontinuityMm }));
+      if (candidate.transitionMetrics !== undefined && !sameJson(candidate.transitionMetrics, regeneratedMetrics)) add(failures, "candidate-metric-regeneration-mismatch", `filtering.candidates[${index}].transitionMetrics`, "stored derived transition metrics do not match regeneration from the candidate filtered trace");
+      const regeneratedP95 = lags.length === 0 ? null : [...lags].sort((left, right) => left - right)[Math.ceil(lags.length * 0.95) - 1]!;
+      const regeneratedMedian = lags.length === 0 ? null : [...lags].sort((left, right) => left - right)[Math.ceil(lags.length * 0.5) - 1]!;
+      if (candidate.p95LagMs !== regeneratedP95 || candidate.lagSummary?.p95LagMs !== regeneratedP95 || candidate.lagSummary?.medianLagMs !== regeneratedMedian || candidate.lagSummary?.evaluableTransitionCount !== lags.length) add(failures, "candidate-lag-regeneration-mismatch", `filtering.candidates[${index}].lagSummary`, "candidate lag summary does not match regenerated transition results");
       const regeneratedEligible = candidate.invalidOutputCount === 0 && regeneratedTrials.length === 5 && regeneratedTrials.every((trial) => trial.eligible);
       const regeneratedJ = regeneratedEligible ? Math.max(...regeneratedTrials.flatMap((trial) => [trial.rms.x / 3, trial.rms.y / 3, trial.rms.z / 8])) : null;
       if (candidate.eligible !== regeneratedEligible || candidate.jitterObjective !== regeneratedJ) add(failures, "candidate-objective-regeneration-mismatch", `filtering.candidates[${index}]`, "candidate eligibility or J does not match regenerated metrics");

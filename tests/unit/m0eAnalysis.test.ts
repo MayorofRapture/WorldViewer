@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fitRelativeAxis, fitZAxisInitial, fitZAxisLeastSquares } from "../../src/m0e/analysis/calibrationAnalysis";
-import { buildShortlist, calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, nearestRankPercentile, objectiveForCandidate } from "../../src/m0e/analysis/filterMetrics";
+import { buildShortlist, calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, evaluateTransition, nearestRankPercentile, objectiveForCandidate } from "../../src/m0e/analysis/filterMetrics";
 import { runOneEuroCandidate } from "../../src/m0e/analysis/sweep";
 import { createDefaultCalibrationProfile } from "../../src/shared/contracts/calibration";
 
@@ -74,6 +74,31 @@ describe("M0E frozen analysis primitives", () => {
     expect(transition.lagMs).toBe(20);
     expect(transition.overshootMm).toBe(2);
     expect(transition.discontinuityMm).toContain(6);
+  });
+
+  it("counts overshoot only after the sustained output crossing", () => {
+    const transition = calculateTransitionMetric({ transitionId: "x-pre-crossing-excursion", axis: "x", start: 0, final: 10, samples: [
+      { timestampMs: 0, input: 0, output: 20, filteredPositionMm: { x: 20, y: 0, z: 600 } },
+      { timestampMs: 10, input: 6, output: 4, filteredPositionMm: { x: 4, y: 0, z: 600 } },
+      { timestampMs: 20, input: 8, output: 6, filteredPositionMm: { x: 6, y: 0, z: 600 } },
+      { timestampMs: 30, input: 10, output: 10, filteredPositionMm: { x: 10, y: 0, z: 600 } },
+      { timestampMs: 40, input: 10, output: 10, filteredPositionMm: { x: 10, y: 0, z: 600 } },
+    ] });
+    expect(transition.overshootMm).toBe(0);
+  });
+
+  it("preserves non-evaluable transitions and represents missing lag explicitly", () => {
+    const transition = { transitionId: "x-no-crossing", axis: "x" as const, start: 0, final: 10, samples: [
+      { timestampMs: 0, input: 0, output: 0, filteredPositionMm: { x: 0, y: 0, z: 600 } },
+      { timestampMs: 10, input: 4, output: 1, filteredPositionMm: { x: 1, y: 0, z: 600 } },
+      { timestampMs: 20, input: 4, output: 2, filteredPositionMm: { x: 2, y: 0, z: 600 } },
+    ] };
+    const result = evaluateTransition(transition);
+    expect(result).toMatchObject({ status: "non-evaluable", reason: "threshold-crossing-not-establishable", transitionId: "x-no-crossing" });
+    const candidate = objectiveForCandidate(enumerateOneEuroGrid()[0]!, [], null, 0, [], 0, 0, [], [transition], [], [result], [transition], []);
+    expect(candidate.p95LagMs).toBeNull();
+    expect(candidate.lagSummary).toEqual({ evaluableTransitionCount: 0, medianLagMs: null, p95LagMs: null });
+    expect(buildShortlist([candidate]).frontier).toEqual([]);
   });
 
   it("enumerates exactly 25 candidates and applies Pareto shortlist rules", () => {

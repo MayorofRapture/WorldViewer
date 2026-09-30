@@ -86,6 +86,58 @@ export interface MotionTransition {
   readonly start: number;
   readonly final: number;
   readonly samples: readonly TransitionSample[];
+  readonly sourceInvalidationReason?: TransitionInvalidationReason;
+}
+
+export const TRANSITION_INVALIDATION_REASONS = Object.freeze([
+  "source-procedural-invalidation",
+  "missing-required-samples",
+  "invalid-non-finite-calibrated-input",
+  "threshold-crossing-not-establishable",
+] as const);
+export type TransitionInvalidationReason = typeof TRANSITION_INVALIDATION_REASONS[number];
+
+export interface TransitionDiscontinuitySummary {
+  readonly median: number;
+  readonly p95: number;
+  readonly p99: number;
+  readonly max: number;
+}
+
+export interface EvaluableTransitionResult {
+  readonly status: "evaluable";
+  readonly transitionId: string;
+  readonly axis: "x" | "y" | "z";
+  readonly start: number;
+  readonly final: number;
+  readonly inputCrossingTimestampMs: number;
+  readonly outputCrossingTimestampMs: number;
+  readonly lagMs: number;
+  readonly overshootMm: number;
+  readonly discontinuityMm: readonly number[];
+  readonly discontinuitySummary: TransitionDiscontinuitySummary;
+}
+
+export interface NonEvaluableTransitionResult {
+  readonly status: "non-evaluable";
+  readonly transitionId: string;
+  readonly axis: "x" | "y" | "z";
+  readonly start: number;
+  readonly final: number;
+  readonly reason: TransitionInvalidationReason;
+  readonly sampleCount: number;
+}
+
+export type CandidateTransitionResult = EvaluableTransitionResult | NonEvaluableTransitionResult;
+
+export interface InvalidSampleLocation {
+  readonly candidateId: string;
+  readonly traceKind: "stationary" | "transition" | "raw";
+  readonly transitionId?: string;
+  readonly stationaryTrialId?: string;
+  readonly timestampMs: number;
+  readonly classification: "filter-rejection" | "non-finite-output" | "non-finite-input";
+  readonly reason: string;
 }
 
 export interface TransitionMetric {
@@ -106,7 +158,7 @@ function crossingTimestamp(samples: readonly TransitionSample[], value: "input" 
   const threshold = start + (final - start) * 0.5;
   for (let index = 0; index <= samples.length - 3; index += 1) {
     const window = samples.slice(index, index + 3);
-    const qualifies = window.every((sample) => direction * (sample[value] - threshold) >= 0);
+    const qualifies = window.every((sample) => Number.isFinite(sample[value]) && direction * (sample[value] - threshold) >= 0);
     if (qualifies) return window[0]!.timestampMs;
   }
   throw new RangeError(`transition has no stable ${value} crossing`);
@@ -120,16 +172,38 @@ export function nearestRankPercentile(values: readonly number[], percentile: num
 }
 
 export function calculateTransitionMetric(transition: MotionTransition): TransitionMetric {
-  if (transition.samples.length < 3 || transition.samples.some((sample, index) => !Number.isFinite(sample.timestampMs) || (index > 0 && sample.timestampMs <= transition.samples[index - 1]!.timestampMs))) throw new RangeError("transition timestamps must be finite and strictly increasing");
+  if (transition.samples.length < 3 || transition.samples.some((sample, index) => !Number.isFinite(sample.timestampMs) || !Number.isFinite(sample.input) || !Number.isFinite(sample.output) || !finitePosition(sample.filteredPositionMm) || (index > 0 && sample.timestampMs <= transition.samples[index - 1]!.timestampMs))) throw new RangeError("transition samples must be finite and timestamps strictly increasing");
   const inputCrossing = crossingTimestamp(transition.samples, "input", transition.start, transition.final);
   const outputCrossing = crossingTimestamp(transition.samples, "output", transition.start, transition.final);
   const direction = sign(transition.final - transition.start);
-  const overshootMm = Math.max(...transition.samples.map((sample) => Math.max(direction * (sample.output - transition.final), 0)));
+  const outputCrossingIndex = transition.samples.findIndex((sample) => sample.timestampMs === outputCrossing);
+  if (outputCrossingIndex < 0) throw new RangeError("output crossing sample is not present in transition trace");
+  const overshootMm = Math.max(...transition.samples.slice(outputCrossingIndex).map((sample) => Math.max(direction * (sample.output - transition.final), 0)));
   const discontinuityMm = transition.samples.slice(1).map((sample, index) => {
     const previous = transition.samples[index]!.filteredPositionMm;
     return Math.hypot(sample.filteredPositionMm.x - previous.x, sample.filteredPositionMm.y - previous.y, sample.filteredPositionMm.z - previous.z);
   });
   return Object.freeze({ transitionId: transition.transitionId, axis: transition.axis, lagMs: outputCrossing - inputCrossing, overshootMm, discontinuityMm: Object.freeze(discontinuityMm) });
+}
+
+export function summarizeTransitionDiscontinuity(values: readonly number[]): TransitionDiscontinuitySummary {
+  if (values.length === 0) throw new RangeError("discontinuity summary requires values");
+  return Object.freeze({ median: median(values), p95: nearestRankPercentile(values, 0.95), p99: nearestRankPercentile(values, 0.99), max: Math.max(...values) });
+}
+
+export function evaluateTransition(transition: MotionTransition): CandidateTransitionResult {
+  const base = { transitionId: transition.transitionId, axis: transition.axis, start: transition.start, final: transition.final } as const;
+  if (transition.sourceInvalidationReason !== undefined) return Object.freeze({ ...base, status: "non-evaluable", reason: transition.sourceInvalidationReason, sampleCount: transition.samples.length });
+  if (transition.samples.length < 3) return Object.freeze({ ...base, status: "non-evaluable", reason: "missing-required-samples", sampleCount: transition.samples.length });
+  if (transition.samples.some((sample) => !Number.isFinite(sample.input))) return Object.freeze({ ...base, status: "non-evaluable", reason: "invalid-non-finite-calibrated-input", sampleCount: transition.samples.length });
+  try {
+    const metric = calculateTransitionMetric(transition);
+    const inputCrossingTimestampMs = crossingTimestamp(transition.samples, "input", transition.start, transition.final);
+    const outputCrossingTimestampMs = crossingTimestamp(transition.samples, "output", transition.start, transition.final);
+    return Object.freeze({ ...base, status: "evaluable", inputCrossingTimestampMs, outputCrossingTimestampMs, lagMs: metric.lagMs, overshootMm: metric.overshootMm, discontinuityMm: metric.discontinuityMm, discontinuitySummary: summarizeTransitionDiscontinuity(metric.discontinuityMm) });
+  } catch {
+    return Object.freeze({ ...base, status: "non-evaluable", reason: "threshold-crossing-not-establishable", sampleCount: transition.samples.length });
+  }
 }
 
 export interface DiscontinuitySummary {
@@ -147,11 +221,15 @@ export function summarizeDiscontinuity(values: readonly number[]): Discontinuity
 export interface CandidateObjective {
   readonly candidate: OneEuroCandidateConfiguration;
   readonly stationaryTrials: readonly StationaryTrialMetric[];
-  readonly p95LagMs: number;
+  readonly p95LagMs: number | null;
+  readonly lagSummary: { readonly evaluableTransitionCount: number; readonly medianLagMs: number | null; readonly p95LagMs: number | null };
   readonly invalidOutputCount: number;
   readonly eligible: boolean;
   readonly jitterObjective: number | null;
   readonly transitionMetrics?: readonly TransitionMetric[];
+  readonly transitionResults?: readonly CandidateTransitionResult[];
+  readonly transitionReplayOutputs?: readonly MotionTransition[];
+  readonly invalidSampleLocations?: readonly InvalidSampleLocation[];
   readonly sourceInvalidCount?: number;
   readonly filterRejectionCount?: number;
   readonly nonFiniteOutputCount?: number;
@@ -160,16 +238,18 @@ export interface CandidateObjective {
   readonly transitionReplayInputs?: readonly MotionTransition[];
 }
 
-export function objectiveForCandidate(candidate: OneEuroCandidateConfiguration, stationaryTrials: readonly StationaryTrialMetric[], p95LagMs: number, invalidOutputCount = 0, transitionMetrics?: readonly TransitionMetric[], sourceInvalidCount = 0, filterRejectionCount = 0, stationaryReplayInputs?: readonly StationaryTrial[], transitionReplayInputs?: readonly MotionTransition[], stationaryReplayOutputs?: readonly StationaryTrial[]): CandidateObjective {
+export function objectiveForCandidate(candidate: OneEuroCandidateConfiguration, stationaryTrials: readonly StationaryTrialMetric[], p95LagMs: number | null, invalidOutputCount = 0, transitionMetrics?: readonly TransitionMetric[], sourceInvalidCount = 0, filterRejectionCount = 0, stationaryReplayInputs?: readonly StationaryTrial[], transitionReplayInputs?: readonly MotionTransition[], stationaryReplayOutputs?: readonly StationaryTrial[], transitionResults?: readonly CandidateTransitionResult[], transitionReplayOutputs?: readonly MotionTransition[], invalidSampleLocations?: readonly InvalidSampleLocation[]): CandidateObjective {
   const eligible = invalidOutputCount === 0 && stationaryTrials.length === 5 && stationaryTrials.every((trial) => trial.eligible);
   const jitterObjective = eligible
     ? Math.max(...stationaryTrials.flatMap((trial) => [trial.rms.x / 3, trial.rms.y / 3, trial.rms.z / 8]))
     : null;
-  return Object.freeze({ candidate, stationaryTrials: Object.freeze([...stationaryTrials]), p95LagMs, invalidOutputCount, eligible, jitterObjective, ...(transitionMetrics === undefined ? {} : { transitionMetrics: Object.freeze([...transitionMetrics]) }), sourceInvalidCount, filterRejectionCount, nonFiniteOutputCount: invalidOutputCount, ...(stationaryReplayInputs === undefined ? {} : { stationaryReplayInputs: Object.freeze([...stationaryReplayInputs]) }), ...(transitionReplayInputs === undefined ? {} : { transitionReplayInputs: Object.freeze([...transitionReplayInputs]) }), ...(stationaryReplayOutputs === undefined ? {} : { stationaryReplayOutputs: Object.freeze([...stationaryReplayOutputs]) }) });
+  const lags = (transitionResults ?? []).filter((result): result is EvaluableTransitionResult => result.status === "evaluable").map((result) => result.lagMs);
+  const lagSummary = Object.freeze({ evaluableTransitionCount: lags.length, medianLagMs: lags.length === 0 ? null : median(lags), p95LagMs: lags.length === 0 ? null : nearestRankPercentile(lags, 0.95) });
+  return Object.freeze({ candidate, stationaryTrials: Object.freeze([...stationaryTrials]), p95LagMs, lagSummary, invalidOutputCount, eligible, jitterObjective, ...(transitionMetrics === undefined ? {} : { transitionMetrics: Object.freeze([...transitionMetrics]) }), ...(transitionResults === undefined ? {} : { transitionResults: Object.freeze([...transitionResults]) }), ...(transitionReplayOutputs === undefined ? {} : { transitionReplayOutputs: Object.freeze([...transitionReplayOutputs]) }), ...(invalidSampleLocations === undefined ? {} : { invalidSampleLocations: Object.freeze([...invalidSampleLocations]) }), sourceInvalidCount, filterRejectionCount, nonFiniteOutputCount: invalidOutputCount, ...(stationaryReplayInputs === undefined ? {} : { stationaryReplayInputs: Object.freeze([...stationaryReplayInputs]) }), ...(transitionReplayInputs === undefined ? {} : { transitionReplayInputs: Object.freeze([...transitionReplayInputs]) }), ...(stationaryReplayOutputs === undefined ? {} : { stationaryReplayOutputs: Object.freeze([...stationaryReplayOutputs]) }) });
 }
 
 export function dominates(left: CandidateObjective, right: CandidateObjective): boolean {
-  if (!left.eligible || !right.eligible || left.jitterObjective === null || right.jitterObjective === null) return false;
+  if (!left.eligible || !right.eligible || left.jitterObjective === null || right.jitterObjective === null || left.p95LagMs === null || right.p95LagMs === null) return false;
   return left.jitterObjective <= right.jitterObjective && left.p95LagMs <= right.p95LagMs && (left.jitterObjective < right.jitterObjective || left.p95LagMs < right.p95LagMs);
 }
 
