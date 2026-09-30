@@ -1,6 +1,6 @@
 # M0C1 Viewer State Controller Handoff
 
-- Subsystem status and supported scope: Host-private deterministic `ViewerStateController` is implemented under `src/engine/viewer/`; it owns startup, tracking-loss grace, neutral return, internal reacquisition, reset, and immutable frame-scoped `ViewerState` construction. M0C2 packaged synthetic smoke now exercises the controller through the runtime, projection, diagnostic world, and renderer path; M0E live filtered-pose integration remains deferred.
+- Subsystem status and supported scope: Host-private deterministic `ViewerStateController` is implemented under `src/engine/viewer/`; it owns startup, tracking-loss grace, neutral return, internal reacquisition, reset, and immutable frame-scoped `ViewerState` construction. M0C2 packaged synthetic smoke and the M0E4 live integration test exercise the controller through the projection/world-frame boundary; M0E5-M0E8 calibration/filter evidence and default selection remain outstanding.
 - Stable public contract/interface paths: `src/shared/contracts/viewer.ts`; host-private contracts in `src/engine/viewer/contracts.ts`.
 - Oracle IDs: `ORC-VIEWER-STATE-001`.
 - Authoritative tests/oracles: `tests/unit/viewerStateController.test.ts`.
@@ -16,6 +16,6 @@
 - Deterministic tests and fixture paths: `tests/unit/viewerStateController.test.ts`.
 - Governing ADR references: ADR-018; ADR-019.
 - Evidence references: `evidence/milestone-0/m0c-1-viewer-state-controller.json`; `evidence/milestone-0/m0c-2-packaged-synthetic-smoke.json`.
-- Known limitations / unsupported behavior: the M0C2 path uses a host-private identity synthetic RawViewerPose-to-FilteredViewerPose adapter and does not represent the production M0E calibration/filtering pipeline; live RawViewerPose, calibration, and filtering integration remain later M0E work.
+- Known limitations / unsupported behavior: the M0C2 path continues to use a host-private identity synthetic RawViewerPose-to-FilteredViewerPose adapter and does not represent the production M0E calibration/filtering pipeline. M0E4 integration is host-private and requires explicit dependency-injected One Euro configuration; no production filter default has been selected. M0E5-M0E8 evidence, perceptual acceptance, and default selection remain later work.
 - Exact verification commands: `npm.cmd run check:world-sdk`; `npm.cmd run check:world-boundaries`; `npm.cmd run typecheck`; `npm.cmd test`; `npm.cmd run build`; `cargo check --manifest-path src-tauri/Cargo.toml --locked`; `git diff --check`.
 - Escalation conditions: any change to public ViewerState semantics, timing defaults, easing, public SDK exposure, or controller/world ownership boundary.
