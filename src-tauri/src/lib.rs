@@ -28,7 +28,7 @@ struct StartupMode(Option<SmokeMode>);
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz, #[serde(rename = "mediapipe-480x270-20hz")] MediaPipe480x27020Hz, #[serde(rename = "mediapipe-matrix-diagnostic")] MediaPipeMatrixDiagnostic, #[serde(rename = "m0d7-runner")] M0D7Runner, #[serde(rename = "m0d7-runner-smoke")] M0D7RunnerSmoke }
+enum SmokeMode { Launch, Synthetic, #[serde(rename = "tracking-sidecar")] TrackingSidecar, #[serde(rename = "tracking-sustained")] TrackingSustained, #[serde(rename = "mediapipe-idle")] MediaPipeIdle, #[serde(rename = "mediapipe-24hz")] MediaPipe24Hz, #[serde(rename = "mediapipe-20hz")] MediaPipe20Hz, #[serde(rename = "mediapipe-480x270-20hz")] MediaPipe480x27020Hz, #[serde(rename = "mediapipe-matrix-diagnostic")] MediaPipeMatrixDiagnostic, #[serde(rename = "m0d7-runner")] M0D7Runner, #[serde(rename = "m0d7-runner-smoke")] M0D7RunnerSmoke, #[serde(rename = "m0e5-recollection")] M0E5Recollection }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -70,6 +70,7 @@ fn parse_startup_mode(value: Option<&str>) -> Option<SmokeMode> {
         Some("mediapipe-matrix-diagnostic") => Some(SmokeMode::MediaPipeMatrixDiagnostic),
         Some("m0d7-runner") => Some(SmokeMode::M0D7Runner),
         Some("m0d7-runner-smoke") => Some(SmokeMode::M0D7RunnerSmoke),
+        Some("m0e5-recollection") => Some(SmokeMode::M0E5Recollection),
         _ => None,
     }
 }
@@ -537,6 +538,16 @@ fn write_m0d_evidence_bundle(app: tauri::AppHandle, files: Vec<M0DEvidenceFile>)
     Err("could not allocate a unique M0D evidence run directory".to_owned())
 }
 
+fn m0e5_evidence_root(app: &tauri::AppHandle) -> Result<PathBuf, String> { let root = app.path().app_data_dir().map_err(|error| format!("could not resolve application data directory: {error}"))?.join("m0e5").join("recollection"); fs::create_dir_all(&root).map_err(|error| format!("could not create M0E5 evidence root: {error}"))?; Ok(root) }
+
+#[tauri::command]
+fn write_m0e5_recollection_bundle(app: tauri::AppHandle, files: Vec<M0DEvidenceFile>) -> Result<String, String> {
+    if files.is_empty() || files.len() > 32 { return Err("M0E5 recollection bundle must contain between 1 and 32 files".to_owned()); }
+    let root = m0e5_evidence_root(&app)?; let epoch_ms = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|error| error.to_string())?.as_millis(); let final_dir = root.join(format!("run-{epoch_ms}")); let staging = root.join(format!(".run-{epoch_ms}.incomplete")); fs::create_dir(&staging).map_err(|error| error.to_string())?;
+    for file in &files { let path = Path::new(&file.relative_path); if path.is_absolute() || path.components().any(|component| matches!(component, Component::Prefix(_) | Component::RootDir | Component::ParentDir | Component::CurDir)) || file.contents.len() > 16 * 1024 * 1024 { let _ = fs::remove_dir_all(&staging); return Err(format!("invalid M0E5 evidence path or size: {}", file.relative_path)); } let destination = staging.join(path); if let Some(parent) = destination.parent() { fs::create_dir_all(parent).map_err(|error| error.to_string())?; } fs::write(destination, file.contents.as_bytes()).map_err(|error| error.to_string())?; }
+    fs::rename(&staging, &final_dir).map_err(|error| error.to_string())?; Ok(final_dir.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn get_startup_mode(state: State<'_, StartupMode>) -> Option<SmokeMode> { state.0 }
 
@@ -554,10 +565,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(StartupMode(startup_mode_from_environment()))
-        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event, get_m0d_evidence_root, write_m0d_evidence_bundle, read_calibration_documents, write_calibration_documents])
+        .invoke_handler(tauri::generate_handler![get_startup_mode, complete_smoke, record_benchmark_event, get_m0d_evidence_root, write_m0d_evidence_bundle, write_m0e5_recollection_bundle, read_calibration_documents, write_calibration_documents])
         .setup(|app| {
             #[cfg(windows)]
-            if media_pipe_benchmark_mode(startup_mode_from_environment()) || startup_mode_from_environment() == Some(SmokeMode::M0D7Runner) {
+            if media_pipe_benchmark_mode(startup_mode_from_environment()) || matches!(startup_mode_from_environment(), Some(SmokeMode::M0D7Runner | SmokeMode::M0E5Recollection)) {
                 install_mediapipe_camera_permission_handler(app)?;
             }
             if matches!(startup_mode_from_environment(), Some(SmokeMode::TrackingSidecar | SmokeMode::TrackingSustained)) {
@@ -612,6 +623,12 @@ mod tests {
         assert_eq!(parse_startup_mode(Some("mediapipe-480x270-20hz")), Some(SmokeMode::MediaPipe480x27020Hz));
         assert_eq!(parse_startup_mode(Some("mediapipe-matrix-diagnostic")), Some(SmokeMode::MediaPipeMatrixDiagnostic));
         assert_eq!(parse_startup_mode(Some("unknown")), None);
+        assert_eq!(parse_startup_mode(Some("m0e5-recollection")), Some(SmokeMode::M0E5Recollection));
+    }
+
+    #[test]
+    fn m0e5_recollection_uses_the_mediapipe_permission_path() {
+        assert!(matches!(Some(SmokeMode::M0E5Recollection), Some(mode) if matches!(mode, SmokeMode::M0E5Recollection)));
     }
 
     #[cfg(windows)]
