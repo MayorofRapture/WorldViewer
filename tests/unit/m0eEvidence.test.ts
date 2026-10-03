@@ -3,7 +3,7 @@ import { createM0EManifest, serializeM0EEvidenceFiles } from "../../src/m0e/evid
 import { M0E_REQUIRED_FILES } from "../../src/m0e/evidence/m0eEvidenceContracts";
 import { validateM0EEvidenceBundle } from "../../src/m0e/evidence/m0eEvidenceValidator";
 import { calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, evaluateTransition } from "../../src/m0e/analysis/filterMetrics";
-import { computeM0ETraceContentHash } from "../../src/m0e/evidence/m0eSourceContentHash";
+import { computeM0ETraceContentHash, computeM0ETraceContentHashes, validateM0EAuthoritativeSourceArtifacts } from "../../src/m0e/evidence/m0eSourceContentHash";
 
 describe("M0E evidence contracts", () => {
   it("serializes the timestamp for each stationary sample, not the first phase sample", () => {
@@ -35,6 +35,39 @@ describe("M0E evidence contracts", () => {
     expect(missing.failures.map((failure) => failure.code)).toContain("source-content-unavailable");
     const tampered = validateM0EEvidenceBundle({ manifest: { ...manifest, traceContentHashes: ["sha256:" + "0".repeat(64)] }, filesIncluded: [] }, artifacts);
     expect(tampered.failures.map((failure) => failure.code)).toContain("source-content-hash-mismatch");
+  });
+
+  it("validates the complete authoritative source set before grouping or hashing", () => {
+    const artifacts = {
+      observationTrace: [{ envelope: { traceId: "trace-a" }, observation: { timestampMs: 1 } }, { envelope: { traceId: "trace-b" }, observation: { timestampMs: 2 } }],
+      selectedEstimatorReplay: [{ observationTraceId: "trace-a", timestampMs: 1 }, { observationTraceId: "trace-b", timestampMs: 2 }],
+    };
+    expect(validateM0EAuthoritativeSourceArtifacts(artifacts).ok).toBe(true);
+    expect(computeM0ETraceContentHashes(artifacts)).toHaveLength(2);
+    expect(computeM0ETraceContentHash("trace-a", { ...artifacts, observationTrace: [{ ...artifacts.observationTrace[0], observation: { timestampMs: 99 } }, artifacts.observationTrace[1]] })).not.toBe(computeM0ETraceContentHash("trace-a", artifacts));
+    expect(computeM0ETraceContentHash("trace-b", { ...artifacts, observationTrace: [{ ...artifacts.observationTrace[0], observation: { timestampMs: 99 } }, artifacts.observationTrace[1]] })).toBe(computeM0ETraceContentHash("trace-b", artifacts));
+    const equivalent = { observationTrace: [{ observation: { timestampMs: 1 }, envelope: { traceId: "trace-a" } }, { observation: { timestampMs: 2 }, envelope: { traceId: "trace-b" } }], selectedEstimatorReplay: [{ timestampMs: 1, observationTraceId: "trace-a" }, { timestampMs: 2, observationTraceId: "trace-b" }] };
+    expect(computeM0ETraceContentHashes(equivalent)).toEqual(computeM0ETraceContentHashes(artifacts));
+
+    const malformedCases = [
+      { ...artifacts, observationTrace: [...artifacts.observationTrace, {}] },
+      { ...artifacts, observationTrace: [...artifacts.observationTrace, { envelope: { traceId: "" } }] },
+      { ...artifacts, selectedEstimatorReplay: [...artifacts.selectedEstimatorReplay, {}] },
+      { ...artifacts, selectedEstimatorReplay: [...artifacts.selectedEstimatorReplay, { observationTraceId: "trace-c" }] },
+      { ...artifacts, selectedEstimatorReplay: [artifacts.selectedEstimatorReplay[0]] },
+      { ...artifacts, observationTrace: [artifacts.observationTrace[0]] },
+    ];
+    for (const malformed of malformedCases) {
+      expect(validateM0EAuthoritativeSourceArtifacts(malformed).ok).toBe(false);
+      expect(() => computeM0ETraceContentHashes(malformed)).toThrow();
+    }
+  });
+
+  it("returns a failed validation result for malformed authoritative source content", () => {
+    const artifacts = { observationTrace: [{}], selectedEstimatorReplay: [{ observationTraceId: "trace" }] };
+    const result = validateM0EEvidenceBundle({ manifest: { sourceCommit: "claim", traceIds: ["trace"], traceContentHashes: ["sha256:" + "0".repeat(64)] }, filesIncluded: [] }, artifacts);
+    expect(result.passed).toBe(false);
+    expect(result.failures).toEqual(expect.arrayContaining([expect.objectContaining({ code: "invalid-authoritative-source-content" })]));
   });
 
   it("rejects missing files, invalid versions, and incomplete candidates deterministically", () => {

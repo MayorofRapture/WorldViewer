@@ -1,7 +1,7 @@
 import { buildShortlist, calculateStationaryTrialMetric, enumerateOneEuroGrid, evaluateTransition, type CandidateObjective, type MotionTransition, type CandidateTransitionResult } from "../analysis/filterMetrics";
 import { fitRelativeAxis, fitZAxisInitial } from "../analysis/calibrationAnalysis";
 import { M0E_ALLOWED_INVALIDATION_REASONS, M0E_DRAFT_VERSION, M0E_EVIDENCE_SCHEMA_VERSION, M0E_EXPERIMENT_PROCEDURE_VERSION, M0E_METRIC_VERSION, M0E_REQUIRED_FILES, M0E_REQUIRED_GRID, M0E_REQUIRED_SCENARIO_IDS, M0E_VALIDATOR_VERSION, type M0EEvidenceBundle } from "./m0eEvidenceContracts";
-import { computeM0ETraceContentHash, sourceTraceIds, type M0EAuthoritativeSourceArtifacts } from "./m0eSourceContentHash";
+import { computeM0ETraceContentHashFromValidated, validateM0EAuthoritativeSourceArtifacts, type M0EAuthoritativeSourceArtifacts } from "./m0eSourceContentHash";
 
 export interface M0EValidationFailure {
   readonly code: string;
@@ -116,12 +116,15 @@ export function validateM0EEvidenceBundle(value: unknown, authoritativeSourceArt
 
   if (!fixtureBundle) {
     if (authoritativeSourceArtifacts === undefined) add(failures, "source-content-unavailable", "authoritativeSourceArtifacts", "claim-bearing validation requires authoritative observation and replay source artifacts");
-    else if (record(manifest) && Array.isArray(manifest.traceIds) && Array.isArray(manifest.traceContentHashes)) {
-      const expectedTraceIds = sourceTraceIds(authoritativeSourceArtifacts);
-      if (JSON.stringify(manifest.traceIds) !== JSON.stringify(expectedTraceIds)) add(failures, "source-trace-mismatch", "manifest.traceIds", "manifest trace IDs must exactly match authoritative source order");
-      for (const [index, traceId] of expectedTraceIds.entries()) {
-        const expectedHash = computeM0ETraceContentHash(traceId, authoritativeSourceArtifacts);
-        if (manifest.traceContentHashes[index] !== expectedHash) add(failures, "source-content-hash-mismatch", `manifest.traceContentHashes[${index}]`, "manifest hash does not match independently regenerated authoritative source content");
+    else {
+      const sourceValidation = validateM0EAuthoritativeSourceArtifacts(authoritativeSourceArtifacts);
+      if (!sourceValidation.ok) add(failures, "invalid-authoritative-source-content", `authoritativeSourceArtifacts.${sourceValidation.failure.path}`, `${sourceValidation.failure.code}: ${sourceValidation.failure.message}`);
+      else if (record(manifest) && Array.isArray(manifest.traceIds) && Array.isArray(manifest.traceContentHashes)) {
+        if (JSON.stringify(manifest.traceIds) !== JSON.stringify(sourceValidation.traceIds)) add(failures, "source-trace-mismatch", "manifest.traceIds", "manifest trace IDs must exactly match authoritative source order");
+        for (const [index, traceId] of sourceValidation.traceIds.entries()) {
+          const expectedHash = computeM0ETraceContentHashFromValidated(sourceValidation, traceId);
+          if (manifest.traceContentHashes[index] !== expectedHash) add(failures, "source-content-hash-mismatch", `manifest.traceContentHashes[${index}]`, "manifest hash does not match independently regenerated authoritative source content");
+        }
       }
     }
   }

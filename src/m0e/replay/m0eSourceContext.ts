@@ -1,6 +1,6 @@
 import type { M0DObservationTraceRecord } from "../../m0d/evidence/m0dEvidenceContracts";
 import type { SelectedEstimatorReplayRecord } from "./recordedReplay";
-import { computeM0ETraceContentHashes, sourceArtifactsEqual, sourceTraceIds, type M0EAuthoritativeSourceArtifacts } from "../evidence/m0eSourceContentHash";
+import { computeM0ETraceContentHashesFromValidated, sourceArtifactsEqual, validateM0EAuthoritativeSourceArtifacts, type M0EAuthoritativeSourceArtifacts } from "../evidence/m0eSourceContentHash";
 
 export type M0EReadinessStatus = "verified" | "not-proven-reusable" | "blocked";
 export type M0ECalibrationAxis = "x" | "y" | "z";
@@ -103,10 +103,13 @@ function makeReadiness(trace: readonly M0DObservationTraceRecord[], replay: read
   for (const transition of context.transitions) if (axisFor(transition.scenarioId) !== transition.axis || transition.timestampsMs.length < 2 || !monotonic(transition.timestampsMs)) transitionIssues.push(problem("invalid-transition-structure", `${transition.transitionId} has invalid scenario/axis mapping or timestamps`));
   for (const scenario of scenarios) if (!context.transitions.some((transition) => transition.scenarioId === scenario)) transitionIssues.push(problem("missing-transition-family", `${scenario} transition family is missing`));
   const artifacts = source.authoritativeSourceArtifacts;
-  const expectedTraceIds = artifacts ? sourceTraceIds(artifacts) : [];
-  const expectedHashes = artifacts ? computeM0ETraceContentHashes(artifacts) : [];
+  const sourceValidation = artifacts ? validateM0EAuthoritativeSourceArtifacts(artifacts) : undefined;
+  const expectedTraceIds = sourceValidation?.ok ? sourceValidation.traceIds : [];
+  const expectedHashes = sourceValidation?.ok ? computeM0ETraceContentHashesFromValidated(sourceValidation) : [];
   const sourceContentIssues: M0ESourceReadinessIssue[] = [];
   if (!artifacts) sourceContentIssues.push(problem("source-content-unavailable", "authoritative M0D source artifacts were not supplied"));
+  else if (sourceValidation === undefined) sourceContentIssues.push(problem("source-content-unavailable", "authoritative M0D source artifacts were not supplied"));
+  else if (!sourceValidation.ok) sourceContentIssues.push(problem(sourceValidation.failure.code, `${sourceValidation.failure.path}: ${sourceValidation.failure.message}`));
   else {
     if (!sourceArtifactsEqual({ observationTrace: trace, selectedEstimatorReplay: replay }, artifacts)) sourceContentIssues.push(problem("source-reconstruction-mismatch", "readiness inputs do not correspond to the authoritative source artifacts"));
     if (JSON.stringify(traceIds) !== JSON.stringify(expectedTraceIds)) sourceContentIssues.push(problem("source-trace-id-mismatch", "reconstructed trace IDs do not match the authoritative source"));

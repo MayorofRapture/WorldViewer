@@ -103,6 +103,14 @@ describe("M0E selected-estimator replay", () => {
     expect(readiness.replayAlignment.issues.map((entry) => entry.code)).toContain("replay-source-misalignment");
   });
 
+  it("blocks readiness when authoritative provenance contains malformed or unmatched rows", () => {
+    const trace = syntheticTrace([{ scenarioId: "neutral-stationary", stepKind: "capture", trialId: "neutral-stationary-trial-1", segmentId: "capture" }]);
+    const replay = parseSelectedEstimatorReplayRecords(JSON.stringify({ schemaVersion: 1, timestampMs: 1, observationTraceId: "synthetic", estimatorId: "mediapipe-facial-transform-v1", estimatorConfigHash: "fnv1a64-825a99daebb20f6c", valid: true, positionMm: { x: 0, y: 0, z: 600 } }));
+    const readiness = reconstructM0ESourceContext(trace, replay, { ...readinessSource, authoritativeSourceArtifacts: { observationTrace: [...trace, {}], selectedEstimatorReplay: replay } }).readiness!;
+    expect(readiness.contentHashStatus).toBe("blocked");
+    expect(readiness.replayAlignment.issues.map((issue) => issue.code)).toContain("invalid-observation-source-content");
+  });
+
   it("requires the exact frozen neutral trial identity set", () => {
     const neutral = Array.from({ length: 5 }, (_, index) => ({ scenarioId: "neutral-stationary", stepKind: "capture" as const, trialId: `neutral-stationary-trial-${index + 1}`, segmentId: `neutral-${index}` }));
     expect(readinessFor(syntheticTrace(neutral)).neutralStationary.issues.map((issue) => issue.code)).not.toContain("invalid-neutral-trial-identity");
