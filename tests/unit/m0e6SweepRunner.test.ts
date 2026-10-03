@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { enumerateOneEuroGrid } from "../../src/m0e/analysis/filterMetrics";
-import { M0E6_REQUIRED_NEUTRAL_TRIAL_IDS, M0E6InputValidationError, runM0E6DevelopmentSweep, serializeM0E6DevelopmentResult, type M0E6SweepInput } from "../../src/m0e/runner/m0e6SweepRunner";
+import { buildM0E6DevelopmentShortlist, M0E6_REQUIRED_NEUTRAL_TRIAL_IDS, M0E6InputValidationError, runM0E6DevelopmentSweep, serializeM0E6DevelopmentResult, type M0E6SweepInput } from "../../src/m0e/runner/m0e6SweepRunner";
 
 const pose = (timestampMs: number, x = 0, y = 0, z = 600) => ({ timestampMs, positionMm: { x, y, z } });
 
@@ -8,7 +8,22 @@ function input(): M0E6SweepInput {
   return {
     authority: "fixture",
     stationaryTrials: M0E6_REQUIRED_NEUTRAL_TRIAL_IDS.map((trialId, index) => ({ trialId, settle: [pose(index * 100 + 1)], capture: [pose(index * 100 + 2), pose(index * 100 + 3)] })),
-    transitions: [{ transitionId: "x-transition-1", axis: "x", start: 0, final: 10, samples: [pose(1000, 0), pose(1010, 6), pose(1020, 10), pose(1030, 10), pose(1040, 10)] .map((sample, index) => ({ ...sample, input: index === 0 ? 0 : 10 })) }],
+    transitions: [transition("x-transition-1", 1000)],
+  };
+}
+
+function inputWithTransitions(transitions: M0E6SweepInput["transitions"]): M0E6SweepInput {
+  return { ...input(), transitions };
+}
+
+function transition(transitionId: string, offset: number, sourceInvalidationReason?: "source-procedural-invalidation"): M0E6SweepInput["transitions"][number] {
+  return {
+    transitionId,
+    axis: "x",
+    start: 0,
+    final: 10,
+    ...(sourceInvalidationReason === undefined ? {} : { sourceInvalidationReason }),
+    samples: Array.from({ length: 241 }, (_, index) => ({ ...pose(offset + index * 10, index === 0 ? 0 : 10), input: index === 0 ? 0 : 10 })),
   };
 }
 
@@ -30,6 +45,52 @@ describe("M0E6 development sweep runner", () => {
   it("is explicitly development-only and preserves all candidate transition identities", () => {
     const result = runM0E6DevelopmentSweep(input());
     expect(result).toMatchObject({ authority: "fixture", claimBearing: false, finalFilterSelection: "not-performed", m0e7: "not-started", m0e8: "not-started" });
-    expect(result.candidates.every((candidate) => candidate.transitionReplayInputs?.map((transition) => transition.transitionId).join() === "x-transition-1")).toBe(true);
+    expect(result.candidates).toHaveLength(25);
+    expect(result.transitionReplayInputs.map((transition) => transition.transitionId)).toEqual(["x-transition-1"]);
+  });
+
+  it("propagates nearest-rank p95 lag from the candidate's evaluable transition results", () => {
+    const result = runM0E6DevelopmentSweep(inputWithTransitions([transition("x-transition-1", 1000), transition("x-transition-2", 2000)]));
+    const candidate = result.candidates[0]!;
+    const lags = candidate.transitionResults?.filter((entry): entry is Extract<typeof entry, { status: "evaluable" }> => entry.status === "evaluable").map((entry) => entry.lagMs) ?? [];
+    expect(lags.length).toBe(2);
+    expect(candidate.p95LagMs).toBe(Math.min(...lags));
+    expect(candidate.p95LagMs).toBe(candidate.lagSummary.p95LagMs);
+  });
+
+  it("produces an ordinary shortlist when a candidate has finite jitter and lag objectives", () => {
+    const result = runM0E6DevelopmentSweep(input());
+    expect(result.frontierStatus).toBe("shortlist");
+    expect(result.paretoFrontier.length).toBeGreaterThanOrEqual(1);
+    expect(result.paretoFrontier.length).toBeLessThanOrEqual(6);
+  });
+
+  it("keeps non-evaluable transitions visible and returns no shortlist when lag is unavailable", () => {
+    const result = runM0E6DevelopmentSweep(inputWithTransitions([transition("x-invalid", 1000, "source-procedural-invalidation")]));
+    expect(result.frontierStatus).toBe("no-shortlist");
+    expect(result.paretoFrontier).toHaveLength(0);
+    expect(result.candidates[0]?.transitionResults?.[0]).toMatchObject({ status: "non-evaluable", reason: "source-procedural-invalidation" });
+  });
+
+  it("rejects non-finite prepared input before execution rather than misclassifying it", () => {
+    const malformed = inputWithTransitions([{ ...transition("x-invalid-input", 1000), samples: [{ ...transition("x-invalid-input", 1000).samples[0]!, input: Number.NaN }] }]);
+    expect(() => runM0E6DevelopmentSweep(malformed)).toThrow(M0E6InputValidationError);
+  });
+
+  it("supports the stronger-review frontier state through the runner shortlist boundary", () => {
+    const result = runM0E6DevelopmentSweep(input());
+    const candidates = result.candidates.slice(0, 7).map((candidate, index) => ({ ...candidate, eligible: true, jitterObjective: index + 1, p95LagMs: 7 - index, lagSummary: { ...candidate.lagSummary, p95LagMs: 7 - index } }));
+    const shortlist = buildM0E6DevelopmentShortlist(candidates);
+    expect(shortlist.status).toBe("requires-stronger-review");
+    expect(shortlist.frontier.length).toBeGreaterThan(6);
+  });
+
+  it("preserves typed source replay inputs and gives every candidate identical transition inputs", () => {
+    const source = transition("x-source", 1000);
+    const result = runM0E6DevelopmentSweep(inputWithTransitions([source]));
+    expect(result.transitionReplayInputs).toEqual([source]);
+    const inputShapes = result.candidates.map(() => result.transitionReplayInputs.map((entry) => ({ transitionId: entry.transitionId, axis: entry.axis, start: entry.start, final: entry.final, samples: entry.samples.map((sample) => ({ timestampMs: sample.timestampMs, input: sample.input, positionMm: sample.positionMm })) })));
+    expect(inputShapes.every((shape) => JSON.stringify(shape) === JSON.stringify(inputShapes[0]))).toBe(true);
+    expect(result.transitionReplayInputs[0]?.samples[0]?.positionMm).toEqual(source.samples[0]?.positionMm);
   });
 });

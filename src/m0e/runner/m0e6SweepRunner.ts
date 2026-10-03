@@ -1,18 +1,19 @@
 import type { CalibratedViewerPose } from "../../shared/contracts/calibration";
-import { OneEuroPoseFilter } from "../../engine/filter/poseFilter";
+import { OneEuroPoseFilter, PoseFilterInputError } from "../../engine/filter/poseFilter";
 import {
   buildShortlist,
   calculateStationaryTrialMetric,
   enumerateOneEuroGrid,
   evaluateTransition,
+  nearestRankPercentile,
   objectiveForCandidate,
   type CandidateObjective,
   type InvalidSampleLocation,
   type MotionTransition,
   type OneEuroCandidateConfiguration,
-  type StationaryTrial,
   type TransitionSample,
 } from "../analysis/filterMetrics";
+import type { TransitionInvalidationReason } from "../analysis/filterMetrics";
 import { stableM0EJsonStringify } from "../evidence/m0eSerialization";
 
 export const M0E6_REQUIRED_NEUTRAL_TRIAL_IDS = Object.freeze([
@@ -50,7 +51,7 @@ export interface M0E6TransitionInput {
   readonly start: number;
   readonly final: number;
   readonly samples: readonly M0E6TransitionSampleInput[];
-  readonly sourceInvalidationReason?: MotionTransition["sourceInvalidationReason"];
+  readonly sourceInvalidationReason?: TransitionInvalidationReason;
 }
 
 export interface M0E6SweepInput {
@@ -141,11 +142,18 @@ function invalidStationaryMetric(trialId: string): ReturnType<typeof calculateSt
   return { trialId, rms: { x: Infinity, y: Infinity, z: Infinity }, eligible: false };
 }
 
+function invalidClassification(error: unknown): InvalidSampleLocation["classification"] {
+  return error instanceof PoseFilterInputError && error.code === "non-finite-output" ? "non-finite-output" : "filter-rejection";
+}
+
+export function buildM0E6DevelopmentShortlist(candidates: readonly CandidateObjective[]): ReturnType<typeof buildShortlist> {
+  return buildShortlist(candidates);
+}
+
 function runCandidate(candidate: OneEuroCandidateConfiguration, input: M0E6SweepInput): CandidateObjective {
   const filter = new OneEuroPoseFilter({ minCutoffHz: candidate.minCutoffHz, beta: candidate.beta, dCutoffHz: candidate.dCutoffHz, initialFrequencyHz: 60 });
   let invalidOutputCount = 0;
   const invalidLocations: InvalidSampleLocation[] = [];
-  const stationaryOutputs: StationaryTrial[] = [];
   const stationaryMetrics = input.stationaryTrials.map((trial) => {
     filter.reset();
     const settle: { x: number; y: number; z: number }[] = [];
@@ -156,11 +164,10 @@ function runCandidate(candidate: OneEuroCandidateConfiguration, input: M0E6Sweep
         (trial.settle.includes(sample) ? settle : capture).push(output);
       } catch (error) {
         invalidOutputCount += 1;
-        invalidLocations.push({ candidateId: candidate.candidateId, traceKind: "stationary", stationaryTrialId: trial.trialId, timestampMs: sample.timestampMs, classification: "filter-rejection", reason: error instanceof Error ? error.message : "filter update failed" });
+        invalidLocations.push({ candidateId: candidate.candidateId, traceKind: "stationary", stationaryTrialId: trial.trialId, timestampMs: sample.timestampMs, classification: invalidClassification(error), reason: error instanceof Error ? error.message : "filter update failed" });
       }
     }
     const replayed = { trialId: trial.trialId, settle, capture };
-    stationaryOutputs.push(replayed);
     try { return calculateStationaryTrialMetric(replayed); } catch { return invalidStationaryMetric(trial.trialId); }
   });
   const transitionOutputs: MotionTransition[] = [];
@@ -173,7 +180,7 @@ function runCandidate(candidate: OneEuroCandidateConfiguration, input: M0E6Sweep
         samples.push({ timestampMs: sample.timestampMs, input: sample.input, output: filtered[transition.axis], filteredPositionMm: filtered, rawPositionMm: sample.positionMm });
       } catch (error) {
         invalidOutputCount += 1;
-        invalidLocations.push({ candidateId: candidate.candidateId, traceKind: "transition", transitionId: transition.transitionId, timestampMs: sample.timestampMs, classification: "filter-rejection", reason: error instanceof Error ? error.message : "filter update failed" });
+        invalidLocations.push({ candidateId: candidate.candidateId, traceKind: "transition", transitionId: transition.transitionId, timestampMs: sample.timestampMs, classification: invalidClassification(error), reason: error instanceof Error ? error.message : "filter update failed" });
         samples.push({ timestampMs: sample.timestampMs, input: sample.input, output: Number.NaN, filteredPositionMm: { x: Number.NaN, y: Number.NaN, z: Number.NaN }, rawPositionMm: sample.positionMm });
       }
     }
@@ -182,14 +189,16 @@ function runCandidate(candidate: OneEuroCandidateConfiguration, input: M0E6Sweep
     return evaluateTransition(output);
   });
   const metrics = transitionResults.filter((result): result is Extract<typeof result, { status: "evaluable" }> => result.status === "evaluable").map((result) => ({ transitionId: result.transitionId, axis: result.axis, lagMs: result.lagMs, overshootMm: result.overshootMm, discontinuityMm: result.discontinuityMm }));
-  return objectiveForCandidate(candidate, stationaryMetrics, null, invalidOutputCount, metrics, 0, 0, input.stationaryTrials as unknown as readonly StationaryTrial[], input.transitions as unknown as readonly MotionTransition[], stationaryOutputs, transitionResults, transitionOutputs, invalidLocations);
+  const lags = transitionResults.filter((result): result is Extract<typeof result, { status: "evaluable" }> => result.status === "evaluable").map((result) => result.lagMs);
+  const p95LagMs = lags.length === 0 ? null : nearestRankPercentile(lags, 0.95);
+  return objectiveForCandidate(candidate, stationaryMetrics, p95LagMs, invalidOutputCount, metrics, 0, 0, undefined, undefined, undefined, transitionResults, transitionOutputs, invalidLocations);
 }
 
 export function runM0E6DevelopmentSweep(input: M0E6SweepInput): M0E6DevelopmentResult {
   validateM0E6SweepInput(input);
   const candidateConfigurations = input.candidateConfigurations ?? enumerateOneEuroGrid();
   const candidates = candidateConfigurations.map((candidate) => runCandidate(candidate, input));
-  const shortlist = buildShortlist(candidates);
+  const shortlist = buildM0E6DevelopmentShortlist(candidates);
   return Object.freeze({ authority: input.authority, claimBearing: false, finalFilterSelection: "not-performed", m0e7: "not-started", m0e8: "not-started", candidateConfigurations: Object.freeze([...candidateConfigurations]), stationaryReplayInputs: Object.freeze([...input.stationaryTrials]), transitionReplayInputs: Object.freeze([...input.transitions]), candidates: Object.freeze(candidates), paretoFrontier: shortlist.frontier, frontierStatus: shortlist.status });
 }
 
