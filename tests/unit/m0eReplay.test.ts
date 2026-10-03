@@ -4,6 +4,7 @@ import { createDefaultCalibrationProfile } from "../../src/shared/contracts/cali
 import { readFileSync } from "node:fs";
 import { reconstructM0ESourceContext } from "../../src/m0e/replay/m0eSourceContext";
 import type { M0DObservationTraceRecord } from "../../src/m0d/evidence/m0dEvidenceContracts";
+import { computeM0ETraceContentHashes } from "../../src/m0e/evidence/m0eSourceContentHash";
 
 const readinessSource = {
   sourceM0DRunId: "run-1790638307359",
@@ -70,14 +71,18 @@ describe("M0E selected-estimator replay", () => {
     const root = "evidence/m0d/estimator-experiment-v3/run-1790638307359";
     const replay = parseSelectedEstimatorReplayRecords(readFileSync(`${root}/estimator-a/outputs/replay.jsonl`, "utf8"));
     const trace = readFileSync(`${root}/observations/trace.jsonl`, "utf8").trim().split(/\r?\n/).map((line) => JSON.parse(line) as M0DObservationTraceRecord);
+    const authoritativeSourceArtifacts = { observationTrace: trace, selectedEstimatorReplay: readFileSync(`${root}/estimator-a/outputs/replay.jsonl`, "utf8").trim().split(/\r?\n/).map((line) => JSON.parse(line) as unknown) };
     const source = {
       sourceM0DRunId: "run-1790638307359",
       sourceM0DPath: root,
       manifest: { schemaVersion: 1, experimentSpecVersion: "0.4", experimentProcedureVersion: 3, estimatorA: { estimatorId: "mediapipe-facial-transform-v1", configHash: "fnv1a64-825a99daebb20f6c" } },
       validation: { passed: true, validatorVersion: 1 },
+      traceContentHashes: computeM0ETraceContentHashes(authoritativeSourceArtifacts),
+      authoritativeSourceArtifacts,
     } as const;
     const readiness = reconstructM0ESourceContext(trace, replay, source).readiness!;
     expect(readiness.replayAlignment.status).toBe("verified");
+    expect(readiness.contentHashStatus).toBe("verified");
     expect(readiness.calibration.x.status).toBe("not-proven-reusable");
     expect(readiness.calibration.y.status).toBe("not-proven-reusable");
     expect(readiness.calibration.x.issues.map((entry) => entry.code)).toContain("invalid-calibration-target-order");

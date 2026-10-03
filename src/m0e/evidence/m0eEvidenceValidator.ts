@@ -1,6 +1,7 @@
 import { buildShortlist, calculateStationaryTrialMetric, enumerateOneEuroGrid, evaluateTransition, type CandidateObjective, type MotionTransition, type CandidateTransitionResult } from "../analysis/filterMetrics";
 import { fitRelativeAxis, fitZAxisInitial } from "../analysis/calibrationAnalysis";
 import { M0E_ALLOWED_INVALIDATION_REASONS, M0E_DRAFT_VERSION, M0E_EVIDENCE_SCHEMA_VERSION, M0E_EXPERIMENT_PROCEDURE_VERSION, M0E_METRIC_VERSION, M0E_REQUIRED_FILES, M0E_REQUIRED_GRID, M0E_REQUIRED_SCENARIO_IDS, M0E_VALIDATOR_VERSION, type M0EEvidenceBundle } from "./m0eEvidenceContracts";
+import { computeM0ETraceContentHash, sourceTraceIds, type M0EAuthoritativeSourceArtifacts } from "./m0eSourceContentHash";
 
 export interface M0EValidationFailure {
   readonly code: string;
@@ -21,6 +22,7 @@ const CHECKS = Object.freeze([
   "exact-procedure-identity",
   "estimator-identity",
   "source-trace-provenance",
+  "independent-source-content-hash",
   "required-scenarios-and-trials",
   "candidate-grid",
   "finite-metrics",
@@ -66,11 +68,14 @@ function candidateValueAsCandidate(value: unknown): CandidateObjective | null {
   return record(value) ? value as unknown as CandidateObjective : null;
 }
 
-export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
+const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;
+
+export function validateM0EEvidenceBundle(value: unknown, authoritativeSourceArtifacts?: M0EAuthoritativeSourceArtifacts): M0EValidationResult {
   const failures: M0EValidationFailure[] = [];
   const bundle = record(value) ? value as Partial<M0EEvidenceBundle> : null;
   const manifest = bundle?.manifest;
   const filesIncluded = bundle?.filesIncluded;
+  const fixtureBundle = record(manifest) && manifest.sourceCommit === "fixture";
   const evidenceSchemaVersion = record(manifest) && finite(manifest.evidenceSchemaVersion) ? manifest.evidenceSchemaVersion : null;
 
   if (!Array.isArray(filesIncluded)) add(failures, "missing-required-files", "filesIncluded", "filesIncluded must be an array");
@@ -83,6 +88,11 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
     if (manifest.estimatorId !== "mediapipe-facial-transform-v1" || manifest.estimatorVersion !== "v1" || manifest.estimatorConfigHash !== "fnv1a64-825a99daebb20f6c") add(failures, "invalid-estimator-identity", "manifest", "manifest estimator identity/configuration does not match ADR-006.01");
     if (manifest.calibrationModel !== "independent-per-axis-scale-offset" || manifest.filterPackage !== "1eurofilter" || manifest.filterPackageVersion !== "1.3.0") add(failures, "invalid-model-provenance", "manifest", "calibration/filter provenance does not match frozen reuse and oracle records");
     if (!Array.isArray(manifest.traceIds) || manifest.traceIds.length === 0 || !manifest.traceIds.every((traceId) => typeof traceId === "string" && traceId.trim().length > 0) || !Array.isArray(manifest.traceContentHashes) || manifest.traceContentHashes.length === 0) add(failures, "invalid-trace-provenance", "manifest.traceIds", "source trace IDs and content hashes are required");
+    else {
+      if (manifest.traceIds.length !== manifest.traceContentHashes.length) add(failures, "invalid-trace-provenance", "manifest.traceContentHashes", "trace IDs and content hashes must have identical lengths");
+      if (new Set(manifest.traceIds).size !== manifest.traceIds.length) add(failures, "invalid-trace-provenance", "manifest.traceIds", "trace IDs must be unique");
+      if (!fixtureBundle) for (const [index, hash] of manifest.traceContentHashes.entries()) if (typeof hash !== "string" || !SHA256_DIGEST.test(hash)) add(failures, "invalid-trace-content-hash", `manifest.traceContentHashes[${index}]`, "trace content hashes must use lowercase sha256:<64 hex> representation");
+    }
     if (!Array.isArray(manifest.requiredScenarioIds) || M0E_REQUIRED_SCENARIO_IDS.some((scenarioId) => !manifest.requiredScenarioIds?.includes(scenarioId))) add(failures, "missing-calibration-scenarios", "manifest.requiredScenarioIds", "lateral, vertical, and approach-retreat scenarios are required");
     if (!Array.isArray(manifest.requiredNeutralTrialIds) || manifest.requiredNeutralTrialIds.length !== 5) add(failures, "missing-stationary-trials", "manifest.requiredNeutralTrialIds", "exactly five required neutral stationary trials are required");
     if (!Array.isArray(manifest.requiredTransitionAxes) || manifest.requiredTransitionAxes.length !== 3 || !(["x", "y", "z"] as const).every((axis) => manifest.requiredTransitionAxes?.includes(axis))) add(failures, "missing-transitions", "manifest.requiredTransitionAxes", "X, Y, and Z prescribed transitions are required");
@@ -90,7 +100,6 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
   }
 
   const sourceReadiness = bundle?.sourceReadiness;
-  const fixtureBundle = record(manifest) && manifest.sourceCommit === "fixture";
   if (sourceReadiness === undefined && !fixtureBundle) add(failures, "missing-source-readiness", "sourceReadiness", "claim-bearing M0E validation requires source-derived readiness proof");
   if (sourceReadiness !== undefined) {
     if (sourceReadiness.sourceM0DRunId !== "run-1790638307359") add(failures, "wrong-m0d-run-id", "sourceReadiness.sourceM0DRunId", "source readiness must identify the prescribed M0D run");
@@ -99,10 +108,22 @@ export function validateM0EEvidenceBundle(value: unknown): M0EValidationResult {
     if (sourceReadiness.selectedEstimator.id !== "mediapipe-facial-transform-v1" || sourceReadiness.selectedEstimator.configHash !== "fnv1a64-825a99daebb20f6c") add(failures, "source-estimator-mismatch", "sourceReadiness.selectedEstimator", "source estimator identity/configuration does not match the frozen selected Estimator A");
     if (!Array.isArray(manifest?.traceIds) || JSON.stringify(manifest.traceIds) !== JSON.stringify(sourceReadiness.traceIds) || new Set(manifest.traceIds).size !== manifest.traceIds.length) add(failures, "source-trace-mismatch", "manifest.traceIds", "manifest trace IDs must exactly match source-derived trace IDs without duplicates");
     if (sourceReadiness.replayAlignment.status !== "verified") add(failures, "replay-source-misalignment", "sourceReadiness.replayAlignment", sourceReadiness.replayAlignment.issues.map((entry) => entry.detail).join("; "));
-    if (sourceReadiness.contentHashStatus !== "verified") add(failures, "unproven-trace-content-identity", "sourceReadiness.contentHashStatus", "the frozen requirement needs an authoritative content-hash convention; claim-bearing validation remains blocked until it exists");
+    if (sourceReadiness.contentHashStatus !== "verified") add(failures, "unproven-trace-content-identity", "sourceReadiness.contentHashStatus", "authoritative source content provenance is not verified");
     for (const axis of ["x", "y", "z"] as const) if (sourceReadiness.calibration[axis].status !== "verified") add(failures, "source-procedural-invalidation", `sourceReadiness.calibration.${axis}`, sourceReadiness.calibration[axis].issues.map((entry) => entry.detail).join("; "));
     if (sourceReadiness.neutralStationary.status !== "verified") add(failures, "unproven-neutral-stationary", "sourceReadiness.neutralStationary", sourceReadiness.neutralStationary.issues.map((entry) => entry.detail).join("; "));
     if (sourceReadiness.motionTransitions.status !== "verified") add(failures, "incomplete-motion-transitions", "sourceReadiness.motionTransitions", sourceReadiness.motionTransitions.issues.map((entry) => entry.detail).join("; "));
+  }
+
+  if (!fixtureBundle) {
+    if (authoritativeSourceArtifacts === undefined) add(failures, "source-content-unavailable", "authoritativeSourceArtifacts", "claim-bearing validation requires authoritative observation and replay source artifacts");
+    else if (record(manifest) && Array.isArray(manifest.traceIds) && Array.isArray(manifest.traceContentHashes)) {
+      const expectedTraceIds = sourceTraceIds(authoritativeSourceArtifacts);
+      if (JSON.stringify(manifest.traceIds) !== JSON.stringify(expectedTraceIds)) add(failures, "source-trace-mismatch", "manifest.traceIds", "manifest trace IDs must exactly match authoritative source order");
+      for (const [index, traceId] of expectedTraceIds.entries()) {
+        const expectedHash = computeM0ETraceContentHash(traceId, authoritativeSourceArtifacts);
+        if (manifest.traceContentHashes[index] !== expectedHash) add(failures, "source-content-hash-mismatch", `manifest.traceContentHashes[${index}]`, "manifest hash does not match independently regenerated authoritative source content");
+      }
+    }
   }
 
   const filtering = bundle?.filtering;

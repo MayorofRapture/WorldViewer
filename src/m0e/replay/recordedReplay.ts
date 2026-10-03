@@ -22,7 +22,8 @@ export interface SelectedEstimatorTraceRecord {
   readonly estimatorConfigHash: string;
   readonly valid: boolean;
   readonly positionMm: { readonly x: number; readonly y: number; readonly z: number } | null;
-  readonly invalidReason?: string;
+  readonly invalidReason?: string | null;
+  readonly estimatorProcessingMs?: number;
 }
 
 export type SelectedEstimatorReplayRecord = Readonly<
@@ -54,8 +55,10 @@ export function parseSelectedEstimatorReplayRecords(text: string): readonly Sele
     const invalidRecord = !valid && positionMm === null && typeof record.invalidReason === "string" && record.invalidReason.length > 0;
     if (record.schemaVersion !== 1 || record.estimatorId !== SELECTED_ESTIMATOR_ID || record.estimatorConfigHash !== SELECTED_ESTIMATOR_CONFIG_HASH || typeof record.observationTraceId !== "string" || typeof timestampMs !== "number" || !Number.isFinite(timestampMs) || timestampMs <= previousTimestamp || (!validRecord && !invalidRecord)) throw new RangeError(`selected estimator replay line ${index + 1} does not match the frozen M0D output contract`);
     previousTimestamp = timestampMs;
-    if (validRecord) records.push(Object.freeze({ schemaVersion: 1, timestampMs, observationTraceId: record.observationTraceId!, estimatorId: SELECTED_ESTIMATOR_ID, estimatorConfigHash: SELECTED_ESTIMATOR_CONFIG_HASH, valid: true, positionMm: Object.freeze({ x: positionMm!.x, y: positionMm!.y, z: positionMm!.z }) }));
-    else records.push(Object.freeze({ schemaVersion: 1, timestampMs, observationTraceId: record.observationTraceId!, estimatorId: SELECTED_ESTIMATOR_ID, estimatorConfigHash: SELECTED_ESTIMATOR_CONFIG_HASH, valid: false, positionMm: null, invalidReason: record.invalidReason! }));
+    const processing = typeof record.estimatorProcessingMs === "number" ? { estimatorProcessingMs: record.estimatorProcessingMs } : {};
+    const validInvalidReason = record.invalidReason === null ? { invalidReason: null } : {};
+    if (validRecord) records.push(Object.freeze({ schemaVersion: 1, timestampMs, observationTraceId: record.observationTraceId!, estimatorId: SELECTED_ESTIMATOR_ID, estimatorConfigHash: SELECTED_ESTIMATOR_CONFIG_HASH, valid: true, positionMm: Object.freeze({ x: positionMm!.x, y: positionMm!.y, z: positionMm!.z }), ...validInvalidReason, ...processing }));
+    else records.push(Object.freeze({ schemaVersion: 1, timestampMs, observationTraceId: record.observationTraceId!, estimatorId: SELECTED_ESTIMATOR_ID, estimatorConfigHash: SELECTED_ESTIMATOR_CONFIG_HASH, valid: false, positionMm: null, invalidReason: record.invalidReason!, ...processing }));
   }
   return Object.freeze(records);
 }

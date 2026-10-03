@@ -3,6 +3,7 @@ import { createM0EManifest, serializeM0EEvidenceFiles } from "../../src/m0e/evid
 import { M0E_REQUIRED_FILES } from "../../src/m0e/evidence/m0eEvidenceContracts";
 import { validateM0EEvidenceBundle } from "../../src/m0e/evidence/m0eEvidenceValidator";
 import { calculateStationaryTrialMetric, calculateTransitionMetric, enumerateOneEuroGrid, evaluateTransition } from "../../src/m0e/analysis/filterMetrics";
+import { computeM0ETraceContentHash } from "../../src/m0e/evidence/m0eSourceContentHash";
 
 describe("M0E evidence contracts", () => {
   it("serializes the timestamp for each stationary sample, not the first phase sample", () => {
@@ -17,8 +18,23 @@ describe("M0E evidence contracts", () => {
 
   it("pins the four frozen versions and exact grid", () => {
     const manifest = createM0EManifest({ sourceCommit: "fixture", sourceM0DRunId: "run-1790638307359", sourceM0DPath: "evidence/m0d/estimator-experiment-v3/run-1790638307359", estimatorId: "mediapipe-facial-transform-v1", estimatorVersion: "v1", estimatorConfigHash: "fnv1a64-825a99daebb20f6c", traceIds: ["trace"], traceContentHashes: ["hash"], calibrationModel: "independent-per-axis-scale-offset", filterPackage: "1eurofilter", filterPackageVersion: "1.3.0" });
-    expect(manifest).toMatchObject({ draftVersion: "0.2", experimentProcedureVersion: 1, evidenceSchemaVersion: 1, validatorVersion: 1, metricVersion: 1 });
+    expect(manifest).toMatchObject({ draftVersion: "0.3", experimentProcedureVersion: 1, evidenceSchemaVersion: 1, validatorVersion: 2, metricVersion: 1 });
     expect(manifest.candidateGrid).toEqual(enumerateOneEuroGrid());
+  });
+
+  it("regenerates composite source hashes independently and rejects unavailable or tampered provenance", () => {
+    const artifacts = {
+      observationTrace: [{ envelope: { traceId: "trace" }, observation: { timestampMs: 1 } }],
+      selectedEstimatorReplay: [{ observationTraceId: "trace", timestampMs: 1, completeReplayField: "retained" }],
+    };
+    const hash = computeM0ETraceContentHash("trace", artifacts);
+    expect(hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(computeM0ETraceContentHash("trace", { ...artifacts, selectedEstimatorReplay: [{ ...artifacts.selectedEstimatorReplay[0], completeReplayField: "changed" }] })).not.toBe(hash);
+    const manifest = createM0EManifest({ sourceCommit: "claim", sourceM0DRunId: "run-1790638307359", sourceM0DPath: "evidence/m0d/estimator-experiment-v3/run-1790638307359", estimatorId: "mediapipe-facial-transform-v1", estimatorVersion: "v1", estimatorConfigHash: "fnv1a64-825a99daebb20f6c", traceIds: ["trace"], traceContentHashes: [hash], calibrationModel: "independent-per-axis-scale-offset", filterPackage: "1eurofilter", filterPackageVersion: "1.3.0" });
+    const missing = validateM0EEvidenceBundle({ manifest, filesIncluded: [] });
+    expect(missing.failures.map((failure) => failure.code)).toContain("source-content-unavailable");
+    const tampered = validateM0EEvidenceBundle({ manifest: { ...manifest, traceContentHashes: ["sha256:" + "0".repeat(64)] }, filesIncluded: [] }, artifacts);
+    expect(tampered.failures.map((failure) => failure.code)).toContain("source-content-hash-mismatch");
   });
 
   it("rejects missing files, invalid versions, and incomplete candidates deterministically", () => {

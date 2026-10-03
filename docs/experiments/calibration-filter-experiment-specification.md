@@ -2,26 +2,30 @@
 
 ## Calibration and Filter Experiment Specification
 
-## Draft v0.2
+## Draft v0.3
 
 # Document Status
 
-Draft version: 0.2
-Date: September 28, 2026
+Draft version: 0.3
+Date: September 29, 2026
 Artifact: Class C calibration and filter experiment specification
 Review status: approved by GPT-5.6 Sol High stronger-reasoning Class C review
 Freeze status: frozen through `ORC-CALIBRATION-FILTER-001`
 
-This is the first executable candidate procedure for M0E. No M0E evidence had been collected before this freeze, and Draft v0.1 must not be represented as having produced evidence. GPT-5.6 Sol High completed the stronger-reasoning Class C review of Draft v0.2 at repository baseline `29a978c95bcd2837dcafe63314c7b116effa6f3e`; the final review approved the Class C design after the per-axis-selection, metric-version, and duplicate-formula freeze-record corrections. This record freezes the governing procedure through the Oracle Registry. It does not claim that implementation or evidence collection has occurred. Implementation or harness work must not silently redefine the frozen criteria.
+This is the first executable candidate procedure for M0E. No M0E evidence had been collected before this freeze, and Draft v0.1 must not be represented as having produced evidence. Draft v0.3 materializes the approved stronger-reasoning Class C clarification of evidence-content provenance; it does not change the physical collection procedure, evidence schema, calibration/filter mathematics, or interpretation boundaries. This record freezes the governing procedure through the Oracle Registry. It does not claim that implementation or evidence collection has occurred.
 
 Machine-readable procedure identity:
 
 ```text
 experimentProcedureVersion = 1
 evidenceSchemaVersion = 1
-validatorVersion = 1
+validatorVersion = 2
 metricVersion = 1
 ```
+
+## Normative source-content provenance
+
+For each unique trace ID, claim-bearing M0E validation SHALL independently regenerate a composite SHA-256 digest over the complete parsed records from `observations/trace.jsonl` and `estimator-a/outputs/replay.jsonl`. The canonical payload is `{ domain: "worldviewer-m0e-source-trace-v1", traceId, observationTrace: [...], selectedEstimatorReplay: [...] }`, serialized with `stableM0DJsonStringify()` and hashed as UTF-8 bytes without a BOM or trailing newline. The manifest representation is `sha256:` followed by 64 lowercase hexadecimal characters, positionally paired with `traceIds`; malformed, duplicated, missing, mismatched, or unavailable source content invalidates claim-bearing validation. Parsed/reconstructed readiness inputs SHALL correspond to the authoritative source artifacts. Fixture bundles remain explicitly non-claim-bearing.
 
 # 1. Purpose and scope
 
@@ -481,4 +485,4 @@ Do not force a default when objective and perceptual evidence do not support one
 
 # 12. Status and freeze record
 
-This specification remains `Draft v0.2` and is approved/frozen Class C material through `ORC-CALIBRATION-FILTER-001`. GPT-5.6 Sol High completed the stronger-reasoning review against repository baseline `29a978c95bcd2837dcafe63314c7b116effa6f3e` and approved the design after the three specified freeze-record corrections. The governing executable identity is `Draft v0.2`, `experimentProcedureVersion = 1`, `evidenceSchemaVersion = 1`, `validatorVersion = 1`, and `metricVersion = 1`. No M0E evidence had been collected before freeze; evidence execution remains unperformed and depends on the required implementation, harness, and validator prerequisites. A collection or implementation agent may implement against this approved/frozen revision but may not silently redefine formulas, thresholds, grid, validity rules, shortlist rules, or interpretation boundaries.
+This specification remains `Draft v0.3` and is approved/frozen Class C material through `ORC-CALIBRATION-FILTER-001`. The governing executable identity is `Draft v0.3`, `experimentProcedureVersion = 1`, `evidenceSchemaVersion = 1`, `validatorVersion = 2`, and `metricVersion = 1`. No M0E evidence had been collected before freeze; evidence execution remains unperformed and depends on the required implementation, harness, and validator prerequisites. A collection or implementation agent may implement against this approved/frozen revision but may not silently redefine formulas, thresholds, grid, validity rules, shortlist rules, or interpretation boundaries.

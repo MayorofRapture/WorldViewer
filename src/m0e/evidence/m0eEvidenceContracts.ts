@@ -2,10 +2,10 @@ import type { OneEuroCandidateConfiguration, CandidateObjective, MotionTransitio
 import type { AxisCalibrationFit, CalibrationDecision, XYCalibrationObservation, ZCalibrationObservation } from "../analysis/calibrationAnalysis";
 import type { M0ESourceReadiness } from "../replay/m0eSourceContext";
 
-export const M0E_DRAFT_VERSION = "0.2" as const;
+export const M0E_DRAFT_VERSION = "0.3" as const;
 export const M0E_EXPERIMENT_PROCEDURE_VERSION = 1 as const;
 export const M0E_EVIDENCE_SCHEMA_VERSION = 1 as const;
-export const M0E_VALIDATOR_VERSION = 1 as const;
+export const M0E_VALIDATOR_VERSION = 2 as const;
 export const M0E_METRIC_VERSION = 1 as const;
 
 export interface M0EManifest {
