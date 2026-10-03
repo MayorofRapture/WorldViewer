@@ -1,5 +1,6 @@
 [package]
 name = "worldviewer"
+default-run = "worldviewer"
 version = "0.1.0"
 description = "WorldViewer application foundation"
 edition = "2021"
