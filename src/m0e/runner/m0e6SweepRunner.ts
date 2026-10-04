@@ -11,6 +11,7 @@ import {
   type InvalidSampleLocation,
   type MotionTransition,
   type OneEuroCandidateConfiguration,
+  type StationaryTrial,
   type TransitionSample,
 } from "../analysis/filterMetrics";
 import type { TransitionInvalidationReason } from "../analysis/filterMetrics";
@@ -154,6 +155,7 @@ function runCandidate(candidate: OneEuroCandidateConfiguration, input: M0E6Sweep
   const filter = new OneEuroPoseFilter({ minCutoffHz: candidate.minCutoffHz, beta: candidate.beta, dCutoffHz: candidate.dCutoffHz, initialFrequencyHz: 60 });
   let invalidOutputCount = 0;
   const invalidLocations: InvalidSampleLocation[] = [];
+  const stationaryOutputs: StationaryTrial[] = [];
   const stationaryMetrics = input.stationaryTrials.map((trial) => {
     filter.reset();
     const settle: { x: number; y: number; z: number }[] = [];
@@ -168,6 +170,7 @@ function runCandidate(candidate: OneEuroCandidateConfiguration, input: M0E6Sweep
       }
     }
     const replayed = { trialId: trial.trialId, settle, capture };
+    stationaryOutputs.push(replayed);
     try { return calculateStationaryTrialMetric(replayed); } catch { return invalidStationaryMetric(trial.trialId); }
   });
   const transitionOutputs: MotionTransition[] = [];
@@ -191,7 +194,7 @@ function runCandidate(candidate: OneEuroCandidateConfiguration, input: M0E6Sweep
   const metrics = transitionResults.filter((result): result is Extract<typeof result, { status: "evaluable" }> => result.status === "evaluable").map((result) => ({ transitionId: result.transitionId, axis: result.axis, lagMs: result.lagMs, overshootMm: result.overshootMm, discontinuityMm: result.discontinuityMm }));
   const lags = transitionResults.filter((result): result is Extract<typeof result, { status: "evaluable" }> => result.status === "evaluable").map((result) => result.lagMs);
   const p95LagMs = lags.length === 0 ? null : nearestRankPercentile(lags, 0.95);
-  return objectiveForCandidate(candidate, stationaryMetrics, p95LagMs, invalidOutputCount, metrics, 0, 0, undefined, undefined, undefined, transitionResults, transitionOutputs, invalidLocations);
+  return objectiveForCandidate(candidate, stationaryMetrics, p95LagMs, invalidOutputCount, metrics, 0, 0, undefined, undefined, stationaryOutputs, transitionResults, transitionOutputs, invalidLocations);
 }
 
 export function runM0E6DevelopmentSweep(input: M0E6SweepInput): M0E6DevelopmentResult {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enumerateOneEuroGrid } from "../../src/m0e/analysis/filterMetrics";
+import { enumerateOneEuroGrid, nearestRankPercentile } from "../../src/m0e/analysis/filterMetrics";
 import { buildM0E6DevelopmentShortlist, M0E6_REQUIRED_NEUTRAL_TRIAL_IDS, M0E6InputValidationError, runM0E6DevelopmentSweep, serializeM0E6DevelopmentResult, type M0E6SweepInput } from "../../src/m0e/runner/m0e6SweepRunner";
 
 const pose = (timestampMs: number, x = 0, y = 0, z = 600) => ({ timestampMs, positionMm: { x, y, z } });
@@ -16,14 +16,14 @@ function inputWithTransitions(transitions: M0E6SweepInput["transitions"]): M0E6S
   return { ...input(), transitions };
 }
 
-function transition(transitionId: string, offset: number, sourceInvalidationReason?: "source-procedural-invalidation"): M0E6SweepInput["transitions"][number] {
+function transition(transitionId: string, offset: number, sourceInvalidationReason?: "source-procedural-invalidation", inputCrossingIndex = 1): M0E6SweepInput["transitions"][number] {
   return {
     transitionId,
     axis: "x",
     start: 0,
     final: 10,
     ...(sourceInvalidationReason === undefined ? {} : { sourceInvalidationReason }),
-    samples: Array.from({ length: 241 }, (_, index) => ({ ...pose(offset + index * 10, index === 0 ? 0 : 10), input: index === 0 ? 0 : 10 })),
+    samples: Array.from({ length: 241 }, (_, index) => ({ ...pose(offset + index * 10, index === 0 ? 0 : 10), input: index < inputCrossingIndex ? 0 : 10 })),
   };
 }
 
@@ -50,12 +50,30 @@ describe("M0E6 development sweep runner", () => {
   });
 
   it("propagates nearest-rank p95 lag from the candidate's evaluable transition results", () => {
-    const result = runM0E6DevelopmentSweep(inputWithTransitions([transition("x-transition-1", 1000), transition("x-transition-2", 2000)]));
+    const result = runM0E6DevelopmentSweep(inputWithTransitions([transition("x-transition-1", 1000, undefined, 1), transition("x-transition-2", 2000, undefined, 20)]));
     const candidate = result.candidates[0]!;
     const lags = candidate.transitionResults?.filter((entry): entry is Extract<typeof entry, { status: "evaluable" }> => entry.status === "evaluable").map((entry) => entry.lagMs) ?? [];
     expect(lags.length).toBe(2);
-    expect(candidate.p95LagMs).toBe(Math.min(...lags));
+    expect(new Set(lags).size).toBe(2);
+    expect(candidate.p95LagMs).toBe(nearestRankPercentile(lags, 0.95));
     expect(candidate.p95LagMs).toBe(candidate.lagSummary.p95LagMs);
+  });
+
+  it("retains candidate-specific filtered stationary replay outputs for all five neutral trials", () => {
+    const sourceTrials = M0E6_REQUIRED_NEUTRAL_TRIAL_IDS.map((trialId, index) => ({
+      trialId,
+      settle: [pose(index * 100 + 1, 0), pose(index * 100 + 2, 1), pose(index * 100 + 3, -1)],
+      capture: [pose(index * 100 + 4, 2), pose(index * 100 + 5, -2), pose(index * 100 + 6, 3), pose(index * 100 + 7, 0)],
+    }));
+    const result = runM0E6DevelopmentSweep({ ...input(), stationaryTrials: sourceTrials });
+    const candidate = result.candidates[0]!;
+    const outputs = candidate.stationaryReplayOutputs ?? [];
+
+    expect(outputs).toHaveLength(5);
+    expect(outputs.map((trial) => trial.trialId)).toEqual([...M0E6_REQUIRED_NEUTRAL_TRIAL_IDS]);
+    expect(outputs.every((trial) => trial.settle.length > 0 && trial.capture.length > 0)).toBe(true);
+    expect(outputs.some((trial, index) => JSON.stringify(trial) !== JSON.stringify(sourceTrials[index]))).toBe(true);
+    expect(result.candidates.every((entry) => entry.stationaryReplayOutputs?.length === 5)).toBe(true);
   });
 
   it("produces an ordinary shortlist when a candidate has finite jitter and lag objectives", () => {
