@@ -124,15 +124,33 @@ export class M0E7DiagnosticComparisonRuntime {
     if (this.pipeline === undefined) throw new Error("activate an M0E7 candidate before starting the runtime");
 
     this.startPromise = (async () => {
-      await this.worldHost.initialize();
-      if (this.disposed) return;
-      await this.pipeline!.start();
-      if (this.disposed) {
-        await this.pipeline!.dispose();
-        return;
+      try {
+        await this.worldHost.initialize();
+        if (this.disposed) return;
+        await this.pipeline!.start();
+        if (this.disposed) {
+          await this.pipeline!.dispose();
+          return;
+        }
+        this.started = true;
+        this.scheduleNextFrame();
+      } catch (error) {
+        const cleanupErrors: unknown[] = [];
+        try {
+          await this.pipeline?.dispose();
+        } catch (cleanupError) {
+          cleanupErrors.push(cleanupError);
+        }
+        try {
+          await this.worldHost.dispose();
+        } catch (cleanupError) {
+          cleanupErrors.push(cleanupError);
+        }
+        if (cleanupErrors.length > 0) {
+          throw new AggregateError([error, ...cleanupErrors], "M0E7 diagnostic runtime startup and cleanup failed");
+        }
+        throw error;
       }
-      this.started = true;
-      this.scheduleNextFrame();
     })().finally(() => {
       this.startPromise = undefined;
     });
@@ -160,9 +178,17 @@ export class M0E7DiagnosticComparisonRuntime {
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
+    const pendingStart = this.startPromise;
     if (this.scheduledFrame !== null) {
       this.scheduler.cancel(this.scheduledFrame);
       this.scheduledFrame = null;
+    }
+    if (pendingStart !== undefined) {
+      try {
+        await pendingStart;
+      } catch {
+        // Startup cleanup is followed by definitive disposal below.
+      }
     }
     await this.pipeline?.dispose();
     await this.worldHost.dispose();
