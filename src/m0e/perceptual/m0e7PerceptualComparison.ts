@@ -1,5 +1,5 @@
-import { buildShortlist, enumerateOneEuroGrid, type CandidateObjective, type OneEuroCandidateConfiguration } from "../analysis/filterMetrics";
-import type { M0E6DevelopmentResult } from "../runner/m0e6SweepRunner";
+import { enumerateOneEuroGrid, type CandidateObjective, type OneEuroCandidateConfiguration } from "../analysis/filterMetrics";
+import { runM0E6DevelopmentSweep, type M0E6DevelopmentResult } from "../runner/m0e6SweepRunner";
 import { stableM0EJsonStringify } from "../evidence/m0eSerialization";
 
 export const M0E7_OBSERVATION_CATEGORIES = Object.freeze([
@@ -99,6 +99,10 @@ function isCandidateObjective(value: unknown): value is CandidateObjective {
   return isRecord(value) && isConfiguration(value.candidate) && typeof value.eligible === "boolean" && (value.jitterObjective === null || typeof value.jitterObjective === "number") && (value.p95LagMs === null || typeof value.p95LagMs === "number");
 }
 
+function sameStableValue(left: unknown, right: unknown): boolean {
+  return stableM0EJsonStringify(left) === stableM0EJsonStringify(right);
+}
+
 function invalidM0E6(message: string): never {
   throw new M0E7SessionValidationError(`invalid M0E6 development result: ${message}`);
 }
@@ -110,20 +114,24 @@ function validateM0E6DevelopmentResult(value: unknown): asserts value is M0E6Dev
   if (value.finalFilterSelection !== "not-performed") invalidM0E6("finalFilterSelection must be not-performed");
   if (value.m0e7 !== "not-started") invalidM0E6("m0e7 must be not-started");
   if (value.m0e8 !== "not-started") invalidM0E6("m0e8 must be not-started");
-  if (!Array.isArray(value.candidateConfigurations) || !Array.isArray(value.candidates) || !Array.isArray(value.paretoFrontier)) invalidM0E6("candidate collections are required");
+  if (!Array.isArray(value.candidateConfigurations) || !Array.isArray(value.stationaryReplayInputs) || !Array.isArray(value.transitionReplayInputs) || !Array.isArray(value.candidates) || !Array.isArray(value.paretoFrontier)) invalidM0E6("candidate and replay collections are required");
   const candidateConfigurations: unknown[] = value.candidateConfigurations;
+  const stationaryReplayInputs = value.stationaryReplayInputs;
+  const transitionReplayInputs = value.transitionReplayInputs;
   const candidates: unknown[] = value.candidates;
   const paretoFrontier: unknown[] = value.paretoFrontier;
 
   const expectedGrid = enumerateOneEuroGrid();
   if (candidateConfigurations.length !== expectedGrid.length) invalidM0E6("candidateConfigurations must contain exactly the frozen 25-candidate grid");
   const configurationIds = new Set<string>();
+  const validatedConfigurations: OneEuroCandidateConfiguration[] = [];
   candidateConfigurations.forEach((configuration, index) => {
     if (!isConfiguration(configuration)) invalidM0E6(`candidateConfigurations[${index}] is malformed`);
     if (configurationIds.has(configuration.candidateId)) invalidM0E6(`candidateConfigurations contains duplicate candidate ID ${configuration.candidateId}`);
     configurationIds.add(configuration.candidateId);
     const expected = expectedGrid[index]!;
     if (!sameConfiguration(configuration, expected)) invalidM0E6(`candidateConfigurations[${index}] does not match the frozen ordered grid`);
+    validatedConfigurations.push(configuration);
   });
 
   if (candidates.length !== expectedGrid.length) invalidM0E6("candidates must contain exactly 25 objective records");
@@ -140,17 +148,25 @@ function validateM0E6DevelopmentResult(value: unknown): asserts value is M0E6Dev
     if (!isConfiguration(candidateConfigurations[index]) || !sameConfiguration(entry.candidate, candidateConfigurations[index])) invalidM0E6(`candidates[${index}] does not match candidateConfigurations[${index}]`);
   });
 
-  let regenerated: ReturnType<typeof buildShortlist>;
+  let regenerated: M0E6DevelopmentResult;
   try {
-    regenerated = buildShortlist(candidates.filter((candidate): candidate is CandidateObjective => isCandidateObjective(candidate)));
+    regenerated = runM0E6DevelopmentSweep({
+      authority: value.authority,
+      stationaryTrials: stationaryReplayInputs as M0E6DevelopmentResult["stationaryReplayInputs"],
+      transitions: transitionReplayInputs as M0E6DevelopmentResult["transitionReplayInputs"],
+      candidateConfigurations: validatedConfigurations,
+    });
   } catch (error) {
-    invalidM0E6(`candidate objectives cannot be evaluated: ${error instanceof Error ? error.message : "unknown error"}`);
+    invalidM0E6(`supplied M0E6 development result cannot be independently regenerated: ${error instanceof Error ? error.message : "unknown error"}`);
   }
-  if (regenerated!.status !== value.frontierStatus) invalidM0E6(`frontierStatus does not match regenerated status (${regenerated!.status})`);
+  if (!sameStableValue(value.candidateConfigurations, regenerated.candidateConfigurations)) invalidM0E6("candidateConfigurations do not match independently regenerated M0E6 output");
+  if (!sameStableValue(value.candidates, regenerated.candidates)) invalidM0E6("candidates do not match independently regenerated M0E6 output");
+  if (regenerated.frontierStatus !== value.frontierStatus) invalidM0E6(`frontierStatus does not match independently regenerated status (${regenerated.frontierStatus})`);
   if (value.frontierStatus !== "shortlist" || paretoFrontier.length < 1 || paretoFrontier.length > 6) invalidM0E6("M0E7 requires a shortlist containing one through six candidates");
-  if (paretoFrontier.length !== regenerated!.frontier.length) invalidM0E6("paretoFrontier does not match the regenerated frontier");
+  if (!sameStableValue(value.paretoFrontier, regenerated.paretoFrontier)) invalidM0E6("paretoFrontier does not match independently regenerated M0E6 output");
+  if (paretoFrontier.length !== regenerated.paretoFrontier.length) invalidM0E6("paretoFrontier does not match the regenerated frontier");
   paretoFrontier.forEach((entry, index) => {
-    const expected = regenerated!.frontier[index]!;
+    const expected = regenerated.paretoFrontier[index]!;
     if (!isCandidateObjective(entry) || entry.candidate.candidateId !== expected.candidate.candidateId || !sameConfiguration(entry.candidate, expected.candidate)) invalidM0E6("paretoFrontier does not match the regenerated frontier in deterministic order");
   });
 }
