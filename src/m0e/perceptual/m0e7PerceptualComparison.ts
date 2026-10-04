@@ -1,4 +1,4 @@
-import type { OneEuroCandidateConfiguration } from "../analysis/filterMetrics";
+import { buildShortlist, enumerateOneEuroGrid, type CandidateObjective, type OneEuroCandidateConfiguration } from "../analysis/filterMetrics";
 import type { M0E6DevelopmentResult } from "../runner/m0e6SweepRunner";
 import { stableM0EJsonStringify } from "../evidence/m0eSerialization";
 
@@ -79,8 +79,80 @@ function validateCategory(category: M0E7ObservationCategory): void {
 }
 
 function calculateCompletion(observations: M0E7DevelopmentSession["observations"]): "incomplete" | "complete" {
-  const complete = Object.values(observations).every((candidateObservations) => requiredCategories.every((category) => candidateObservations[category].acknowledged) && (candidateObservations["reacquisition-smoothness"].acknowledged || candidateObservations["reacquisition-smoothness"].status === "not-included"));
+  const complete = Object.values(observations).length > 0 && Object.values(observations).every((candidateObservations) => requiredCategories.every((category) => candidateObservations[category]?.status === "observed" && candidateObservations[category].acknowledged) && (candidateObservations["reacquisition-smoothness"]?.status === "observed" || candidateObservations["reacquisition-smoothness"]?.status === "not-included") && (candidateObservations["reacquisition-smoothness"]?.acknowledged || candidateObservations["reacquisition-smoothness"]?.status === "not-included"));
   return complete ? "complete" : "incomplete";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function sameConfiguration(left: OneEuroCandidateConfiguration, right: OneEuroCandidateConfiguration): boolean {
+  return left.candidateId === right.candidateId && left.minCutoffHz === right.minCutoffHz && left.beta === right.beta && left.dCutoffHz === right.dCutoffHz;
+}
+
+function isConfiguration(value: unknown): value is OneEuroCandidateConfiguration {
+  return isRecord(value) && typeof value.candidateId === "string" && typeof value.minCutoffHz === "number" && typeof value.beta === "number" && typeof value.dCutoffHz === "number";
+}
+
+function isCandidateObjective(value: unknown): value is CandidateObjective {
+  return isRecord(value) && isConfiguration(value.candidate) && typeof value.eligible === "boolean" && (value.jitterObjective === null || typeof value.jitterObjective === "number") && (value.p95LagMs === null || typeof value.p95LagMs === "number");
+}
+
+function invalidM0E6(message: string): never {
+  throw new M0E7SessionValidationError(`invalid M0E6 development result: ${message}`);
+}
+
+function validateM0E6DevelopmentResult(value: unknown): asserts value is M0E6DevelopmentResult {
+  if (!isRecord(value)) invalidM0E6("result must be an object");
+  if (value.authority !== "fixture" && value.authority !== "provisional") invalidM0E6("authority must be fixture or provisional");
+  if (value.claimBearing !== false) invalidM0E6("claimBearing must be false");
+  if (value.finalFilterSelection !== "not-performed") invalidM0E6("finalFilterSelection must be not-performed");
+  if (value.m0e7 !== "not-started") invalidM0E6("m0e7 must be not-started");
+  if (value.m0e8 !== "not-started") invalidM0E6("m0e8 must be not-started");
+  if (!Array.isArray(value.candidateConfigurations) || !Array.isArray(value.candidates) || !Array.isArray(value.paretoFrontier)) invalidM0E6("candidate collections are required");
+  const candidateConfigurations: unknown[] = value.candidateConfigurations;
+  const candidates: unknown[] = value.candidates;
+  const paretoFrontier: unknown[] = value.paretoFrontier;
+
+  const expectedGrid = enumerateOneEuroGrid();
+  if (candidateConfigurations.length !== expectedGrid.length) invalidM0E6("candidateConfigurations must contain exactly the frozen 25-candidate grid");
+  const configurationIds = new Set<string>();
+  candidateConfigurations.forEach((configuration, index) => {
+    if (!isConfiguration(configuration)) invalidM0E6(`candidateConfigurations[${index}] is malformed`);
+    if (configurationIds.has(configuration.candidateId)) invalidM0E6(`candidateConfigurations contains duplicate candidate ID ${configuration.candidateId}`);
+    configurationIds.add(configuration.candidateId);
+    const expected = expectedGrid[index]!;
+    if (!sameConfiguration(configuration, expected)) invalidM0E6(`candidateConfigurations[${index}] does not match the frozen ordered grid`);
+  });
+
+  if (candidates.length !== expectedGrid.length) invalidM0E6("candidates must contain exactly 25 objective records");
+  const objectiveIds = new Set<string>();
+  candidates.forEach((entry, index) => {
+    if (!isCandidateObjective(entry)) invalidM0E6(`candidates[${index}] is malformed`);
+    if (objectiveIds.has(entry.candidate.candidateId)) invalidM0E6(`candidates contains duplicate candidate ID ${entry.candidate.candidateId}`);
+    objectiveIds.add(entry.candidate.candidateId);
+  });
+  candidates.forEach((entry, index) => {
+    if (!isCandidateObjective(entry)) invalidM0E6(`candidates[${index}] is malformed`);
+    const expected = expectedGrid[index]!;
+    if (!sameConfiguration(entry.candidate, expected)) invalidM0E6(`candidates[${index}] does not match its frozen candidate configuration`);
+    if (!isConfiguration(candidateConfigurations[index]) || !sameConfiguration(entry.candidate, candidateConfigurations[index])) invalidM0E6(`candidates[${index}] does not match candidateConfigurations[${index}]`);
+  });
+
+  let regenerated: ReturnType<typeof buildShortlist>;
+  try {
+    regenerated = buildShortlist(candidates.filter((candidate): candidate is CandidateObjective => isCandidateObjective(candidate)));
+  } catch (error) {
+    invalidM0E6(`candidate objectives cannot be evaluated: ${error instanceof Error ? error.message : "unknown error"}`);
+  }
+  if (regenerated!.status !== value.frontierStatus) invalidM0E6(`frontierStatus does not match regenerated status (${regenerated!.status})`);
+  if (value.frontierStatus !== "shortlist" || paretoFrontier.length < 1 || paretoFrontier.length > 6) invalidM0E6("M0E7 requires a shortlist containing one through six candidates");
+  if (paretoFrontier.length !== regenerated!.frontier.length) invalidM0E6("paretoFrontier does not match the regenerated frontier");
+  paretoFrontier.forEach((entry, index) => {
+    const expected = regenerated!.frontier[index]!;
+    if (!isCandidateObjective(entry) || entry.candidate.candidateId !== expected.candidate.candidateId || !sameConfiguration(entry.candidate, expected.candidate)) invalidM0E6("paretoFrontier does not match the regenerated frontier in deterministic order");
+  });
 }
 
 function cloneConfiguration(configuration: OneEuroCandidateConfiguration): OneEuroCandidateConfiguration {
@@ -98,8 +170,7 @@ function cloneObservations(candidateAliases: readonly string[]): M0E7Development
 }
 
 export function createM0E7DevelopmentSession(m0e6Result: M0E6DevelopmentResult): M0E7DevelopmentSession {
-  if (m0e6Result.frontierStatus !== "shortlist") throw new M0E7SessionValidationError(`M0E7 requires frontierStatus shortlist, received ${m0e6Result.frontierStatus}`);
-  if (m0e6Result.paretoFrontier.length < 1 || m0e6Result.paretoFrontier.length > 6) throw new M0E7SessionValidationError("M0E7 requires between one and six Pareto-frontier candidates");
+  validateM0E6DevelopmentResult(m0e6Result);
   const configurationById = new Map<string, OneEuroCandidateConfiguration>();
   for (const configuration of m0e6Result.candidateConfigurations) {
     if (configurationById.has(configuration.candidateId)) throw new M0E7SessionValidationError(`duplicate M0E6 candidate ID: ${configuration.candidateId}`);
@@ -112,7 +183,7 @@ export function createM0E7DevelopmentSession(m0e6Result: M0E6DevelopmentResult):
     if (seenFrontierIds.has(candidateId)) throw new M0E7SessionValidationError(`duplicate M0E6 frontier candidate ID: ${candidateId}`);
     seenFrontierIds.add(candidateId);
     const configuration = configurationById.get(candidateId);
-    if (configuration === undefined || JSON.stringify(configuration) !== JSON.stringify(entry.candidate)) throw new M0E7SessionValidationError(`frontier candidate is not exactly present in M0E6 candidateConfigurations: ${candidateId}`);
+    if (configuration === undefined || !sameConfiguration(configuration, entry.candidate)) throw new M0E7SessionValidationError(`frontier candidate is not exactly present in M0E6 candidateConfigurations: ${candidateId}`);
     return Object.freeze({ alias: candidateAliases[index]!, candidateId, configuration: cloneConfiguration(configuration) });
   });
   return Object.freeze({ authority: m0e6Result.authority, claimBearing: false, m0e8: "not-started", candidateProvenance: Object.freeze(candidateProvenance), observations: cloneObservations(candidateAliases), comparativeNotes: "", completion: "incomplete" });
@@ -121,6 +192,7 @@ export function createM0E7DevelopmentSession(m0e6Result: M0E6DevelopmentResult):
 export function recordM0E7Observation(session: M0E7DevelopmentSession, alias: string, category: M0E7ObservationCategory, status: Exclude<M0E7ObservationStatus, "unobserved">, notes = ""): M0E7DevelopmentSession {
   validateCategory(category);
   if (!session.candidateProvenance.some((candidate) => candidate.alias === alias)) throw new M0E7SessionValidationError(`unknown M0E7 candidate alias: ${alias}`);
+  if (status !== "observed" && status !== "not-included") throw new M0E7SessionValidationError(`invalid M0E7 observation status: ${String(status)}`);
   if (status === "not-included" && category !== "reacquisition-smoothness") throw new M0E7SessionValidationError("only reacquisition-smoothness may be marked not-included");
   const candidateObservations: Record<string, Readonly<Record<M0E7ObservationCategory, M0E7Observation>>> = { ...session.observations };
   candidateObservations[alias] = freezeRecord({ ...session.observations[alias]!, [category]: Object.freeze({ status, acknowledged: true, ...(notes.length === 0 ? {} : { notes }) }) });
