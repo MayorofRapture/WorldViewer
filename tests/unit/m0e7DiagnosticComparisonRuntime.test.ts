@@ -197,6 +197,41 @@ describe("M0E7A live diagnostic comparison runtime", () => {
     expect(render).not.toHaveBeenCalled();
   });
 
+  it("shares the terminal cleanup promise across concurrent disposal callers", async () => {
+    const source = new FakeSource();
+    const scheduled = testScheduler();
+    const world = worldHost();
+    const initialization = deferred<undefined>();
+    world.initialize.mockImplementation(() => initialization.promise);
+    const render = vi.fn();
+    const runtime = runtimeFixture(source, scheduled.scheduler, world, render);
+    runtime.activateCandidate("Candidate A");
+
+    const starting = runtime.start();
+    await Promise.resolve();
+    expect(world.initialize).toHaveBeenCalledTimes(1);
+
+    const firstDisposal = runtime.dispose();
+    const secondDisposal = runtime.dispose();
+    expect(secondDisposal).toBe(firstDisposal);
+    let firstSettled = false;
+    let secondSettled = false;
+    void firstDisposal.then(() => { firstSettled = true; });
+    void secondDisposal.then(() => { secondSettled = true; });
+    await Promise.resolve();
+    expect(firstSettled).toBe(false);
+    expect(secondSettled).toBe(false);
+
+    initialization.resolve(undefined);
+    await Promise.all([starting, firstDisposal, secondDisposal]);
+    expect(firstSettled).toBe(true);
+    expect(secondSettled).toBe(true);
+    expect(world.dispose).toHaveBeenCalledTimes(1);
+    expect(source.stops).toBe(1);
+    expect(scheduled.callbacks.size).toBe(0);
+    expect(render).not.toHaveBeenCalled();
+  });
+
   it("waits for source startup before disposing", async () => {
     const source = new FakeSource();
     const startup = deferred<void>();

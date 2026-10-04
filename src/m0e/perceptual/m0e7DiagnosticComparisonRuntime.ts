@@ -79,6 +79,7 @@ export class M0E7DiagnosticComparisonRuntime {
   private pipeline: LivePoseProcessingPipeline | undefined;
   private scheduledFrame: number | null = null;
   private startPromise: Promise<void> | undefined;
+  private disposePromise: Promise<void> | undefined;
   private started = false;
   private disposed = false;
   private activeAlias: string | null = null;
@@ -175,23 +176,26 @@ export class M0E7DiagnosticComparisonRuntime {
     this.onFrame?.(frame);
   }
 
-  async dispose(): Promise<void> {
-    if (this.disposed) return;
+  dispose(): Promise<void> {
+    if (this.disposePromise !== undefined) return this.disposePromise;
     this.disposed = true;
     const pendingStart = this.startPromise;
-    if (this.scheduledFrame !== null) {
-      this.scheduler.cancel(this.scheduledFrame);
-      this.scheduledFrame = null;
-    }
-    if (pendingStart !== undefined) {
-      try {
-        await pendingStart;
-      } catch {
-        // Startup cleanup is followed by definitive disposal below.
+    this.disposePromise = (async () => {
+      if (this.scheduledFrame !== null) {
+        this.scheduler.cancel(this.scheduledFrame);
+        this.scheduledFrame = null;
       }
-    }
-    await this.pipeline?.dispose();
-    await this.worldHost.dispose();
+      if (pendingStart !== undefined) {
+        try {
+          await pendingStart;
+        } catch {
+          // Startup cleanup is followed by definitive disposal below.
+        }
+      }
+      await this.pipeline?.dispose();
+      await this.worldHost.dispose();
+    })();
+    return this.disposePromise;
   }
 
   private scheduleNextFrame(): void {
