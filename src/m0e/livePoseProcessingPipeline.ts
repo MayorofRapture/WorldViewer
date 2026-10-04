@@ -77,7 +77,7 @@ function sameCalibrationProfile(left: Readonly<CalibrationProfile>, right: Reado
 export class LivePoseProcessingPipeline {
   private profile: Readonly<CalibrationProfile>;
   private readonly calibrationTransform: CalibrationTransformContract;
-  private readonly filter: OneEuroPoseFilter;
+  private filter: OneEuroPoseFilter;
   private readonly controller: ViewerStateControllerContract | undefined;
   private source: LivePoseSource | undefined;
   private sourceUnsubscribe: (() => void) | undefined;
@@ -224,6 +224,13 @@ export class LivePoseProcessingPipeline {
     const validated = validateSelectedEstimatorProfile(profile);
     if (sameCalibrationProfile(this.profile, validated)) return;
     this.profile = validated;
+    this.clearPoseHistory();
+  }
+
+  /** Replaces filter configuration without restarting the active source. */
+  public replaceOneEuroConfiguration(configuration: OneEuroFilterConfiguration): void {
+    this.assertUsable();
+    this.filter = new OneEuroPoseFilter(configuration);
     this.clearPoseHistory();
   }
 
