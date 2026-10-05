@@ -77,7 +77,14 @@ describe("M0E7 comparison workflow", () => {
     }
     expect(complete.workflow.getSession().completion).toBe("complete");
     expect(complete.workflow.complete()).toBe(true);
+    expect(complete.workflow.complete()).toBe(false);
+    expect(complete.workflow.getViewModel().workflowState).toBe("completed");
     expect(complete.onComplete).toHaveBeenCalledWith(complete.workflow.getSession());
+    expect(complete.onComplete).toHaveBeenCalledTimes(1);
+    expect(() => complete.workflow.selectCandidate("Candidate A")).toThrow("M0E7 comparison workflow is completed");
+    expect(() => complete.workflow.recordObservation("perceived-lag")).toThrow("M0E7 comparison workflow is completed");
+    expect(() => complete.workflow.setComparativeNotes("late note")).toThrow("M0E7 comparison workflow is completed");
+    expect(() => complete.workflow.start()).toThrow("M0E7 comparison workflow is completed");
   });
 
   it("disposes on cancellation while retaining the current session", async () => {
@@ -86,8 +93,35 @@ describe("M0E7 comparison workflow", () => {
     workflow.recordObservation("perceived-lag", "retained");
     const session = await workflow.cancel();
     expect(runtime.dispose).toHaveBeenCalledTimes(1);
+    expect(workflow.getViewModel().workflowState).toBe("cancelled");
     expect(session.observations["Candidate A"]!["perceived-lag"].notes).toBe("retained");
     expect(session.completion).toBe("incomplete");
     expect(changes).toHaveLength(2);
+    expect(() => workflow.selectCandidate("Candidate B")).toThrow("M0E7 comparison workflow is cancelled");
+    expect(() => workflow.recordObservation("perceived-lag")).toThrow("M0E7 comparison workflow is cancelled");
+    expect(() => workflow.setComparativeNotes("late note")).toThrow("M0E7 comparison workflow is cancelled");
+    expect(() => workflow.start()).toThrow("M0E7 comparison workflow is cancelled");
+    expect(workflow.complete()).toBe(false);
+    expect(await workflow.cancel()).toBe(session);
+    expect(runtime.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares concurrent cancellation and emits one terminal session change", async () => {
+    let resolveDispose!: () => void;
+    const dispose = vi.fn(() => new Promise<void>((resolve) => { resolveDispose = resolve; }));
+    const { workflow, runtime, changes } = workflowFixture({ dispose });
+    workflow.selectCandidate("Candidate A");
+    const first = workflow.cancel();
+    const second = workflow.cancel();
+    expect(runtime.dispose).toHaveBeenCalledTimes(1);
+    let settled = false;
+    void second.then(() => { settled = true; });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    resolveDispose();
+    const sessions = await Promise.all([first, second]);
+    expect(sessions[0]).toBe(sessions[1]);
+    expect(workflow.getViewModel().workflowState).toBe("cancelled");
+    expect(changes).toHaveLength(1);
   });
 });

@@ -16,6 +16,8 @@ export interface M0E7ComparisonRuntimeControl {
   getActiveCandidateAlias(): string | null;
 }
 
+export type M0E7ComparisonWorkflowState = "active" | "completed" | "cancelled";
+
 export interface M0E7ComparisonWorkflowOptions {
   readonly session: M0E7DevelopmentSession;
   readonly runtime: M0E7ComparisonRuntimeControl;
@@ -31,6 +33,7 @@ export interface M0E7ComparisonProgress {
 
 export interface M0E7ComparisonViewModel {
   readonly session: M0E7HumanFacingSession;
+  readonly workflowState: M0E7ComparisonWorkflowState;
   readonly activeCandidateAlias: string | null;
   readonly runtimeStarted: boolean;
   readonly operationalError: string | null;
@@ -50,6 +53,8 @@ export class M0E7ComparisonWorkflow {
   private operationalError: string | null = null;
   private startPromise: Promise<void> | undefined;
   private disposePromise: Promise<void> | undefined;
+  private cancelPromise: Promise<M0E7DevelopmentSession> | undefined;
+  private workflowState: M0E7ComparisonWorkflowState = "active";
 
   constructor(options: M0E7ComparisonWorkflowOptions) {
     this.session = options.session;
@@ -62,6 +67,7 @@ export class M0E7ComparisonWorkflow {
     const session = getM0E7HumanFacingSession(this.session);
     return Object.freeze({
       session,
+      workflowState: this.workflowState,
       activeCandidateAlias: this.activeCandidateAlias,
       runtimeStarted: this.runtimeStarted,
       operationalError: this.operationalError,
@@ -77,7 +83,12 @@ export class M0E7ComparisonWorkflow {
     return this.session;
   }
 
+  private assertActive(): void {
+    if (this.workflowState !== "active") throw new Error(`M0E7 comparison workflow is ${this.workflowState}`);
+  }
+
   selectCandidate(alias: string): void {
+    this.assertActive();
     try {
       this.runtime.activateCandidate(alias);
       this.activeCandidateAlias = alias;
@@ -89,6 +100,7 @@ export class M0E7ComparisonWorkflow {
   }
 
   start(): Promise<void> {
+    this.assertActive();
     if (this.startPromise !== undefined) return this.startPromise;
     this.operationalError = null;
     this.startPromise = this.runtime.start().then(() => {
@@ -103,26 +115,35 @@ export class M0E7ComparisonWorkflow {
   }
 
   recordObservation(category: M0E7ObservationCategory, notes = "", status: "observed" | "not-included" = "observed"): void {
+    this.assertActive();
     if (this.activeCandidateAlias === null) throw new Error("select a candidate before recording an observation");
     this.session = recordM0E7Observation(this.session, this.activeCandidateAlias, category, status, notes);
     this.onSessionChange?.(this.session);
   }
 
   setComparativeNotes(notes: string): void {
+    this.assertActive();
     this.session = setM0E7ComparativeNotes(this.session, notes);
     this.onSessionChange?.(this.session);
   }
 
   complete(): boolean {
+    if (this.workflowState !== "active") return false;
     if (this.session.completion !== "complete") return false;
+    this.workflowState = "completed";
     this.onComplete?.(this.session);
     return true;
   }
 
   async cancel(): Promise<M0E7DevelopmentSession> {
-    await this.dispose();
-    this.onSessionChange?.(this.session);
-    return this.session;
+    if (this.workflowState === "completed" || this.workflowState === "cancelled") return this.session;
+    if (this.cancelPromise !== undefined) return this.cancelPromise;
+    this.cancelPromise = this.dispose().then(() => {
+      this.workflowState = "cancelled";
+      this.onSessionChange?.(this.session);
+      return this.session;
+    });
+    return this.cancelPromise;
   }
 
   dispose(): Promise<void> {
@@ -168,9 +189,11 @@ export function runM0E7ComparisonRunner(host: HTMLElement, options: M0E7Comparis
     const view = workflow.getViewModel();
     status.textContent = `${view.session.completion === "complete" ? "Comparison complete" : "Comparison incomplete"}${view.activeCandidateAlias === null ? "" : ` — Currently viewing: ${view.activeCandidateAlias}`}`;
     error.textContent = view.operationalError ?? "";
+    if (view.workflowState === "cancelled") status.textContent = "Comparison cancelled";
     candidates.replaceChildren(...view.session.candidates.map((candidate) => {
       const control = button(candidate.alias, () => { try { workflow.selectCandidate(candidate.alias); render(); } catch { render(); } });
       control.setAttribute("aria-pressed", String(candidate.alias === view.activeCandidateAlias));
+      control.disabled = view.workflowState !== "active";
       return control;
     }));
     const active = view.activeCandidateAlias === null ? undefined : view.session.candidates.find((candidate) => candidate.alias === view.activeCandidateAlias);
@@ -182,19 +205,24 @@ export function runM0E7ComparisonRunner(host: HTMLElement, options: M0E7Comparis
         const notes = document.createElement("textarea");
         notes.value = active.observations[category].notes ?? "";
         const observed = button("Observed", () => { try { workflow.recordObservation(category, notes.value, "observed"); render(); } catch { render(); } });
+        notes.disabled = view.workflowState !== "active";
+        observed.disabled = view.workflowState !== "active";
         prompt.append(notes, observed);
         if (category === "reacquisition-smoothness") {
           const excluded = button("Not included", () => { try { workflow.recordObservation(category, notes.value, "not-included"); render(); } catch { render(); } });
+          excluded.disabled = view.workflowState !== "active";
           prompt.append(excluded);
         }
         observations.append(prompt);
       }
     }
     comparativeNotes.value = view.session.comparativeNotes;
+    comparativeNotes.disabled = view.workflowState !== "active";
     const progress = view.progress.map((entry) => `${entry.alias}: ${entry.recorded} / ${entry.total} categories recorded`).join("\n");
     status.append(document.createTextNode(progress.length === 0 ? "" : `\n${progress}`));
-    startButton.disabled = view.activeCandidateAlias === null || view.runtimeStarted;
-    completeButton.disabled = view.session.completion !== "complete";
+    startButton.disabled = view.workflowState !== "active" || view.activeCandidateAlias === null || view.runtimeStarted;
+    completeButton.disabled = view.workflowState !== "active" || view.session.completion !== "complete";
+    cancelButton.disabled = view.workflowState !== "active";
   }
 
   render();
